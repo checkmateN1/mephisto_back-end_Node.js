@@ -13,6 +13,8 @@ app.use(function(req, res, next) {
     next();
 });
 
+const PokerEngine = require('./pokerEngine');
+
 // Класс строка действий
 class ActionString {
     constructor(street, player, balance, action, pot, amount, position, gto, isHero) {

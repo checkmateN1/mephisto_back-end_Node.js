@@ -1,5 +1,6 @@
 var ffi = require('ffi');
 var ref = require('ref');
+var Struct = require('ref-struct');
 var ArrayType = require('ref-array');
 
 var bool = ref.types.bool;
@@ -13,18 +14,53 @@ var DoubleArray = ArrayType(double);
 
 var platform = process.platform;
 
+let intRef = ref.refType(int);
 
-let pokerEngine2 = './dll/PokerEngine.dll';
+let sStrategy = Struct({
+    invest: int,
+    probab: float
+});
+let sStrategyRef = ref.refType(sStrategy);
+var sStrategyArray = ArrayType(sStrategy);
 
-let PokerEngine = ffi.Library(pokerEngine2, {
+var handweight = Struct({
+    inputWeight: float,
+    strategy: sStrategyRef
+});
+let handweightRef = ref.refType(handweight);
+
+var handweightArray = ArrayType(handweight);
+
+let path = './dll/PokerEngine.dll';
+
+let PokerEngine = ffi.Library(path, {
     "SetPlayer" : [int, [int, int, int, FloatArray]],
-    // "GetHill": [int, [DoubleArray]],
+    //"GetHill": [bool, [int, int, handweightArray]],
+    "GetHill": [bool, [int, int, handweightRef]],
+    //"getarray": [ArrayType(int, 3), []],
+    "TestFunc": [ref.types.void, [intRef]],
     "InitSetup": [int, []],
     "ReleaseSetup": [bool, [int]],
 });
-
 module.exports = PokerEngine;
 
+
+//var array = ref.alloc(double, 3);
+// var array2 = ref.alloc(handweight, 1326);
+//
+//
+// var data = ref.reinterpret(array2, handweight.size * 1326, 0);
+// for (var i = 0; i < 3; i++) {
+//     let el = handweight.get(data, i * handweight.size);
+//     el.inputWeight = 666;
+//     el.strategy = ref.alloc(sStrategy, 3);
+// }
+//
+// //let result2 = PokerEngine.GetHill(1, 2, array2);
+//
+// for (var i = 0; i < 3; i++) {
+//     console.log(handweight.get(data, i * handweight.size));
+// }
 
 
 
