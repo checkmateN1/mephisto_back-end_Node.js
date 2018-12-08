@@ -1,8 +1,13 @@
-var express = require("express");
-var app = express();
+const express = require("express");
+const app = express();
+//const PokerEngine = require('./pokerEngine');
+//const testExpoFunc = require('./engineMiddleware');
+//const testExpoFunc = require('./engineMiddleware_test');
+//const getAllHandsStrategy = require('./engineMiddleware_work');
+const sessionsHandler = require('./sessionsHandler');
 
-var oracledb = require('oracledb');
-var bodyParser = require('body-parser');
+const oracledb = require('oracledb');
+const bodyParser = require('body-parser');
 
 app.use(bodyParser.json());       // to support JSON-encoded bodies
 app.use(express.json());       // to support JSON-encoded bodies
@@ -12,8 +17,6 @@ app.use(function(req, res, next) {
     res.header("Access-Control-Allow-Headers", "Content-Type, X-Requested-With");
     next();
 });
-
-const PokerEngine = require('./pokerEngine');
 
 // Класс строка действий
 class ActionString {
@@ -36,6 +39,7 @@ function Player(nickname, id, position, vpip) {
     this.position = position;
     this.vpip = vpip;
 }
+
 
 app.post("/upload", function(req, res){
     if (req.body.hand.length < 11 || typeof parseInt(req.body.hand) === 'number') {
@@ -175,9 +179,16 @@ app.post("/upload", function(req, res){
     }
 });
 
+
+// (token, sessionID, request)
+//console.log(sessionsHandler.sessionsListener('uidfksicnm730pdemg662oermfyf75jdf9djf', '123', 'req'));
+
 app.post("/strategy", function(req, res){
-        let obj = req.body;
-        console.log(obj.actions.preflop[0]);
+    let obj = req.body;
+    //console.log(obj);
+    let result = sessionsHandler.sessionsListener('uidfksicnm730pdemg662oermfyf75jdf9djf', '123', obj);
+    //res.send(JSON.stringify(sessionsHandler.sessionsListener('uidfksicnm730pdemg662oermfyf75jdf9djf', '123', obj)));
+    res.send(JSON.stringify(result));
 
 });
 
@@ -339,6 +350,7 @@ app.listen(3001, "localhost", function(){
     console.log("Сервер ожидает подключения...");
 });
 
+//console.log(testExpoFunc.sessionsListener('uidfksicnm730pdemg662oermfyf75jdf9djf', '123', 'yo!'));
 // app.listen(27990, "192.168.1.20", function(){
 //     console.log("Сервер ожидает подключения...");
 // });

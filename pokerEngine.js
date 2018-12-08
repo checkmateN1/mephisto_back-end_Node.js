@@ -20,8 +20,14 @@ let sStrategy = Struct({
     invest: int,
     probab: float
 });
+
+let hand = Struct({
+    hi: ref.types.char,
+    lo: ref.types.char
+});
+
 let sStrategyRef = ref.refType(sStrategy);
-var sStrategyArray = ArrayType(sStrategy);
+let handRef = ref.refType(hand);
 
 var handweight = Struct({
     inputWeight: float,
@@ -35,35 +41,13 @@ let path = './dll/PokerEngine.dll';
 
 let PokerEngine = ffi.Library(path, {
     "SetPlayer" : [int, [int, int, int, FloatArray]],
-    //"GetHill": [bool, [int, int, handweightArray]],
     "GetHill": [bool, [int, int, handweightRef]],
-    //"getarray": [ArrayType(int, 3), []],
-    "TestFunc": [ref.types.void, [intRef]],
+    //"TestFunc": [ref.types.void, [intRef]],
+    "GetHandsDict": [ref.types.void, [handRef]],
     "InitSetup": [int, []],
     "ReleaseSetup": [bool, [int]],
 });
 module.exports = PokerEngine;
-
-
-//var array = ref.alloc(double, 3);
-// var array2 = ref.alloc(handweight, 1326);
-//
-//
-// var data = ref.reinterpret(array2, handweight.size * 1326, 0);
-// for (var i = 0; i < 3; i++) {
-//     let el = handweight.get(data, i * handweight.size);
-//     el.inputWeight = 666;
-//     el.strategy = ref.alloc(sStrategy, 3);
-// }
-//
-// //let result2 = PokerEngine.GetHill(1, 2, array2);
-//
-// for (var i = 0; i < 3; i++) {
-//     console.log(handweight.get(data, i * handweight.size));
-// }
-
-
-
 
 
 
@@ -79,6 +63,7 @@ module.exports = PokerEngine;
 
 // POKERENGINE_API bool SetPlayer(int nIDSetup, int nStack, int nPos, float arrAdapt[ADAPT_SIZE]);
 //
+// POKERENGINE_API void GetHandsDict(SHiLoCards* dict);
 // POKERENGINE_API int InitSetup();
 // POKERENGINE_API bool ReleaseSetup(int nIDSetup);
 //
