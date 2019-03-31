@@ -68,6 +68,9 @@ const fillDict = () => {
 
     for (let i = 0; i < allHandsCount; i++) {
         let el = hand.get(handArr, i * hand.size);
+        // console.log(`i = ${i}`);
+        // console.log(`el`);
+        // console.log(el);
         textHandsArr[i] = getCardText(parseInt(el.hi));
         textHandsArr[i] += getCardText(parseInt(el.lo));
     }
@@ -111,8 +114,9 @@ const getAllHandsStrategy = (nIDSetup, nIDMove) => {
     }
 
     PokerEngine.GetHill(nIDSetup, nIDMove, handweightBuf);
-
-    for (let i = 0; i < 1326; i++) {
+    // console.log(`textHandsArr`);
+    // console.log(textHandsArr);
+    for (let i = 0; i < allHandsCount; i++) {
         let el = handweight.get(handweightBuf, i * handweight.size);
         //console.log(el.inputWeight);
         //console.log(el);
@@ -131,10 +135,19 @@ const getAllHandsStrategy = (nIDSetup, nIDMove) => {
         }
         //console.log(allHandsStrategy[i]);
     }
+    let maxInputWeight = 0;
+    allHandsStrategy.allHands.forEach(el => {
+        if (el.weight > maxInputWeight) maxInputWeight = el.weight;
+    });
+    for (let i = 0; i < allHandsCount; i++) {
+        allHandsStrategy.allHands[i].weight = (allHandsStrategy.allHands[i].weight / maxInputWeight);
+    }
+    allHandsStrategy.allHands = allHandsStrategy.allHands.filter(el => el.weight >= 0);
     return allHandsStrategy;
 };
 
 module.exports.getAllHandsStrategy = getAllHandsStrategy;
+module.exports.getHandIndex = getHandIndex;
 
 //console.log(testExpoFunc());
 

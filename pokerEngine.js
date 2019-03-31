@@ -35,16 +35,16 @@ var handweight = Struct({
 });
 let handweightRef = ref.refType(handweight);
 
-var handweightArray = ArrayType(handweight);
-
 let path = './dll/PokerEngine.dll';
 
 let PokerEngine = ffi.Library(path, {
     "SetPlayer" : [int, [int, int, int, FloatArray]],
     "GetHill": [bool, [int, int, handweightRef]],
-    //"TestFunc": [ref.types.void, [intRef]],
     "GetHandsDict": [ref.types.void, [handRef]],
-    "InitSetup": [int, []],
+    "PushHintMove": [int, [int, int, int, int]],
+    "PushBoard3Move": [int, [int, int, int, int]],
+    //"PushBoardMove": [int, [int]],
+    "InitSetup": [int, [int]],
     "ReleaseSetup": [bool, [int]],
 });
 module.exports = PokerEngine;
@@ -75,7 +75,17 @@ module.exports = PokerEngine;
 //
 // POKERENGINE_API bool GetHill(int nIDSetup, int nIDMove, float arrHill[1326]);
 
-
+// enum EMoves: char
+// {
+//         ACT_NONE = -1,
+//         ACT_POST = 0,
+//         ACT_BET = 1,
+//         ACT_RAISE = 2,
+//         ACT_CALL = 3,
+//         ACT_CHECK = 4,
+//         ACT_FOLD = 5,
+//         ACT_ALLIN = 6
+// };
 
 
 
