@@ -62,7 +62,7 @@ const movesHandler = (idSetup, oldActions, request, bbSize, setup) => {
 
     // return newSetupID;
 
-    if (!request.actions.turn.length) {
+    if (!request.actions.turn) {
         return newSetupID
     } else {
         console.log('trying to push turn board');
