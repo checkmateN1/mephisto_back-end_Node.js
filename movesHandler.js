@@ -1,5 +1,4 @@
 const PokerEngine = require('./pokerEngine');
-//const middleware = require('./engineMiddleware_work');
 
 const cardsName = ["2h", "3h", "4h", "5h", "6h", "7h", "8h", "9h", "Th", "Jh", "Qh", "Kh", "Ah", "2d", "3d", "4d", "5d", "6d", "7d", "8d", "9d", "Td", "Jd", "Qd", "Kd", "Ad", "2c", "3c", "4c", "5c", "6c", "7c", "8c", "9c", "Tc", "Jc", "Qc", "Kc", "Ac", "2s", "3s", "4s", "5s", "6s", "7s", "8s", "9s", "Ts", "Js", "Qs", "Ks", "As"];
 
@@ -10,18 +9,18 @@ const movesHandler = (idSetup, oldActions, request, bbSize, setup) => {
     let testSetPlayer = [];
     let adapt_size = 10;
 
+    console.log(request);
+
     for (let i = 0; i < request.players.length; i++) {
         let adaptArr = [];
         for (let i = 0; i < adapt_size; i++) {
             adaptArr.push(0);
         }
         // POKERENGINE_API bool SetPlayer(int nIDSetup, int nStack, int nPos, float arrAdapt[ADAPT_SIZE]);
-        console.log(`SetPlayer(${newSetupID}, ${parseInt(request.players[i].stack * 100)}, ${request.players[i].position}, ${adaptArr}`);
+        // console.log(`SetPlayer(${newSetupID}, ${parseInt(request.players[i].stack * 100)}, ${request.players[i].position}, ${adaptArr}`);
         let testPLR = PokerEngine.SetPlayer(newSetupID, parseInt(request.players[i].stack * 100), request.players[i].position, adaptArr);
         testSetPlayer.push(testPLR);
     }
-    // console.log('testSetPlayer');
-    // console.log(testSetPlayer);
 
     let testPushHintMove = [];
     let playersInvestPreflop = {};
@@ -31,21 +30,14 @@ const movesHandler = (idSetup, oldActions, request, bbSize, setup) => {
             curInvest = parseInt(parseFloat(request.actions.preflop[i].amount) * 100) - playersInvestPreflop[request.actions.preflop[i].position]
         } else {curInvest = parseInt(parseFloat(request.actions.preflop[i].amount) * 100);}
         // POKERENGINE_API int PushHintMove(int nIDSetup, int nMoney, int nPos, int nAct);
-        console.log(`PushHintMove(${newSetupID}, ${curInvest}, ${request.actions.preflop[i].position}, ${i < 2 ? 0 : request.actions.preflop[i].action})`);
+        // console.log(`PushHintMove(${newSetupID}, ${curInvest}, ${request.actions.preflop[i].position}, ${i < 2 ? 0 : request.actions.preflop[i].action})`);
         let testPush = PokerEngine.PushHintMove(newSetupID, curInvest, request.actions.preflop[i].position, i < 2 ? 0 : request.actions.preflop[i].action);
         testPushHintMove.push(testPush);
         setup.IdMoveForSimul = testPush;
 
-        // console.log(`newSetupID: ${newSetupID}`);
-        // console.log(`curInvest: ${curInvest}`);
-        // console.log(`request.actions.preflop[i].position: ${request.actions.preflop[i].position}`);
-        // console.log(`i < 2 ? 0 : request.actions.preflop[i].action: ${i < 2 ? 0 : request.actions.preflop[i].action}`);
         playersInvestPreflop[request.actions.preflop[i].position] = parseInt(parseFloat(request.actions.preflop[i].amount) * 100);
     }
     playersInvestPreflop = null;
-
-    // console.log('testPushHintMove');
-    // console.log(testPushHintMove);
 
     if (!request.actions.flop) {
         return newSetupID
@@ -54,37 +46,44 @@ const movesHandler = (idSetup, oldActions, request, bbSize, setup) => {
     }
 
     console.log(`PushBoard3Move(${newSetupID}, ${cardsName.indexOf(request.board.c1)}, ${cardsName.indexOf(request.board.c2)}, ${cardsName.indexOf(request.board.c3)})`);
-    // console.log(`newSetupID: ${newSetupID}`);
-    // console.log(`cardsName.indexOf(request.board.c1): ${cardsName.indexOf(request.board.c1)}`);
-    // console.log(`cardsName.indexOf(request.board.c2): ${cardsName.indexOf(request.board.c2)}`);
-    // console.log(`cardsName.indexOf(request.board.c3): ${cardsName.indexOf(request.board.c3)}`);
-    //
-    // console.log('flopBoardTest');
-    // console.log(flopBoardTest);
-
-    //return newSetupID;
 
     let playersInvestFlop = {};
-    // console.log(`request.actions.flop.length = ${request.actions.flop.length}`);
-    // console.log(`request.actions.flop`);
-    // console.log(request.actions.flop);
+
     for (let i = 0; i < request.actions.flop.length; i++) {
         let curInvest = 0;
         if (request.actions.flop[i].position in playersInvestFlop) {
             curInvest = parseInt(parseFloat(request.actions.flop[i].amount) * 100) - playersInvestFlop[request.actions.flop[i].position]
         } else {curInvest = parseInt(parseFloat(request.actions.flop[i].amount) * 100);}
-        // console.log(`playersInvestFlop`);
-        // console.log(playersInvestFlop);
-        // console.log(`flop action ${i} is ${request.actions.flop[i].action}`);
-        //console.log(`PushHintMove( newSetupID: ${newSetupID}, curInvest: ${curInvest}, request.actions.flop[i].position: ${request.actions.flop[i].position}, request.actions.flop[i].action: ${request.actions.flop[i].action}`);
-        console.log(`PushHintMove(${newSetupID}, ${curInvest}, ${request.actions.flop[i].position}, ${request.actions.flop[i].action})`);
+        // console.log(`PushHintMove(${newSetupID}, ${curInvest}, ${request.actions.flop[i].position}, ${request.actions.flop[i].action})`);
         let testFlopPush = PokerEngine.PushHintMove(newSetupID, curInvest, request.actions.flop[i].position, request.actions.flop[i].action);
-        //console.log(`testFlopPush = ${testFlopPush}`);
         playersInvestFlop[request.actions.flop[i].position] = parseInt(parseFloat(request.actions.flop[i].amount) * 100);
     }
     playersInvestFlop = null;
 
-    return newSetupID;
+    // return newSetupID;
+
+    if (!request.actions.turn.length) {
+        return newSetupID
+    } else {
+        console.log('trying to push turn board');
+        let turnBoardTest = PokerEngine.PushBoardMove(newSetupID, cardsName.indexOf(request.board.c4));
+        console.log(turnBoardTest);
+    }
+
+    let playersInvestTurn = {};
+
+    for (let i = 0; i < request.actions.turn.length; i++) {
+        let curInvest = 0;
+        if (request.actions.flop[i].position in playersInvestTurn) {
+            curInvest = parseInt(parseFloat(request.actions.turn[i].amount) * 100) - playersInvestTurn[request.actions.turn[i].position]
+        } else {curInvest = parseInt(parseFloat(request.actions.turn[i].amount) * 100);}
+
+        let testTurnPush = PokerEngine.PushHintMove(newSetupID, curInvest, request.actions.turn[i].position, request.actions.turn[i].action);
+        playersInvestTurn[request.actions.turn[i].position] = parseInt(parseFloat(request.actions.turn[i].amount) * 100);
+    }
+
+    playersInvestTurn = null;
+
 
     // if (!request.actions.turn.length) {return newSetupID}
     // PokerEngine.PushBoardMove(newSetupID, cardsName.indexOf(request.board.c4));

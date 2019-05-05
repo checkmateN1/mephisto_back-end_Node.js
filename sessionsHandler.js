@@ -17,26 +17,6 @@ const PokerEngine = require('./pokerEngine');
 const middleware = require('./engineMiddleware_work');
 const moves = require('./movesHandler');
 
-// const initSetup = async () => await PokerEngine.InitSetup();
-// const releaseSetup = async (idSetup) => await PokerEngine.ReleaseSetup(idSetup);
-// const setPlayer = async (idSetup, stack, position, adaptation) => await PokerEngine.SetPlayer(idSetup, stack, position, adaptation);
-//
-
-
-
-// let sStrategy = Struct({
-//     invest: int,
-//     probab: float
-// });
-// var sStrategyArray = ArrayType(sStrategy);
-//
-// var handweight = Struct({
-//     inputWeight: float,
-//     strategy: sStrategyArray
-// });
-
-
-
 
 // all users sessions
 const sessions = {};
@@ -47,8 +27,8 @@ const tokens = Object.freeze({
     '872k4j2k3mc8uvxoiaklsjfsdfudyjhm45nuu': 'cliker2',
 });
 
-const sessionTimeout = 1000;
-const setupTimeout = 600;
+const sessionTimeout = 500;
+const setupTimeout = 300;
 
 // one specific user with many SessionSetups
 class Session {
@@ -90,7 +70,7 @@ class SessionSetup {
         //(nIDSetup, nIDMove)
         console.log(`call middleware.getAllHandsStrategy`);
         console.log(`this.setupID: ${this.setupID}`);
-        console.log(`act_num + street = ${act_num + street}`);
+        // console.log(`act_num + street = ${act_num + street}`);
         return middleware.getAllHandsStrategy(this.setupID, (act_num + street));
     }
 

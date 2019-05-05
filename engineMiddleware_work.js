@@ -68,9 +68,6 @@ const fillDict = () => {
 
     for (let i = 0; i < allHandsCount; i++) {
         let el = hand.get(handArr, i * hand.size);
-        // console.log(`i = ${i}`);
-        // console.log(`el`);
-        // console.log(el);
         textHandsArr[i] = getCardText(parseInt(el.hi));
         textHandsArr[i] += getCardText(parseInt(el.lo));
     }
@@ -82,7 +79,6 @@ const getHandIndex = (handTxt) => {
     let index = textHandsArr.indexOf(handTxt);
     return index > -1 ? index : textHandsArr.indexOf(handTxt.slice(2) + handTxt.slice(0, 2))
 };
-//console.log(getHandIndex('7d7h'));
 
 const getAllHandsStrategy = (nIDSetup, nIDMove) => {
     let allHandsStrategy = {
@@ -94,7 +90,6 @@ const getAllHandsStrategy = (nIDSetup, nIDMove) => {
         probab: float
     });
     let sStrategyRef = ref.refType(sStrategy);
-    //let sStrategyRefRef = ref.refType(sStrategyRef);
 
     let handweight = Struct({
         inputWeight: float,
@@ -114,12 +109,8 @@ const getAllHandsStrategy = (nIDSetup, nIDMove) => {
     }
 
     PokerEngine.GetHill(nIDSetup, nIDMove, handweightBuf);
-    // console.log(`textHandsArr`);
-    // console.log(textHandsArr);
     for (let i = 0; i < allHandsCount; i++) {
         let el = handweight.get(handweightBuf, i * handweight.size);
-        //console.log(el.inputWeight);
-        //console.log(el);
         allHandsStrategy.allHands[i] = {
             hand: textHandsArr[i],
             weight: el.inputWeight,
@@ -130,10 +121,7 @@ const getAllHandsStrategy = (nIDSetup, nIDMove) => {
         for (let j = 0; j < 3; j++) {
             let ss = sStrategy.get(data3, j * sStrategy.size);
             allHandsStrategy.allHands[i].moves[ss.invest] = {strategy: ss.probab};
-            // console.log(`ss.invest: ${ss.invest}`);
-            // console.log(`ss.probab: ${ss.probab}`);
         }
-        //console.log(allHandsStrategy[i]);
     }
     let maxInputWeight = 0;
     allHandsStrategy.allHands.forEach(el => {
@@ -148,8 +136,6 @@ const getAllHandsStrategy = (nIDSetup, nIDMove) => {
 
 module.exports.getAllHandsStrategy = getAllHandsStrategy;
 module.exports.getHandIndex = getHandIndex;
-
-//console.log(testExpoFunc());
 
 
 

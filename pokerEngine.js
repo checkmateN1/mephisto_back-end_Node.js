@@ -43,7 +43,7 @@ let PokerEngine = ffi.Library(path, {
     "GetHandsDict": [ref.types.void, [handRef]],
     "PushHintMove": [int, [int, int, int, int]],
     "PushBoard3Move": [int, [int, int, int, int]],
-    //"PushBoardMove": [int, [int]],
+    // "PushBoardMove": [int, [int]],
     "InitSetup": [int, [int]],
     "ReleaseSetup": [bool, [int]],
 });
