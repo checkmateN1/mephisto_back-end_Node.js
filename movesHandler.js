@@ -9,7 +9,7 @@ const movesHandler = (idSetup, oldActions, request, bbSize, setup) => {
     let testSetPlayer = [];
     let adapt_size = 10;
 
-    console.log(request);
+    // console.log(request);
 
     for (let i = 0; i < request.players.length; i++) {
         let adaptArr = [];

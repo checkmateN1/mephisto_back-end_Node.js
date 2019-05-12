@@ -183,11 +183,10 @@ app.post("/upload", function(req, res){
 // (token, sessionID, request)
 //console.log(sessionsHandler.sessionsListener('uidfksicnm730pdemg662oermfyf75jdf9djf', '123', 'req'));
 
-app.post("/strategy", function(req, res){
+app.post("/simulations", function(req, res){
     let obj = req.body;
     //console.log(obj);
-    let result = sessionsHandler.sessionsListener('uidfksicnm730pdemg662oermfyf75jdf9djf', '123', obj);
-    //res.send(JSON.stringify(sessionsHandler.sessionsListener('uidfksicnm730pdemg662oermfyf75jdf9djf', '123', obj)));
+    let result = sessionsHandler.sessionsListener('uidfksicnm730pdemg662oermfyf75jdf9djf', '1111', obj);
     res.send(JSON.stringify(result));
 
 });

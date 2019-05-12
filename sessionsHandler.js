@@ -18,7 +18,7 @@ const middleware = require('./engineMiddleware_work');
 const moves = require('./movesHandler');
 
 
-// all users sessions
+// all users sessions.. 1 token = 1 session
 const sessions = {};
 
 const tokens = Object.freeze({
@@ -27,24 +27,25 @@ const tokens = Object.freeze({
     '872k4j2k3mc8uvxoiaklsjfsdfudyjhm45nuu': 'cliker2',
 });
 
-const sessionTimeout = 500;
-const setupTimeout = 300;
+const sessionTimeout = 50;
+const setupTimeout = 15;
+const timeoutStep = 5000;
 
 // one specific user with many SessionSetups
 class Session {
-    constructor(sessionID, bbSize) {
+    constructor(setupID, bbSize) {
         this.setups = {};
         this.timeout = sessionTimeout;
-        this.setups[sessionID] = new SessionSetup(PokerEngine.InitSetup(bbSize));
-        this.setups[sessionID].timerToDestroy = setInterval(() => {
-            this.setups[sessionID].timeout--;
-            if (this.setups[sessionID].timeout < 0) {
-                clearInterval(this.setups[sessionID].timerToDestroy);
-                PokerEngine.ReleaseSetup(this.setups[sessionID].setupID);
-                delete this.setups[sessionID];
-                console.log('bom bom');
+        this.setups[setupID] = new SessionSetup(PokerEngine.InitSetup(bbSize));
+        this.setups[setupID].timerToDestroy = setInterval(() => {
+            this.setups[setupID].timeout--;
+            if (this.setups[setupID].timeout < 0) {
+                clearInterval(this.setups[setupID].timerToDestroy);
+                PokerEngine.ReleaseSetup(this.setups[setupID].setupID);
+                console.log(`setup ${setupID} over and will be remove`);
+                delete this.setups[setupID];
             }
-        }, 1000);
+        }, timeoutStep);
     }
 }
 
@@ -60,48 +61,58 @@ class SessionSetup {
 
     requestHandling(request) {
         // parse request
-        let bbSize = parseInt(Math.max(parseFloat(request.actions.preflop[0].amount), parseFloat(request.actions.preflop[1].amount)) * 100);
-        this.setupID = moves.movesHandler(this.setupID, this.actions, request, bbSize, this);
+        const { requestType } = request.request;
 
-        const {act_num, street} = request.request;
-        // console.log(`act_num: ${act_num}`);
-        // console.log(`street: ${street}`);
 
-        //(nIDSetup, nIDMove)
-        console.log(`call middleware.getAllHandsStrategy`);
-        console.log(`this.setupID: ${this.setupID}`);
-        // console.log(`act_num + street = ${act_num + street}`);
-        return middleware.getAllHandsStrategy(this.setupID, (act_num + street));
+        // simulator strategy
+        if (requestType === 'strategy') {
+            const { act_num, street } = request.request;
+            let bbSize = parseInt(Math.max(parseFloat(request.actions.preflop[0].amount), parseFloat(request.actions.preflop[1].amount)) * 100);
+
+            this.setupID = moves.movesHandler(this.setupID, this.actions, request, bbSize, this);
+
+            return middleware.getAllHandsStrategy(this.setupID, (act_num + street));
+        }
+        // last move hero simulation for prompter
+        if (requestType === 'prompter') {
+
+        }
     }
 
-    releaseSetup() {return PokerEngine.ReleaseSetup(this.setupID)}
-    setPlayer(stack, position, adaptation) {return PokerEngine.SetPlayer(this.setupID, stack, position, adaptation)}
+    releaseSetup() { return PokerEngine.ReleaseSetup(this.setupID) }
+    setPlayer(stack, position, adaptation) { return PokerEngine.SetPlayer(this.setupID, stack, position, adaptation) }
 }
 
 // calls every time when request comes to the server
-const sessionsListener = (token, sessionID, request) => {
+const sessionsListener = (token, setupID, request) => {
+    if (!(token in tokens)) {
+        console.log('unauthorized access');
+        return 'unauthorized access';
+    }
+
     let bbSize = parseInt(Math.max(parseFloat(request.actions.preflop[0].amount), parseFloat(request.actions.preflop[1].amount)) * 100);
 
     if (token in sessions) {
-        sessions[token].timeout = sessionTimeout;                       // reset timer to destroy session
-        if (sessionID in sessions[token].setups) {
-            sessions[token].setups[sessionID].timeout = setupTimeout;   // reset timer to destroy setup
-            return sessions[token].setups[sessionID].requestHandling(request);
+        sessions[token].timeout = sessionTimeout;                              // reset timer to destroy session
+        if (setupID in sessions[token].setups) {
+            sessions[token].setups[setupID].timeout = setupTimeout;           // reset timer to destroy setup
+            return sessions[token].setups[setupID].requestHandling(request);
         }
-        sessions[token].setups[sessionID] = new SessionSetup(PokerEngine.InitSetup(bbSize));
-        return sessions[token].setups[sessionID].requestHandling(request);
-    } else if (token in tokens) {
-        sessions[token] = new Session(sessionID, bbSize);
-        sessions[token].timerToDestroy = setInterval(() => {
-            sessions[token].timeout--;
-            if (sessions[token].timeout < 0) {
-                clearInterval(sessions[token].timerToDestroy);
-                delete sessions[token];
-                console.log('bom bom!!!!!');
-            }
-        }, 1000);
-        return sessions[token].setups[sessionID].requestHandling(request);
+        sessions[token].setups[setupID] = new SessionSetup(PokerEngine.InitSetup(bbSize));
+
+        return sessions[token].setups[setupID].requestHandling(request);
     }
+
+    sessions[token] = new Session(setupID, bbSize);
+    sessions[token].timerToDestroy = setInterval(() => {
+        sessions[token].timeout--;
+        if (sessions[token].timeout < 0) {
+            clearInterval(sessions[token].timerToDestroy);
+            console.log(`session ${token} over and will be remove`);
+            delete sessions[token];
+        }
+    }, timeoutStep);
+    return sessions[token].setups[setupID].requestHandling(request);
 };
 
 module.exports.sessionsListener = sessionsListener;
