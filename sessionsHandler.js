@@ -14,6 +14,7 @@ var DoubleArray = ArrayType(double);
 
 
 const PokerEngine = require('./pokerEngine');
+const prompterHandler = require('./playLogic/prompterHandler');
 const middleware = require('./engineMiddleware_work');
 const moves = require('./movesHandler');
 
@@ -36,7 +37,7 @@ class Session {
     constructor(setupID, bbSize) {
         this.setups = {};
         this.timeout = sessionTimeout;
-        this.setups[setupID] = new SessionSetup(PokerEngine.InitSetup(bbSize));
+        this.setups[setupID] = new SessionSetup(PokerEngine.InitSetup(bbSize), bbSize);
         this.setups[setupID].timerToDestroy = setInterval(() => {
             this.setups[setupID].timeout--;
             if (this.setups[setupID].timeout < 0) {
@@ -51,9 +52,10 @@ class Session {
 
 // one specific table/simulator inside Session
 class SessionSetup {
-    constructor(setupID) {
+    constructor(setupID, bbSize) {
         this.setupID = setupID; // PokerEngine session number
         this.timeout = setupTimeout;
+        this.bbSize = bbSize;
         this.actions = {};
         this.players = [];
         this.IdMoveForSimul = 0;
@@ -62,7 +64,6 @@ class SessionSetup {
     requestHandling(request) {
         // parse request
         const { requestType } = request.request;
-
 
         // simulator strategy
         if (requestType === 'strategy') {
@@ -75,7 +76,7 @@ class SessionSetup {
         }
         // last move hero simulation for prompter
         if (requestType === 'prompter') {
-
+            prompterHandler.prompterListener(this.setupID, request);
         }
     }
 
@@ -90,7 +91,12 @@ const sessionsListener = (token, setupID, request) => {
         return 'unauthorized access';
     }
 
-    let bbSize = parseInt(Math.max(parseFloat(request.actions.preflop[0].amount), parseFloat(request.actions.preflop[1].amount)) * 100);
+    const { requestType } = request.request;
+    let bbSize;
+
+    if (requestType !== 'prompter') {
+        bbSize = parseInt(Math.max(parseFloat(request.actions.preflop[0].amount), parseFloat(request.actions.preflop[1].amount)) * 100);
+    }
 
     if (token in sessions) {
         sessions[token].timeout = sessionTimeout;                              // reset timer to destroy session
@@ -98,12 +104,22 @@ const sessionsListener = (token, setupID, request) => {
             sessions[token].setups[setupID].timeout = setupTimeout;           // reset timer to destroy setup
             return sessions[token].setups[setupID].requestHandling(request);
         }
-        sessions[token].setups[setupID] = new SessionSetup(PokerEngine.InitSetup(bbSize));
 
+        if (requestType === 'prompter') {
+            sessions[token].setups[setupID] = new SessionSetup(prompterHandler.getBBsize(setupID, request));
+            return sessions[token].setups[setupID].requestHandling(request);
+        }
+
+        sessions[token].setups[setupID] = new SessionSetup(PokerEngine.InitSetup(bbSize));
         return sessions[token].setups[setupID].requestHandling(request);
     }
 
-    sessions[token] = new Session(setupID, bbSize);
+    if (requestType === 'prompter') {
+        sessions[token] = new Session(setupID, prompterHandler.getBBsize(setupID, request));
+    } else {
+        sessions[token] = new Session(setupID, bbSize);
+    }
+
     sessions[token].timerToDestroy = setInterval(() => {
         sessions[token].timeout--;
         if (sessions[token].timeout < 0) {

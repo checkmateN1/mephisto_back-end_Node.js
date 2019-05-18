@@ -45,7 +45,7 @@ const movesHandler = (idSetup, oldActions, request, bbSize, setup) => {
         let flopBoardTest = PokerEngine.PushBoard3Move(newSetupID, cardsName.indexOf(request.board.c1), cardsName.indexOf(request.board.c2), cardsName.indexOf(request.board.c3));
     }
 
-    console.log(`PushBoard3Move(${newSetupID}, ${cardsName.indexOf(request.board.c1)}, ${cardsName.indexOf(request.board.c2)}, ${cardsName.indexOf(request.board.c3)})`);
+    // console.log(`PushBoard3Move(${newSetupID}, ${cardsName.indexOf(request.board.c1)}, ${cardsName.indexOf(request.board.c2)}, ${cardsName.indexOf(request.board.c3)})`);
 
     let playersInvestFlop = {};
 
