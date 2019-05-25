@@ -33,6 +33,7 @@ const setupTimeout = 15;
 const timeoutStep = 5000;
 
 // one specific user with many SessionSetups
+// setupID = one recognition table or simulator
 class Session {
     constructor(setupID, bbSize) {
         this.setups = {};
@@ -52,8 +53,8 @@ class Session {
 
 // one specific table/simulator inside Session
 class SessionSetup {
-    constructor(setupID, bbSize) {
-        this.setupID = setupID; // PokerEngine session number
+    constructor(engineID, bbSize) {
+        this.engineID = engineID; // PokerEngine session number
         this.timeout = setupTimeout;
         this.bbSize = bbSize;
         this.actions = {};
@@ -70,18 +71,18 @@ class SessionSetup {
             const { act_num, street } = request.request;
             let bbSize = parseInt(Math.max(parseFloat(request.actions.preflop[0].amount), parseFloat(request.actions.preflop[1].amount)) * 100);
 
-            this.setupID = moves.movesHandler(this.setupID, this.actions, request, bbSize, this);
+            this.engineID = moves.movesHandler(this.engineID, this.actions, request, bbSize, this);
 
-            return middleware.getAllHandsStrategy(this.setupID, (act_num + street));
+            return middleware.getAllHandsStrategy(this.engineID, (act_num + street));
         }
         // last move hero simulation for prompter
         if (requestType === 'prompter') {
-            prompterHandler.prompterListener(this.setupID, request);
+            prompterHandler.prompterListener(this.engineID, request);
         }
     }
 
-    releaseSetup() { return PokerEngine.ReleaseSetup(this.setupID) }
-    setPlayer(stack, position, adaptation) { return PokerEngine.SetPlayer(this.setupID, stack, position, adaptation) }
+    releaseSetup() { return PokerEngine.ReleaseSetup(this.engineID) }
+    setPlayer(stack, position, adaptation) { return PokerEngine.SetPlayer(this.engineID, stack, position, adaptation) }
 }
 
 // calls every time when request comes to the server

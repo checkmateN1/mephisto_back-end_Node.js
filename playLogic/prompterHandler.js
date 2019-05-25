@@ -1,24 +1,67 @@
+const enumPoker = require('../enum');
+
+const REJECT_HAND = 'reject hand';
+
+class PlayersHandler {
+    constructor() {
+        this.cashPlayers = {};      // nickname: id
+        this.players = {};          // id: adaptation
+        this.defaultAdaptation = [1,1,1,1,1,1,1,1,1,1,1,1,1,1];
+    }
+
+    getPlayerIdFromDB(recognitionNickname) {
+        return 1111111;        // will implementing
+    }
+    getAdaptationFromDB(id) {
+        return [1,1,1,1,1,1,1,1,1,1,1,1,1,1];        // will implementing
+    }
+    setPlayer(recognitionNickname) {
+        let playerID = this.getPlayerIdFromDB(recognitionNickname);
+        let adaptation = this.getAdaptationFromDB(playerID);
+
+        if (playerID) {
+            this.cashPlayers.recognitionNickname = playerID;
+        }
+        if (adaptation && adaptation.length) {
+            this.players.playerID = adaptation;
+        }
+    }
+    getAdaptation(recognitionNickname) {
+        let adaptation = this.players[this.cashPlayers.recognitionNickname];
+
+        if (adaptation && adaptation.length) {
+            return adaptation;
+        }
+        this.setPlayer(recognitionNickname);
+        adaptation = this.players[this.cashPlayers.recognitionNickname];
+
+        if (adaptation && adaptation.length) {
+            return adaptation;
+        }
+        return this.defaultAdaptation;
+    }
+}
+
 class Player {
-    constructor(nickname, id, adaptation) {
-        this.nickname = nickname;
+    constructor(id, adaptation) {
         this.id = id;
         this.adaptation = adaptation;
     }
 }
 
 class InitPlayer {
-    constructor(player, initBalance, position) {
+    constructor(player, initBalance, enumPosition) {
         this.player = player;
         this.initBalance = initBalance;
-        this.position = position;
+        this.enumPosition = enumPosition;
     }
 }
 
 class PlayPlayer {
-    constructor(initPlayer, curBalance, action, amount, isActive, cards) {
-        this.initPlayer = initPlayer;
+    constructor(nickname, recognitionPosition, curBalance, amount, isActive, cards) {
+        this.nickname = nickname;
+        this.recognitionPosition = recognitionPosition;
         this.curBalance = curBalance;
-        this.action = action;
         this.betAmount = amount;
         this.isActive = isActive;
         this.cards = cards;
@@ -26,7 +69,8 @@ class PlayPlayer {
 }
 
 class PlayFrame {
-    constructor(pot, playPlayers, board) {
+    constructor(handNumber, pot, playPlayers, board) {
+        this.handNumber = handNumber;
         this.pot = pot;
         this.playPlayers = playPlayers;
         this.board = board;
@@ -34,31 +78,64 @@ class PlayFrame {
 }
 
 class Setup {
-    constructor(initPlayers, handNumber, bbSize) {
-        this.initPlayers = initPlayers;
-        this.handNumber = handNumber;
-        this.bbSize = bbSize;
+    constructor(playFrame) {            // frame from recognition -> validator.dll ->
+        this.initPlayers = [];
+        this.handNumber = 0;
+        this.bbSize = [];           // chronology of bb sizes
         this.moves = [];
-        this.frames = [];
-        this.movesStreetMap = [];
+        this.playFrames = [];
+        this.frameHandler(playFrame);
     }
     appendMove(moves) {
 
     }
 
     // PokerEngine.PushHintMove(setupID, invest, position, action);
-    frameToMoves(playFrame) {
-        let moves = [];
+    frameHandler(playFrame) {
+        if (playFrame.handNumber !== this.handNumber) {         // new hand
+            this.handNumber = playFrame.handNumber;
+            this.initPlayers = [];
+            this.moves = [];
 
+            if (playFrame.board.c1) {
+                return 'reject hand';
+            }
+            this.setInitPlayers(playFrame);
+        }
+    };
 
-        return moves;
+    getMovesFromFrame(playFrame) {
+        if (playFrame.playPlayers.length <= 2) {       // ha
+
+        }
     }
 
-    // call when !this.frames.length
-    getStartFrame(firstValidFrame) {
+    setInitPlayers(firstPlayFrame) {
+        firstPlayFrame.playPlayers
+    }
 
-        this.frames.push();
-    };
+    getFirstChairToMove(isPreflop) {
+
+    }
+
+    movesOrder(numChairs, chairFrom, chairTo) {
+        for(let ch = chairFrom; ch%numChairs !== chairTo; ch++) {
+            console.log(ch%numChairs);
+        }
+    }
+
+    // находим минимальную ставку оставшихся в игре и походивших от начала торгов на улице или предыдущего фрейма
+    getMinAmountWithoutAllin(playFrame) {
+        if (!this.playFrames.length) {          // first frame
+
+            playFrame.playPlayers.forEach(player => {
+
+            })
+        }
+
+
+    }
+
     getEV() {
 
     }
@@ -96,37 +173,31 @@ class ActionString {
 };
 
 // test ha old rawActionList for example
-rawActionList[0] = new ActionString(0, "checkmateN1", 7.25, 3, 0, 0.1, 8, false, false); // post BB  -30
-rawActionList[1] = new ActionString(0, "joooe84", 5, 1, 0.1, 0.25, 0, false, false);       // bet 0.75 BTN   -55
-rawActionList[2] = new ActionString(0, "checkmateN1", 7.15, 2, 0.35, 0.75, 8, false, false);   // call BB
-rawActionList[3] = new ActionString(0, "joooe84", 4.75, 3, 1, 0.75, 0, false, false);       // bet 0.75 BTN   -55
-
-// test frames from validator
-let frame = new PlayFrame();
-
+rawActionList[0] = new ActionString(0, "checkmateN1", 7.25, 3, 0, 0.1, 0, false, false); // post BB  -30
+rawActionList[1] = new ActionString(0, "joooe84", 5, 1, 0.1, 0.25, 8, false, false);       // bet 0.75 BTN   -55
+rawActionList[2] = new ActionString(0, "checkmateN1", 7.15, 2, 0.35, 0.75, 0, false, false);   // call BB
+rawActionList[3] = new ActionString(0, "joooe84", 4.75, 3, 1, 0.75, 8, false, false);
 
 // test ha
-let initPlayers = [];
-initPlayers.push(new InitPlayer(new Player('checkmateN1', 1111, [1, 1, 1, 1]), 725, 8));
-initPlayers.push(new InitPlayer(new Player('joooe84', 2222, [2, 2, 2, 2]), 500, 0));
+// let initPlayers = [];
+let playPlayers = [];
 
-let playPlayer = new PlayPlayer(initPlayer, 50, 2, 50, true);
+// export const positions = ["BTN", "CO", "MP3", "MP2", "MP1", "UTG2", "UTG1", "UTG0", "BB", "SB"];
+playPlayers[0] = new PlayPlayer('checkmateN1', 0, 715, 10, true, '');
+playPlayers[1] = new PlayPlayer('joooe84', 2, 475, 25, true, 'AcAd');
+
+let frame1 = new PlayFrame(12345, 35, playPlayers, '');
+// console.log(frame1);
+console.log(enumPoker.positions[0]);
+
+let testSetup = new Setup({handNumber: 7777});
+console.log(testSetup.handNumber);
+// testSetup.movesOrder(3, 1, 0);
+
+
 
 module.exports.prompterListener = prompterListener;
 module.exports.getBBsize = getBBsize;
 
 
-
-// classes logic test
-// let player = new Player('joe', 1111, [1, 2, 3, 4]);
-// let initPlayer = new InitPlayer(player, 100, 2);
-// let playPlayer = new PlayPlayer(initPlayer, 50, 2, 50, true);
-//
-// player.nickname = 'checkmate';
-//
-// console.log(player);
-// console.log('--------------------------');
-// console.log(initPlayer);
-// console.log('--------------------------');
-// console.log(playPlayer);
 
