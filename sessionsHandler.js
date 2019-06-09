@@ -70,10 +70,10 @@ class SessionSetup {
         if (requestType === 'strategy') {
             const { act_num, street } = request.request;
             let bbSize = parseInt(Math.max(parseFloat(request.actions.preflop[0].amount), parseFloat(request.actions.preflop[1].amount)) * 100);
+            let handlerResponse = moves.movesHandler(this.engineID, this.actions, request, bbSize, this);
+            this.engineID = handlerResponse[0];
 
-            this.engineID = moves.movesHandler(this.engineID, this.actions, request, bbSize, this);
-
-            return middleware.getAllHandsStrategy(this.engineID, (act_num + street));
+            return middleware.getAllHandsStrategy(this.engineID, (act_num + street), request, handlerResponse[1]);
         }
         // last move hero simulation for prompter
         if (requestType === 'prompter') {

@@ -97,9 +97,9 @@ class Setup {
             this.initPlayers = [];
             this.moves = [];
 
-            if (playFrame.board.c1) {
-                return 'reject hand';
-            }
+            // if (playFrame.board.c1) {
+            //     return 'reject hand';
+            // }
             this.setInitPlayers(playFrame);
         }
     };

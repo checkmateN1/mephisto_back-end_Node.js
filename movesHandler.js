@@ -8,6 +8,7 @@ const movesHandler = (idSetup, oldActions, request, bbSize, setup) => {
     let newSetupID = PokerEngine.InitSetup(bbSize);
     let testSetPlayer = [];
     let adapt_size = 10;
+    let movesInvestArr = [];
 
     // console.log(request);
 
@@ -29,6 +30,7 @@ const movesHandler = (idSetup, oldActions, request, bbSize, setup) => {
         if (request.actions.preflop[i].position in playersInvestPreflop) {
             curInvest = parseInt(parseFloat(request.actions.preflop[i].amount) * 100) - playersInvestPreflop[request.actions.preflop[i].position]
         } else {curInvest = parseInt(parseFloat(request.actions.preflop[i].amount) * 100);}
+        movesInvestArr.push(curInvest);
         // POKERENGINE_API int PushHintMove(int nIDSetup, int nMoney, int nPos, int nAct);
         // console.log(`PushHintMove(${newSetupID}, ${curInvest}, ${request.actions.preflop[i].position}, ${i < 2 ? 0 : request.actions.preflop[i].action})`);
         let testPush = PokerEngine.PushHintMove(newSetupID, curInvest, request.actions.preflop[i].position, i < 2 ? 0 : request.actions.preflop[i].action);
@@ -40,7 +42,7 @@ const movesHandler = (idSetup, oldActions, request, bbSize, setup) => {
     playersInvestPreflop = null;
 
     if (!request.actions.flop) {
-        return newSetupID
+        return [newSetupID, movesInvestArr];
     } else {
         let flopBoardTest = PokerEngine.PushBoard3Move(newSetupID, cardsName.indexOf(request.board.c1), cardsName.indexOf(request.board.c2), cardsName.indexOf(request.board.c3));
     }
@@ -54,6 +56,7 @@ const movesHandler = (idSetup, oldActions, request, bbSize, setup) => {
         if (request.actions.flop[i].position in playersInvestFlop) {
             curInvest = parseInt(parseFloat(request.actions.flop[i].amount) * 100) - playersInvestFlop[request.actions.flop[i].position]
         } else {curInvest = parseInt(parseFloat(request.actions.flop[i].amount) * 100);}
+        movesInvestArr.push(curInvest);
         // console.log(`PushHintMove(${newSetupID}, ${curInvest}, ${request.actions.flop[i].position}, ${request.actions.flop[i].action})`);
         let testFlopPush = PokerEngine.PushHintMove(newSetupID, curInvest, request.actions.flop[i].position, request.actions.flop[i].action);
         playersInvestFlop[request.actions.flop[i].position] = parseInt(parseFloat(request.actions.flop[i].amount) * 100);
@@ -63,7 +66,7 @@ const movesHandler = (idSetup, oldActions, request, bbSize, setup) => {
     // return newSetupID;
 
     if (!request.actions.turn) {
-        return newSetupID
+        return [newSetupID, movesInvestArr];
     } else {
         console.log('trying to push turn board');
         let turnBoardTest = PokerEngine.PushBoardMove(newSetupID, cardsName.indexOf(request.board.c4));
@@ -77,7 +80,7 @@ const movesHandler = (idSetup, oldActions, request, bbSize, setup) => {
         if (request.actions.flop[i].position in playersInvestTurn) {
             curInvest = parseInt(parseFloat(request.actions.turn[i].amount) * 100) - playersInvestTurn[request.actions.turn[i].position]
         } else {curInvest = parseInt(parseFloat(request.actions.turn[i].amount) * 100);}
-
+        movesInvestArr.push(curInvest);
         let testTurnPush = PokerEngine.PushHintMove(newSetupID, curInvest, request.actions.turn[i].position, request.actions.turn[i].action);
         playersInvestTurn[request.actions.turn[i].position] = parseInt(parseFloat(request.actions.turn[i].amount) * 100);
     }
@@ -99,7 +102,7 @@ const movesHandler = (idSetup, oldActions, request, bbSize, setup) => {
     //     PokerEngine.PushHintMove(newSetupID, parseInt(parseFloat(request.actions.river[i].amount) * 100), request.actions.river[i].position, i < 2 ? 0 : request.actions.river[i].action);
     // }
 
-    return newSetupID;
+    return [newSetupID, movesInvestArr];
 };
 
 // let nIDSetup = PokerEngine.InitSetup(30);

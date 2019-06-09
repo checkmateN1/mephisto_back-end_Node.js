@@ -13,6 +13,7 @@ var FloatArray = ArrayType(float);
 var DoubleArray = ArrayType(double);
 
 var PokerEngine = require('./pokerEngine');
+var enumPoker = require('./enum');
 
 const allHandsCount = 1326;
 
@@ -80,7 +81,69 @@ const getHandIndex = (handTxt) => {
     return index > -1 ? index : textHandsArr.indexOf(handTxt.slice(2) + handTxt.slice(0, 2))
 };
 
-const getAllHandsStrategy = (nIDSetup, nIDMove) => {
+// getting all hands weight
+const multiplyStrategy = (request, arrayAllMovesStrategy, investArr) => {
+    const allHandsStrategy = {
+        allHands: arrayAllMovesStrategy[arrayAllMovesStrategy.length -1].map(hand => Object.assign(hand, {weight: 1})),
+    };
+    const targetStreet = enumPoker.streets[request.request.street];
+    let countMoves = 0;
+    let arrMovesActNums = [];
+    let prevCountMoves = 0;
+    let preflopLength = request.actions.preflop ? request.actions.preflop.length : 0;
+    let flopLength = (request.actions.flop ? request.actions.flop.length : 0) + preflopLength;
+    let turnLength = (request.actions.turn ? request.actions.turn.length : 0) + flopLength;
+
+    let getRequestPosition = () => {
+        let prevLength = 0;
+        switch (request.request.street) {
+            case 0:
+                prevLength = 0;
+                break;
+            case 1:
+                prevLength = preflopLength;
+                break;
+            case 2:
+                prevLength = flopLength;
+                break;
+            case 3:
+                prevLength = turnLength;
+                break;
+        }
+        return request.actions[targetStreet][request.request.act_num - prevLength].position;
+    };
+    let curRequestPosition = getRequestPosition();
+    enumPoker.streets.reduce((prevStreetCount, street) => {
+        if (enumPoker.streets.indexOf(street) <= request.request.street) {
+            request.actions[street].forEach((move, i) => {
+                if (move.action !== 0 && curRequestPosition === move.position && countMoves < request.request.act_num) {
+                    arrMovesActNums.push(prevStreetCount + i);
+                }
+                countMoves++;
+            })
+        }
+        return prevStreetCount + request.actions[street] ? request.actions[street].length : 0;
+    }, 0);
+
+    console.log(arrMovesActNums);
+    console.log(investArr);
+    let arrayAllMovesStrategyMap = [];
+
+    arrayAllMovesStrategy.forEach((allHands, i) => {
+        arrayAllMovesStrategyMap[i] = {};
+        allHands.forEach(objHand => {
+            arrayAllMovesStrategyMap[i][objHand.hand] = objHand;
+        })
+    });
+
+    arrMovesActNums.forEach(index => {
+        allHandsStrategy.allHands.map(hand => Object.assign(hand, {weight: hand.weight * arrayAllMovesStrategyMap[index][hand.hand].moves[investArr[index]].strategy}));
+    });
+
+    return allHandsStrategy;
+};
+
+const getAllHandsStrategy = (nIDSetup, nIDMove, request, investArr) => {
     let allHandsStrategy = {
         allHands: []
     };
@@ -131,7 +194,17 @@ const getAllHandsStrategy = (nIDSetup, nIDMove) => {
         allHandsStrategy.allHands[i].weight = (allHandsStrategy.allHands[i].weight / maxInputWeight);
     }
     allHandsStrategy.allHands = allHandsStrategy.allHands.filter(el => el.weight >= 0);
-    return allHandsStrategy;
+    // return allHandsStrategy;
+
+    // new dll array of all moves strategy emulation
+    // console.log(request);
+    let ArrayAllMovesStrategy = [];
+
+    for (let i = 0; i <= request.request.act_num; i++) {
+        ArrayAllMovesStrategy.push(allHandsStrategy.allHands);
+    }
+
+    return multiplyStrategy(request, ArrayAllMovesStrategy, investArr);
 };
 
 module.exports.getAllHandsStrategy = getAllHandsStrategy;
