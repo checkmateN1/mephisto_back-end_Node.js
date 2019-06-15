@@ -135,10 +135,21 @@ const multiplyStrategy = (request, arrayAllMovesStrategy, investArr) => {
             arrayAllMovesStrategyMap[i][objHand.hand] = objHand;
         })
     });
+    let maxWeight = 0;
 
     arrMovesActNums.forEach(index => {
-        allHandsStrategy.allHands.map(hand => Object.assign(hand, {weight: hand.weight * arrayAllMovesStrategyMap[index][hand.hand].moves[investArr[index]].strategy}));
+        allHandsStrategy.allHands.map(hand => {
+            let outputWeight = hand.weight * arrayAllMovesStrategyMap[index][hand.hand].moves[investArr[index]].strategy;
+            if (outputWeight > maxWeight) {
+                maxWeight = outputWeight;
+            }
+            return Object.assign(hand, {weight: outputWeight});
+        });
     });
+
+    //normalize weight
+    maxWeight = 1/maxWeight;
+    allHandsStrategy.allHands.map(hand => Object.assign(hand, {weight: hand.weight * maxWeight}));
 
     return allHandsStrategy;
 };
