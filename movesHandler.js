@@ -28,8 +28,10 @@ const movesHandler = (idSetup, oldActions, request, bbSize, setup) => {
     for (let i = 0; i < request.actions.preflop.length; i++) {
         let curInvest = 0;
         if (request.actions.preflop[i].position in playersInvestPreflop) {
-            curInvest = parseInt(parseFloat(request.actions.preflop[i].amount) * 100) - playersInvestPreflop[request.actions.preflop[i].position]
-        } else {curInvest = parseInt(parseFloat(request.actions.preflop[i].amount) * 100);}
+            curInvest = parseInt(Math.round(+request.actions.preflop[i].amount * 100)) - playersInvestPreflop[request.actions.preflop[i].position]
+        } else {
+            curInvest = parseInt(Math.round(+request.actions.preflop[i].amount * 100));
+        }
         movesInvestArr.push(curInvest);
         // POKERENGINE_API int PushHintMove(int nIDSetup, int nMoney, int nPos, int nAct);
         // console.log(`PushHintMove(${newSetupID}, ${curInvest}, ${request.actions.preflop[i].position}, ${i < 2 ? 0 : request.actions.preflop[i].action})`);
@@ -37,7 +39,7 @@ const movesHandler = (idSetup, oldActions, request, bbSize, setup) => {
         testPushHintMove.push(testPush);
         setup.IdMoveForSimul = testPush;
 
-        playersInvestPreflop[request.actions.preflop[i].position] = parseInt(parseFloat(request.actions.preflop[i].amount) * 100);
+        playersInvestPreflop[request.actions.preflop[i].position] = parseInt(Math.round(+request.actions.preflop[i].amount * 100));
     }
     playersInvestPreflop = null;
 
@@ -54,12 +56,14 @@ const movesHandler = (idSetup, oldActions, request, bbSize, setup) => {
     for (let i = 0; i < request.actions.flop.length; i++) {
         let curInvest = 0;
         if (request.actions.flop[i].position in playersInvestFlop) {
-            curInvest = parseInt(parseFloat(request.actions.flop[i].amount) * 100) - playersInvestFlop[request.actions.flop[i].position]
-        } else {curInvest = parseInt(parseFloat(request.actions.flop[i].amount) * 100);}
+            curInvest = parseInt(Math.round(+request.actions.flop[i].amount * 100)) - playersInvestFlop[request.actions.flop[i].position]
+        } else {
+            curInvest = parseInt(Math.round(+request.actions.flop[i].amount * 100));
+        }
         movesInvestArr.push(curInvest);
         // console.log(`PushHintMove(${newSetupID}, ${curInvest}, ${request.actions.flop[i].position}, ${request.actions.flop[i].action})`);
         let testFlopPush = PokerEngine.PushHintMove(newSetupID, curInvest, request.actions.flop[i].position, request.actions.flop[i].action);
-        playersInvestFlop[request.actions.flop[i].position] = parseInt(parseFloat(request.actions.flop[i].amount) * 100);
+        playersInvestFlop[request.actions.flop[i].position] = parseInt(Math.round(+request.actions.flop[i].amount * 100));
     }
     playersInvestFlop = null;
 
@@ -78,11 +82,11 @@ const movesHandler = (idSetup, oldActions, request, bbSize, setup) => {
     for (let i = 0; i < request.actions.turn.length; i++) {
         let curInvest = 0;
         if (request.actions.flop[i].position in playersInvestTurn) {
-            curInvest = parseInt(parseFloat(request.actions.turn[i].amount) * 100) - playersInvestTurn[request.actions.turn[i].position]
-        } else {curInvest = parseInt(parseFloat(request.actions.turn[i].amount) * 100);}
+            curInvest = parseInt(Math.round(+request.actions.turn[i].amount * 100)) - playersInvestTurn[request.actions.turn[i].position]
+        } else {curInvest = parseInt(Math.round(+request.actions.turn[i].amount * 100))}
         movesInvestArr.push(curInvest);
         let testTurnPush = PokerEngine.PushHintMove(newSetupID, curInvest, request.actions.turn[i].position, request.actions.turn[i].action);
-        playersInvestTurn[request.actions.turn[i].position] = parseInt(parseFloat(request.actions.turn[i].amount) * 100);
+        playersInvestTurn[request.actions.turn[i].position] = parseInt(Math.round(+request.actions.turn[i].amount * 100));
     }
 
     playersInvestTurn = null;

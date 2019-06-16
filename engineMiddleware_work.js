@@ -136,16 +136,19 @@ const multiplyStrategy = (request, arrayAllMovesStrategy, investArr) => {
         })
     });
     let maxWeight = 0;
+    let topWeightHand = '';
 
     arrMovesActNums.forEach(index => {
         allHandsStrategy.allHands.map(hand => {
-            let outputWeight = hand.weight * arrayAllMovesStrategyMap[index][hand.hand].moves[investArr[index]].strategy;
-            if (outputWeight > maxWeight) {
+            let outputWeight = hand.weight * arrayAllMovesStrategyMap[index][hand.hand].moves[1].strategy;
+            if (index === arrMovesActNums[arrMovesActNums.length - 1] && outputWeight > maxWeight) {
                 maxWeight = outputWeight;
+                topWeightHand = hand.hand;
             }
             return Object.assign(hand, {weight: outputWeight});
         });
     });
+
 
     //normalize weight
     maxWeight = 1/maxWeight;
