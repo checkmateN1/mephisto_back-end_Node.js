@@ -58,28 +58,30 @@ class InitPlayer {
 }
 
 class PlayPlayer {
-    constructor(nickname, recognitionPosition, curBalance, amount, isActive, cards) {
+    constructor(nickname, recognitionPosition, curBalance, amount, isActive, isDealer, cards) {
         this.nickname = nickname;
         this.recognitionPosition = recognitionPosition;
         this.curBalance = curBalance;
         this.betAmount = amount;
         this.isActive = isActive;
+        this.isDealer = isDealer;
         this.cards = cards;
     }
 }
 
 class PlayFrame {
-    constructor(handNumber, pot, playPlayers, board) {
+    constructor(handNumber, pot, playPlayers, board, isButtons) {
         this.handNumber = handNumber;
         this.pot = pot;
         this.playPlayers = playPlayers;
         this.board = board;
+        this.isButtons = isButtons;
     }
 }
 
 class Setup {
     constructor(playFrame) {            // frame from recognition -> validator.dll ->
-        this.initPlayers = [];
+        this.initPlayers = {};
         this.handNumber = 0;
         this.bbSize = [];           // chronology of bb sizes
         this.moves = [];
@@ -92,14 +94,15 @@ class Setup {
 
     // PokerEngine.PushHintMove(setupID, invest, position, action);
     frameHandler(playFrame) {
+        console.log(playFrame);
         if (playFrame.handNumber !== this.handNumber) {         // new hand
             this.handNumber = playFrame.handNumber;
-            this.initPlayers = [];
+            this.initPlayers = {};
             this.moves = [];
 
-            // if (playFrame.board.c1) {
-            //     return 'reject hand';
-            // }
+            if (playFrame.board.c1) {           // reject new hand with board cards
+                return 'reject hand';
+            }
             this.setInitPlayers(playFrame);
         }
     };
@@ -111,7 +114,45 @@ class Setup {
     }
 
     setInitPlayers(firstPlayFrame) {
-        firstPlayFrame.playPlayers
+        const activePlayers = firstPlayFrame.playPlayers.filter(player => player.isActive).length;
+        const foldPlayers = firstPlayFrame.playPlayers.filter(player => !player.isActive && player.curBalance > 0.001).length;
+        const playersWasActive = firstPlayFrame.playPlayers.filter(player => (player.isActive || !player.isActive && player.curBalance > 0.001));
+
+        const p0Dealer = ['BTN', 'SB', 'BB'];
+        const p1Dealer = ['BB', 'BTN', 'SB'];
+        const p2Dealer = ['SB', 'BB', 'BTN'];
+        const pXD = [p0Dealer, p1Dealer, p2Dealer];
+
+        if (activePlayers === 2 && foldPlayers === 0) {    // ha
+            console.log('2 players!');
+
+            playersWasActive.forEach(player => {
+                let iPlayer = new InitPlayer(
+                    player.nickname,
+                    player.curBalance + player.betAmount,
+                    enumPoker.positions.indexOf(player.isDealer ? 'BTN' : 'BB'));   // look up in telegram BB or SB
+
+                this.initPlayers[player.recognitionPosition] = iPlayer;
+            });
+            // console.log(this.initPlayers);
+        } else if (playersWasActive.length === 3) {     // spins or other 3 max
+            console.log('3 players!');
+
+            let pXDealer;
+            playersWasActive.forEach(player => {
+                if (player.isDealer) {
+                    pXDealer = pXD[player.recognitionPosition];
+                }
+            });
+            playersWasActive.forEach(player => {
+                let iPlayer = new InitPlayer(
+                    player.nickname,
+                    player.curBalance + player.betAmount,
+                    enumPoker.positions.indexOf(pXDealer[player.recognitionPosition]));
+                this.initPlayers[player.recognitionPosition] = iPlayer;
+            });
+        }
+        console.log(this.initPlayers);
     }
 
     getFirstChairToMove(isPreflop) {
@@ -183,16 +224,19 @@ rawActionList[3] = new ActionString(0, "joooe84", 4.75, 3, 1, 0.75, 8, false, fa
 let playPlayers = [];
 
 // export const positions = ["BTN", "CO", "MP3", "MP2", "MP1", "UTG2", "UTG1", "UTG0", "BB", "SB"];
-playPlayers[0] = new PlayPlayer('checkmateN1', 0, 715, 10, true, '');
-playPlayers[1] = new PlayPlayer('joooe84', 2, 475, 25, true, 'AcAd');
+playPlayers[0] = new PlayPlayer('checkmateN1', 0, 715, 10, true, true,'');
+playPlayers[1] = new PlayPlayer('joooe84', 2, 475, 25, true, false,'AcAd');
+playPlayers[2] = new PlayPlayer('3DAction', 1, 475, 25, true, false,'');
 
-let frame1 = new PlayFrame(12345, 35, playPlayers, '');
+// playPlayers[0] = new PlayPlayer('checkmateN1', 2, 715, 10, true, true,'');
+// playPlayers[1] = new PlayPlayer('joooe84', 0, 475, 25, true, false,'AcAd');
+// playPlayers[2] = new PlayPlayer('3DAction', 1, 475, 25, true, false,'');
+
+let frame1 = new PlayFrame(12345, 35, playPlayers, '', true);
 // console.log(frame1);
-console.log(enumPoker.positions[0]);
+// console.log(enumPoker.positions[0]);
 
-let testSetup = new Setup({handNumber: 7777});
-console.log(testSetup.handNumber);
-// testSetup.movesOrder(3, 1, 0);
+let testSetup = new Setup(frame1);
 
 
 
