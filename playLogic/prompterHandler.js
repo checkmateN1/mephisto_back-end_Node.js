@@ -99,11 +99,13 @@ class Setup {
             this.handNumber = playFrame.handNumber;
             this.initPlayers = {};
             this.moves = [];
+            this.playFrames = [];
 
             if (playFrame.board.c1) {           // reject new hand with board cards
                 return 'reject hand';
             }
             this.setInitPlayers(playFrame);
+            this.playFrames.push(playFrame);
         }
     };
 
@@ -149,9 +151,11 @@ class Setup {
                     player.nickname,
                     player.curBalance + player.betAmount,
                     enumPoker.positions.indexOf(pXDealer[player.recognitionPosition]));
+
                 this.initPlayers[player.recognitionPosition] = iPlayer;
             });
         }
+        console.log('this.initPlayers');
         console.log(this.initPlayers);
     }
 
