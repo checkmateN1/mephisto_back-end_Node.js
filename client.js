@@ -11,10 +11,22 @@ ioClient.on('connect', () => {
 ioClient.emit('authorization', token);
 ioClient.on('authorizationSuccess', () => {
     console.log('authorization success');
+
+    // config
+    ioClient.emit('getConfig');
+    const frame = {
+      frameInfo: 'frameTest',
+    };
+
+    setInterval(() => {
+        ioClient.emit('frame', frame);
+    }, 2000);
 });
 
-// config
-ioClient.emit('getConfig');
+ioClient.on('frameError', () => {
+    console.log('frameError');
+});
+
 ioClient.on('config', data => {
     console.log(data);
     ioClient.emit('getConfigSuccess');

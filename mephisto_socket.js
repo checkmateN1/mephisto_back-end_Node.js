@@ -22,16 +22,16 @@ server.on("connection", client => {
     client.on('authorization', token => {
         if (!(token in tokens)) {
             console.log('unauthorized access');
-            client.emit('authorizationFail');
+            client.emit('unauthorized access');
+            client.disconnect();
         } else {
-
+            console.info(`Client connected [id=${client.id}]`);
         }
-        console.log(token);
+
         client.emit('authorizationSuccess');
 
-        console.info(`Client connected [id=${client.id}]`);
         // initialize this client's sequence number
-        sequenceNumberByClient.set(client.id, {});
+        sequenceNumberByClient.set(client.id, token);
 
         // config
         client.on('getConfig', () => {
@@ -44,8 +44,11 @@ server.on("connection", client => {
         // frames
         client.on('frame', data => {
             if (!_.isEmpty(data)) {
+                console.log('got Frame');
                 console.log(data);
                 client.emit('frameResponseSuccess');
+            } else {
+                client.emit('frameError');
             }
         });
     });
