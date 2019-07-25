@@ -31,7 +31,7 @@ class ActionString {
         this.gto = gto;
         this.isHero = isHero;
     }
-};
+}
 
 function Player(nickname, id, position, vpip) {
     this.nickname = nickname;

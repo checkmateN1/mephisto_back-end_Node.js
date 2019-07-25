@@ -79,13 +79,24 @@ class PlayFrame {
     }
 }
 
+// PokerEngine.PushHintMove(setupID, invest, position, action);
+class Move {
+    constructor(invest, enumPosition, action) {
+        this.invest = invest;
+        this.enumPosition = enumPosition;
+        this.action = action;
+    }
+}
+
 class Setup {
     constructor(playFrame) {            // frame from recognition -> validator.dll ->
-        this.initPlayers = {};
+        this.initPlayers = [];
+        this.positionMap = {};
         this.handNumber = 0;
         this.bbSize = [];           // chronology of bb sizes
         this.moves = [];
         this.playFrames = [];
+        this.rejectHand = false;
         this.frameHandler(playFrame);
     }
     appendMove(moves) {
@@ -94,25 +105,63 @@ class Setup {
 
     // PokerEngine.PushHintMove(setupID, invest, position, action);
     frameHandler(playFrame) {
+        console.log('playFrame prompterHandler');
         console.log(playFrame);
+        if (this.rejectHand && playFrame.handNumber === this.handNumber) {
+            return 'reject hand';
+        }
         if (playFrame.handNumber !== this.handNumber) {         // new hand
             this.handNumber = playFrame.handNumber;
-            this.initPlayers = {};
+            this.initPlayers = [];
+            this.positionEnumKeyMap = {};
             this.moves = [];
             this.playFrames = [];
+            this.rejectHand = false;
 
-            if (playFrame.board.c1) {           // reject new hand with board cards
+            if (playFrame.board.length !== 0) {           // reject new hand with board cards
+                this.rejectHand = true;
                 return 'reject hand';
             }
             this.setInitPlayers(playFrame);
-            this.playFrames.push(playFrame);
+            this.setPositionsMap();
         }
+        this.getMovesFromFrame(playFrame);
+
     };
 
-    getMovesFromFrame(playFrame) {
-        if (playFrame.playPlayers.length <= 2) {       // ha
+    // let testPush = PokerEngine.PushHintMove(newSetupID, curInvest, request.actions.preflop[i].position, i < 2 ? 0 : request.actions.preflop[i].action);
 
+
+    // frame1 = new PlayFrame(12345, 35, playPlayers, [], true);
+    // playPlayers[0] = new PlayPlayer('checkmateN1', 0, 715, 10, true, true,'');
+    getMovesFromFrame(playFrame) {
+        if (this.initPlayers.length <= 2) {       // ha
+            if (this.moves.length === 0) {        // first frame
+                let BTNAmount = playFrame.playPlayers[this.positionEnumKeyMap[enumPoker.positions.indexOf('BTN')]].betAmount;
+                let BBAmount = playFrame.playPlayers[this.positionEnumKeyMap[enumPoker.positions.indexOf('BB')]].betAmount;
+                if (BBAmount > this.bbSize[this.bbSize.length - 1] * 3) {   // wrong BB recognition
+                    this.rejectHand = true;
+                    return true;
+                } else if (this.bbSize.length > 2){
+                    this.bbSize.shift();
+                }
+                this.bbSize.push(BBAmount);
+
+                if (BTNAmount > BBAmount) {      // was raise
+                    const SBSize = BBAmount / 2;
+                    this.moves.push(new Move(SBSize, enumPoker.positions.indexOf('BTN'), 0));
+                    this.moves.push(new Move(BBAmount, enumPoker.positions.indexOf('BB'), 0));
+                }
+            }
         }
+    }
+
+    wasBet(street) {
+
+    }
+
+    wasRaise() {
+
     }
 
     setInitPlayers(firstPlayFrame) {
@@ -159,6 +208,14 @@ class Setup {
         console.log(this.initPlayers);
     }
 
+    setPositionsMap() {
+        this.initPlayers.forEach((initPlayer, index) => {
+            this.positionEnumKeyMap[initPlayer.enumPosition] = index;
+        });
+        console.log('this.positionEnumKeyMap');
+        console.log(this.positionEnumKeyMap);
+    }
+
     getFirstChairToMove(isPreflop) {
 
     }
@@ -169,8 +226,10 @@ class Setup {
         }
     }
 
+
+
     // находим минимальную ставку оставшихся в игре и походивших от начала торгов на улице или предыдущего фрейма
-    getMinAmountWithoutAllin(playFrame) {
+    getMinSmartAmount(playFrame) {
         if (!this.playFrames.length) {          // first frame
 
             playFrame.playPlayers.forEach(player => {
@@ -229,14 +288,15 @@ let playPlayers = [];
 
 // export const positions = ["BTN", "CO", "MP3", "MP2", "MP1", "UTG2", "UTG1", "UTG0", "BB", "SB"];
 playPlayers[0] = new PlayPlayer('checkmateN1', 0, 715, 10, true, true,'');
-playPlayers[1] = new PlayPlayer('joooe84', 2, 475, 25, true, false,'AcAd');
-playPlayers[2] = new PlayPlayer('3DAction', 1, 475, 25, true, false,'');
+playPlayers[1] = new PlayPlayer('3DAction', 1, 475, 25, true, false,'');
+playPlayers[2] = new PlayPlayer('joooe84', 2, 475, 25, true, false,'AcAd');
+
 
 // playPlayers[0] = new PlayPlayer('checkmateN1', 2, 715, 10, true, true,'');
 // playPlayers[1] = new PlayPlayer('joooe84', 0, 475, 25, true, false,'AcAd');
 // playPlayers[2] = new PlayPlayer('3DAction', 1, 475, 25, true, false,'');
 
-let frame1 = new PlayFrame(12345, 35, playPlayers, '', true);
+let frame1 = new PlayFrame(12345, 35, playPlayers, [], true);
 // console.log(frame1);
 // console.log(enumPoker.positions[0]);
 
