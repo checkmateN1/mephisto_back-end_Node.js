@@ -1,11 +1,19 @@
-const io = require("socket.io");
-const server = io.listen(3001);
+// const io = require("socket.io");
+const io = require('socket.io')(3001);
+// const server = io.listen(3001);
+
+// const redis = require('socket.io-redis');
+// io.adapter(redis({ host: '192.168.1.20', port: 3001 }));
+
+const moment = require('moment');
+const fs = require('fs');
+
 const _ = require('lodash');
 
 const tokens = Object.freeze({
     'uidfksicnm730pdemg662oermfyf75jdf9djf': 'simulator',
-    'dfioulkdgdlb87jkj53pioifjlwlo8cvjksnj': 'cliker1',
-    '872k4j2k3mc8uvxoiaklsjfsdfudyjhm45nuu': 'cliker2',
+    'dfioulkdgdlb87jkj53pioifjlwlo8cvjksnj': 'clicker1',
+    '872k4j2k3mc8uvxoiaklsjfsdfudyjhm45nuu': 'clicker2',
 });
 
 const config = {
@@ -17,46 +25,54 @@ const config = {
 const sequenceNumberByClient = new Map();
 
 // event fired every time a new client connects:
-server.on("connection", client => {
+io.on('connection', client => {
     // authorization
     client.on('authorization', token => {
         if (!(token in tokens)) {
             console.log('unauthorized access');
-            client.emit('unauthorized access');
+            client.emit('unauthorizedAccess');
             client.disconnect();
         } else {
-            console.info(`Client connected [id=${client.id}]`);
-        }
+            console.info(`Client connected [${token}]`);
+            client.emit('authorizationSuccess');
+            // initialize this client's sequence number
+            sequenceNumberByClient.set(token, client);
 
-        client.emit('authorizationSuccess');
-
-        // initialize this client's sequence number
-        sequenceNumberByClient.set(client.id, token);
-
-        // config
-        client.on('getConfig', () => {
-            client.emit('config', config);
-            client.on('getConfigSuccess', () => {
-                console.info(`Client [id=${client.id}] successfully received config`);
+            // config
+            client.on('getConfig', () => {
+                // асинхронное чтение
+                fs.readFile('json_config.txt', 'utf8',
+                    (error, data) => {
+                        if(error) {
+                            console.info('error reading config file: json_config.txt');
+                        } else {
+                            client.emit('config', data);
+                        }
+                    });
             });
-        });
+            client.on('getConfigSuccess', () => {
+                console.info(`Client [${token}] successfully received config`);
+            });
 
-        // frames
-        client.on('frame', data => {
-            if (!_.isEmpty(data)) {
-                console.log('got Frame');
-                console.log(data);
-                client.emit('frameResponseSuccess');
-            } else {
-                client.emit('frameError');
-            }
-        });
-    });
+            // frames
+            client.on('frame', data => {
+                if (!_.isEmpty(data)) {
+                    console.log(`got frame at ${moment().format('dddd, MMMM Do YYYY, h:mm:ss a')}`);
+                    console.log(data);
+                    client.emit('frameSuccess', data.id);
+                } else {
+                    client.emit('frameError', data);
+                }
+            });
 
-    // when socket disconnects, remove it from the list:
-    client.on("disconnect", () => {
-        sequenceNumberByClient.delete(client);
-        console.info(`Client gone [id=${client.id}]`);
+            console.log('sequenceNumberByClient after connection');
+            console.log(sequenceNumberByClient);
+            client.on('disconnect', () => {
+                sequenceNumberByClient.delete(token);
+                console.log('sequenceNumberByClient after disconnect');
+                console.info(`Client gone [${token}]`);
+            });
+        }
     });
 });
 

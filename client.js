@@ -3,37 +3,43 @@ const ioClient = io.connect("http://localhost:3001");
 
 const token = 'dfioulkdgdlb87jkj53pioifjlwlo8cvjksnj';
 
-ioClient.on('connect', () => {
-
-});
-
 // authorization
 ioClient.emit('authorization', token);
 ioClient.on('authorizationSuccess', () => {
-    console.log('authorization success');
+    console.info('authorization success');
 
     // config
     ioClient.emit('getConfig');
     const frame = {
-      frameInfo: 'frameTest',
+        id: 1,
+        frameInfo: 'frameTest',
     };
 
+    // test frames sending
     setInterval(() => {
         ioClient.emit('frame', frame);
-    }, 2000);
+    }, 1000);
 });
 
-ioClient.on('frameError', () => {
-    console.log('frameError');
+ioClient.on('unauthorizedAccess', () => {
+    console.info('Unauthorized Access: please check your token');
+});
+
+ioClient.on('frameSuccess', (id) => {
+    console.info(`server got frame ${id} successful`);
+});
+
+ioClient.on('frameError', (data) => {
+    console.info(`frameError: ${data}`);
 });
 
 ioClient.on('config', data => {
-    console.log(data);
+    console.info(data);
     ioClient.emit('getConfigSuccess');
 });
 
 ioClient.on('disconnect', () => {
-    console.log('server gone');
+    console.info('server gone');
 });
 
 
