@@ -7,20 +7,15 @@ const io = require('socket.io')(3001);
 
 const moment = require('moment');
 const fs = require('fs');
-
 const _ = require('lodash');
+
+const sessionsHandler = require('./sessionsHandler');
 
 const tokens = Object.freeze({
     'uidfksicnm730pdemg662oermfyf75jdf9djf': 'simulator',
     'dfioulkdgdlb87jkj53pioifjlwlo8cvjksnj': 'clicker1',
     '872k4j2k3mc8uvxoiaklsjfsdfudyjhm45nuu': 'clicker2',
 });
-
-const config = {
-    version: 1.12,
-    region1: 111,
-    region2: 222,
-};
 
 const sequenceNumberByClient = new Map();
 
@@ -60,6 +55,21 @@ io.on('connection', client => {
                     console.log(`got frame at ${moment().format('dddd, MMMM Do YYYY, h:mm:ss a')}`);
                     console.log(data);
                     client.emit('frameSuccess', data.id);
+                } else {
+                    client.emit('frameError', data);
+                }
+            });
+
+            // simulations
+            client.on('simulations', data => {
+                if (!_.isEmpty(data)) {
+                    client.emit('simulationsSuccess');
+
+                    console.log(data);
+                    const result = sessionsHandler.sessionsListener('uidfksicnm730pdemg662oermfyf75jdf9djf', '1111', data.body);
+
+                    // res.send(JSON.stringify(result));
+                    client.emit('simulationsResponse', result);
                 } else {
                     client.emit('frameError', data);
                 }

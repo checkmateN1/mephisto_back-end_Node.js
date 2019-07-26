@@ -300,7 +300,7 @@ let frame1 = new PlayFrame(12345, 35, playPlayers, [], true);
 // console.log(frame1);
 // console.log(enumPoker.positions[0]);
 
-let testSetup = new Setup(frame1);
+//let testSetup = new Setup(frame1);
 
 
 
