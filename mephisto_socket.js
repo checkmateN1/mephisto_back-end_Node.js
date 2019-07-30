@@ -35,7 +35,6 @@ io.on('connection', client => {
 
             // config
             client.on('getConfig', () => {
-                // асинхронное чтение
                 fs.readFile('json_config.txt', 'utf8',
                     (error, data) => {
                         if(error) {
@@ -66,20 +65,19 @@ io.on('connection', client => {
                     client.emit('simulationsSuccess');
 
                     console.log(data);
-                    const result = sessionsHandler.sessionsListener('uidfksicnm730pdemg662oermfyf75jdf9djf', '1111', data.body);
 
-                    // res.send(JSON.stringify(result));
-                    client.emit('simulationsResponse', result);
+                    (async function() {
+                        const result = await sessionsHandler.sessionsListener('uidfksicnm730pdemg662oermfyf75jdf9djf', '1111', data);
+                        client.emit('simulationsResponse', result);
+                    })();
+
                 } else {
-                    client.emit('frameError', data);
+                    client.emit('simulationsError', data);
                 }
             });
 
-            console.log('sequenceNumberByClient after connection');
-            console.log(sequenceNumberByClient);
             client.on('disconnect', () => {
                 sequenceNumberByClient.delete(token);
-                console.log('sequenceNumberByClient after disconnect');
                 console.info(`Client gone [${token}]`);
             });
         }
