@@ -10,8 +10,6 @@ const movesHandler = (idSetup, oldActions, request, bbSize, setup) => {
     let adapt_size = 10;
     let movesInvestArr = [];
 
-    // console.log(request);
-
     for (let i = 0; i < request.players.length; i++) {
         let adaptArr = [];
         for (let i = 0; i < adapt_size; i++) {
@@ -23,6 +21,8 @@ const movesHandler = (idSetup, oldActions, request, bbSize, setup) => {
         testSetPlayer.push(testPLR);
     }
 
+
+    //////////////////////////////////////// PREFLOP MOVES
     let testPushHintMove = [];
     let playersInvestPreflop = {};
     for (let i = 0; i < request.actions.preflop.length; i++) {
@@ -43,6 +43,8 @@ const movesHandler = (idSetup, oldActions, request, bbSize, setup) => {
     }
     playersInvestPreflop = null;
 
+
+    //////////////////////////////////////// PUSH FLOP
     if (!request.actions.flop) {
         return [newSetupID, movesInvestArr];
     } else {
@@ -51,8 +53,9 @@ const movesHandler = (idSetup, oldActions, request, bbSize, setup) => {
 
     // console.log(`PushBoard3Move(${newSetupID}, ${cardsName.indexOf(request.board.c1)}, ${cardsName.indexOf(request.board.c2)}, ${cardsName.indexOf(request.board.c3)})`);
 
-    let playersInvestFlop = {};
 
+    //////////////////////////////////////// FLOP MOVES
+    let playersInvestFlop = {};
     for (let i = 0; i < request.actions.flop.length; i++) {
         let curInvest = 0;
         if (request.actions.flop[i].position in playersInvestFlop) {
@@ -67,8 +70,8 @@ const movesHandler = (idSetup, oldActions, request, bbSize, setup) => {
     }
     playersInvestFlop = null;
 
-    // return newSetupID;
 
+    //////////////////////////////////////// PUSH FLOP
     if (!request.actions.turn) {
         return [newSetupID, movesInvestArr];
     } else {
@@ -77,8 +80,9 @@ const movesHandler = (idSetup, oldActions, request, bbSize, setup) => {
         console.log(turnBoardTest);
     }
 
-    let playersInvestTurn = {};
 
+    //////////////////////////////////////// TURN MOVES
+    let playersInvestTurn = {};
     for (let i = 0; i < request.actions.turn.length; i++) {
         let curInvest = 0;
         if (request.actions.flop[i].position in playersInvestTurn) {
