@@ -16,31 +16,67 @@ const movesHandler = (engineID, oldActions, request, bbSize, setup) => {
     const isUsingCash = _.isEqual(request.players, setup.prevRequest.players);
 
     let newSetupID;
+    let cash_act_num = 0;
+    let testSetPlayer = [];
+    let movesInvestArr = [];
+
     if (!isUsingCash) {
-        PokerEngine.ReleaseSetup(engineID);
-        newSetupID = PokerEngine.InitSetup(bbSize);
-        setup.movesStrategiesCash = [];
+        if (setup.prevEngineID !== -1) {
+            PokerEngine.ReleaseSetup(engineID);
+            newSetupID = PokerEngine.InitSetup(bbSize);
+            setup.movesStrategiesCash = [];
+        } else {
+            newSetupID = engineID;
+        }
+
+        //////////////////////////////////////// SETING PLAYERS
+        for (let i = 0; i < request.players.length; i++) {
+            let adaptArr = [];
+            for (let i = 0; i < adapt_size; i++) {
+                adaptArr.push(0);
+            }
+            // POKERENGINE_API bool SetPlayer(int nengineID, int nStack, int nPos, float arrAdapt[ADAPT_SIZE]);
+            // console.log(`SetPlayer(${newSetupID}, ${parseInt(request.players[i].stack * 100)}, ${request.players[i].position}, ${adaptArr}`);
+            let testPLR = PokerEngine.SetPlayer(newSetupID, parseInt(request.players[i].stack * 100), request.players[i].position, adaptArr);
+            testSetPlayer.push(testPLR);
+        }
+
     } else {
         newSetupID = setup.prevEngineID;
     }
 
-    let testSetPlayer = [];
-    let movesInvestArr = [];
+    // const getLastCashIndex = () => {
+    //     let lastCashIndex = 0;
+    //
+    //     for (let i = 0; i <= Math.min(setup.movesStrategiesCash.length, request.request.act_num); i++) {
+    //         // проверяем совпадение борда на улице и действия
+    //         if (true) {
+    //
+    //         } else break;
+    //     }
+    //     // setup.prevRequest
+    // };
 
-    for (let i = 0; i < request.players.length; i++) {
-        let adaptArr = [];
-        for (let i = 0; i < adapt_size; i++) {
-            adaptArr.push(0);
-        }
-        // POKERENGINE_API bool SetPlayer(int nengineID, int nStack, int nPos, float arrAdapt[ADAPT_SIZE]);
-        // console.log(`SetPlayer(${newSetupID}, ${parseInt(request.players[i].stack * 100)}, ${request.players[i].position}, ${adaptArr}`);
-        let testPLR = PokerEngine.SetPlayer(newSetupID, parseInt(request.players[i].stack * 100), request.players[i].position, adaptArr);
-        testSetPlayer.push(testPLR);
-    }
+    let isCashSteelUseful = isUsingCash;
+    let currentPushHintMoveCount = 0;       // считаем при каждом пуш мув независимо в кэше он или нет
 
+    const cashMoves = {
+        preflop: [{
+            curInvest: null,
+            position: null,
+            action: null,
+        }],
+        flop: [],
+        turn: [],
+        river: [],
+        c1: null,
+        c2: null,
+        c3: null,
+        c4: null,
+        c5: null,
+    };
 
     //////////////////////////////////////// PREFLOP MOVES
-    let testPushHintMove = [];
     let playersInvestPreflop = {};
     for (let i = 0; i < request.actions.preflop.length; i++) {
         let curInvest = 0;
@@ -50,11 +86,31 @@ const movesHandler = (engineID, oldActions, request, bbSize, setup) => {
             curInvest = parseInt(Math.round(+request.actions.preflop[i].amount * 100));
         }
         movesInvestArr.push(curInvest);
-        // POKERENGINE_API int PushHintMove(int nengineID, int nMoney, int nPos, int nAct);
-        // console.log(`PushHintMove(${newSetupID}, ${curInvest}, ${request.actions.preflop[i].position}, ${i < 2 ? 0 : request.actions.preflop[i].action})`);
-        let testPush = PokerEngine.PushHintMove(newSetupID, curInvest, request.actions.preflop[i].position, i < 2 ? 0 : request.actions.preflop[i].action);
-        testPushHintMove.push(testPush);
-        setup.IdMoveForSimul = testPush;
+
+        const position = request.actions.preflop[i].position;
+        const action = i < 2 ? 0 : request.actions.preflop[i].action;
+        const pushHintMoveData = {
+            curInvest,
+            position,
+            action
+        };
+
+        currentPushHintMoveCount++;
+        if (isCashSteelUseful && _.isEqual(cashMoves.preflop[i], pushHintMoveData)) {      // use cash
+
+        } else {
+            isCashSteelUseful = false;
+            PokerEngine.PushHintMove(newSetupID, curInvest, position, action);
+            // откатываем setup.pushHintMoveCount до текущего момента currentPushHintMoveCount
+
+            setup.pushHintMoveCount = currentPushHintMoveCount;
+
+            // откатываем поп_мувом движок до текущего мува
+
+            // очищаем кэш мувов до текущего момента и добавляем новый мув
+            // cashMoves
+
+        }
 
         playersInvestPreflop[request.actions.preflop[i].position] = parseInt(Math.round(+request.actions.preflop[i].amount * 100));
     }

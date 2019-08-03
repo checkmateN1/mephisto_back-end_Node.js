@@ -58,8 +58,7 @@ class SessionSetup {
         this.timeout = setupTimeout;
         this.bbSize = bbSize;
         this.actions = {};
-        this.players = [];
-        this.IdMoveForSimul = 0;
+        this.pushHintMoveCount = 0;
         this.prevEngineID = -1;
         this.prevRequest = {};
         this.movesStrategiesCash = [];
