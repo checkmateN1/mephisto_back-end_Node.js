@@ -16,9 +16,10 @@ ioClient.on('authorizationSuccess', () => {
     };
 
     // test frames sending
-    setInterval(() => {
-        ioClient.emit('frame', frame);
-    }, 1000);
+    // setInterval(() => {
+    //     ioClient.emit('frame', frame);
+    // }, 1000);
+    ioClient.emit('frame', frame);
 });
 
 ioClient.on('unauthorizedAccess', () => {
@@ -42,4 +43,9 @@ ioClient.on('disconnect', () => {
     console.info('server gone');
 });
 
+ioClient.on('prompt', data => {
+    console.info('got prompt');
+    console.info(data);
+    ioClient.emit('getPromptSuccess');
+});
 

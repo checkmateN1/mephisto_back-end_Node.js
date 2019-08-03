@@ -64,7 +64,7 @@ const fillDict = () => {
         hi: ref.types.char,
         lo: ref.types.char
     });
-    let handArr = new Buffer(hand.size * allHandsCount);
+    let handArr = Buffer.alloc(hand.size * allHandsCount);
     PokerEngine.GetHandsDict(handArr);
 
     for (let i = 0; i < allHandsCount; i++) {
@@ -175,10 +175,10 @@ const getAllHandsStrategy = (nIDSetup, nIDMove, request, investArr) => {
 
     let arrStrategies = [];
     for (let i = 0; i < allHandsCount; i++) {
-        arrStrategies.push(new Buffer(sStrategy.size * 3));
+        arrStrategies.push(Buffer.alloc(sStrategy.size * 3));
     }
 
-    let handweightBuf= new Buffer(handweight.size * allHandsCount);
+    let handweightBuf= Buffer.alloc(handweight.size * allHandsCount);
 
     for (let i = 0; i < allHandsCount; i++) {
         let el = handweight.get(handweightBuf, i * handweight.size);

@@ -19,6 +19,7 @@ const tokens = Object.freeze({
 
 const sequenceNumberByClient = new Map();
 
+
 // event fired every time a new client connects:
 io.on('connection', client => {
     // authorization
@@ -28,10 +29,52 @@ io.on('connection', client => {
             client.emit('unauthorizedAccess');
             client.disconnect();
         } else {
-            console.info(`Client connected [${token}]`);
+            console.info(`Client connected [${token}], id=${client.id}`);
             client.emit('authorizationSuccess');
             // initialize this client's sequence number
-            sequenceNumberByClient.set(token, client);
+            sequenceNumberByClient.set(client, token);
+
+            const testNickname = 'testTEST';
+            let currentPrompt =
+                `<div class="main-container spins party-poker">
+                    <div class="player player0">
+                        <div class="nickname green">${testNickname}</div>
+                        <div class="stats row">
+                            <span class="stat green">VPIP: 54, </span><span class="stat">PFR: 19, </span><span class="stat">3Bet: 13</span>
+                        </div>
+                        <div class="stats row">
+                            <span class="stat">CBet: 45, </span><span class="stat green">Raise%: 9, </span><span class="stat">Call%: 55</span>
+                        </div>
+                    </div>
+                    <div class="player player1">
+                        <div class="nickname red">checkmate</div>
+                        <div class="stats row">
+                            <span class="stat red">VPIP: 17, </span><span class="stat">PFR: 16, </span><span class="stat">3Bet: 20</span>
+                        </div>
+                        <div class="stats row">
+                            <span class="stat">CBet: 65, </span><span class="stat red">Raise%: 25, </span><span class="stat">Call%: 42</span>
+                        </div>
+                    </div>
+                    <div class="player player2">
+                        <div class="nickname">See my luck</div>
+                        <div class="stats row">
+                            <span class="stat">VPIP: 30, </span><span class="stat">PFR: 23, </span><span class="stat">3Bet: 15</span>
+                        </div>
+                        <div class="stats row">
+                            <span class="stat">CBet: 55, </span><span class="stat">Raise%: 12, </span><span class="stat">Call%: 40</span>
+                        </div>
+                    </div>
+                    <div class="prompt">
+                        <div class="bet-raise">
+                            Raise: 285bb
+                        </div>
+                        <div class="diagram">
+                            <div class="fold" style="width: 10%"></div>
+                            <div class="check-call" style="width: 35%"></div>
+                            <div class="bet-raise" style="width: 55%"></div>
+                        </div>
+                    </div>
+                </div>`;
 
             // config
             client.on('getConfig', () => {
@@ -54,9 +97,13 @@ io.on('connection', client => {
                     console.log(`got frame at ${moment().format('dddd, MMMM Do YYYY, h:mm:ss a')}`);
                     console.log(data);
                     client.emit('frameSuccess', data.id);
+                    client.emit('prompt', currentPrompt);
                 } else {
                     client.emit('frameError', data);
                 }
+            });
+            client.on('getPromptSuccess', () => {
+                console.info('client got prompt success');
             });
 
             // simulations
@@ -67,7 +114,7 @@ io.on('connection', client => {
                     console.log(data);
 
                     (async function() {
-                        const result = await sessionsHandler.sessionsListener('uidfksicnm730pdemg662oermfyf75jdf9djf', '1111', data);
+                        const result = await sessionsHandler.sessionsListener('uidfksicnm730pdemg662oermfyf75jdf9djf', client.id, data);
                         client.emit('simulationsResponse', result);
                     })();
 
@@ -77,8 +124,8 @@ io.on('connection', client => {
             });
 
             client.on('disconnect', () => {
-                sequenceNumberByClient.delete(token);
-                console.info(`Client gone [${token}]`);
+                sequenceNumberByClient.delete(client);
+                console.info(`Client gone [${client.id}]`);
             });
         }
     });
