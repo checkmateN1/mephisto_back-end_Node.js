@@ -29,10 +29,10 @@ io.on('connection', client => {
             client.emit('unauthorizedAccess');
             client.disconnect();
         } else {
-            console.info(`Client connected [${token}]`);
+            console.info(`Client connected [${token}], id=${client.id}`);
             client.emit('authorizationSuccess');
             // initialize this client's sequence number
-            sequenceNumberByClient.set(token, client);
+            sequenceNumberByClient.set(client, token);
 
             const testNickname = 'testTEST';
             let currentPrompt =
@@ -114,7 +114,7 @@ io.on('connection', client => {
                     console.log(data);
 
                     (async function() {
-                        const result = await sessionsHandler.sessionsListener('uidfksicnm730pdemg662oermfyf75jdf9djf', '1111', data);
+                        const result = await sessionsHandler.sessionsListener('uidfksicnm730pdemg662oermfyf75jdf9djf', client.id, data);
                         client.emit('simulationsResponse', result);
                     })();
 
@@ -124,8 +124,8 @@ io.on('connection', client => {
             });
 
             client.on('disconnect', () => {
-                sequenceNumberByClient.delete(token);
-                console.info(`Client gone [${token}]`);
+                sequenceNumberByClient.delete(client);
+                console.info(`Client gone [${client.id}]`);
             });
         }
     });

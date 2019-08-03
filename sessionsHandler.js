@@ -28,8 +28,8 @@ const tokens = Object.freeze({
     '872k4j2k3mc8uvxoiaklsjfsdfudyjhm45nuu': 'cliker2',
 });
 
-const sessionTimeout = 50;
-const setupTimeout = 15;
+const sessionTimeout = 120;
+const setupTimeout = 70;
 const timeoutStep = 5000;
 
 // one specific user with many SessionSetups
@@ -60,6 +60,9 @@ class SessionSetup {
         this.actions = {};
         this.players = [];
         this.IdMoveForSimul = 0;
+        this.prevEngineID = -1;
+        this.prevRequest = {};
+        this.movesStrategiesCash = [];
     }
 
     requestHandling(request) {
@@ -69,7 +72,7 @@ class SessionSetup {
         // simulator strategy
         if (requestType === 'strategy') {
             const { act_num, street } = request.request;
-            let bbSize = parseInt(Math.max(parseFloat(request.actions.preflop[0].amount), parseFloat(request.actions.preflop[1].amount)) * 100);
+            const bbSize = parseInt(Math.max(parseFloat(request.actions.preflop[0].amount), parseFloat(request.actions.preflop[1].amount)) * 100);
             let handlerResponse = moves.movesHandler(this.engineID, this.actions, request, bbSize, this);
             this.engineID = handlerResponse[0];
 
