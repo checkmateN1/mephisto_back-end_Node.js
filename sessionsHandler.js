@@ -43,7 +43,7 @@ class Session {
             this.setups[setupID].timeout--;
             if (this.setups[setupID].timeout < 0) {
                 clearInterval(this.setups[setupID].timerToDestroy);
-                PokerEngine.ReleaseSetup(this.setups[setupID].setupID);
+                PokerEngine.ReleaseSetup(this.setups[setupID].engineID);
                 console.log(`setup ${setupID} over and will be remove`);
                 delete this.setups[setupID];
             }
@@ -51,17 +51,37 @@ class Session {
     }
 }
 
+const initCash = Object.freeze({
+    players: [{
+        nickname: '',
+        stack: -1,
+        position: -1,
+    }],
+    preflop: [{
+        curInvest: null,
+        position: null,
+        action: null,
+    }],
+    flop: [],           // preflop similarly
+    turn: [],           // preflop similarly
+    river: [],          // preflop similarly
+    c1: null,
+    c2: null,
+    c3: null,
+    c4: null,
+    c5: null,
+});
+
 // one specific table/simulator inside Session
 class SessionSetup {
     constructor(engineID, bbSize) {
         this.engineID = engineID; // PokerEngine session number
         this.timeout = setupTimeout;
-        this.bbSize = bbSize;
-        this.actions = {};
-        this.pushHintMoveCount = 0;
-        this.prevEngineID = -1;
-        this.prevRequest = {};
-        this.movesStrategiesCash = [];
+        this.movesCash = initCash;
+    }
+
+    resetCash() {
+        this.movesCash = initCash;
     }
 
     requestHandling(request) {
@@ -72,8 +92,8 @@ class SessionSetup {
         if (requestType === 'strategy') {
             const { act_num, street } = request.request;
             const bbSize = parseInt(Math.max(parseFloat(request.actions.preflop[0].amount), parseFloat(request.actions.preflop[1].amount)) * 100);
-            let handlerResponse = moves.movesHandler(this.engineID, this.actions, request, bbSize, this);
-            this.engineID = handlerResponse[0];
+
+            const handlerResponse = moves.movesHandler(request, bbSize, this);
 
             return middleware.getAllHandsStrategy(this.engineID, (act_num + street), request, handlerResponse[1]);
         }
