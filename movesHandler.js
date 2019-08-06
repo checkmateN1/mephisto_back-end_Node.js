@@ -111,10 +111,15 @@ const movesHandler = (request, bbSize, setup) => {
         const isC3Equal = request.board.c3 === setup.movesCash.c3;
         if (!(isC1Equal && isC2Equal && isC3Equal)) {
             if (isCashSteelUseful) {
-                popMoves(setup.movesCash.preflop.length - 1);
+                popMoves(setup.movesCash.preflop.length);
             }
             isCashSteelUseful = false;
-            PokerEngine.PushBoard3Move(setup.engineID, enumPoker.cardsName.indexOf(request.board.c1), enumPoker.cardsName.indexOf(request.board.c2), enumPoker.cardsName.indexOf(request.board.c3));
+            PokerEngine.PushBoard3Move(
+                setup.engineID,
+                enumPoker.cardsName.indexOf(request.board.c1),
+                enumPoker.cardsName.indexOf(request.board.c2),
+                enumPoker.cardsName.indexOf(request.board.c3)
+            );
             setup.movesCash.c1 = request.board.c1;
             setup.movesCash.c2 = request.board.c2;
             setup.movesCash.c3 = request.board.c3;
@@ -134,7 +139,7 @@ const movesHandler = (request, bbSize, setup) => {
         movesInvestArr.push(curInvest);
 
         const position = request.actions.flop[i].position;
-        const action = i < 2 ? 0 : request.actions.flop[i].action;
+        const action = request.actions.flop[i].action;
         const pushHintMoveData = {
             curInvest,
             position,
@@ -143,7 +148,7 @@ const movesHandler = (request, bbSize, setup) => {
 
         if (!_.isEqual(setup.movesCash.flop[i], pushHintMoveData)) {      // no using cash
             if (isCashSteelUseful) {        // if we used cash before this iteration
-                popMoves(setup.movesCash.preflop.length + i);
+                popMoves(setup.movesCash.preflop.length + 1 + i);
             }
             isCashSteelUseful = false;
             PokerEngine.PushHintMove(setup.engineID, curInvest, position, action);
@@ -159,7 +164,7 @@ const movesHandler = (request, bbSize, setup) => {
     } else {
         if (request.board.c4 !== setup.movesCash.c4) {
             if (isCashSteelUseful) {
-                popMoves(setup.movesCash.flop.length - 1);
+                popMoves(setup.movesCash.preflop.length + setup.movesCash.flop.length + 1);
             }
             isCashSteelUseful = false;
             PokerEngine.PushBoard1Move(setup.engineID, enumPoker.cardsName.indexOf(request.board.c4));
@@ -172,23 +177,39 @@ const movesHandler = (request, bbSize, setup) => {
     const playersInvestTurn = {};
     for (let i = 0; i < request.actions.turn.length; i++) {
         let curInvest = 0;
-        if (request.actions.flop[i].position in playersInvestTurn) {
+        if (request.actions.turn[i].position in playersInvestTurn) {
             curInvest = parseInt(Math.round(+request.actions.turn[i].amount * 100)) - playersInvestTurn[request.actions.turn[i].position]
         } else {curInvest = parseInt(Math.round(+request.actions.turn[i].amount * 100))}
         movesInvestArr.push(curInvest);
-        let testTurnPush = PokerEngine.PushHintMove(setup.engineID, curInvest, request.actions.turn[i].position, request.actions.turn[i].action);
+
+        const position = request.actions.turn[i].position;
+        const action = request.actions.turn[i].action;
+        const pushHintMoveData = {
+            curInvest,
+            position,
+            action,
+        };
+
+        if (!_.isEqual(setup.movesCash.turn[i], pushHintMoveData)) {      // no using cash
+            if (isCashSteelUseful) {        // if we used cash before this iteration
+                popMoves(setup.movesCash.preflop.length + setup.movesCash.flop.length + 2 + i);
+            }
+            isCashSteelUseful = false;
+            PokerEngine.PushHintMove(setup.engineID, curInvest, position, action);
+            setup.movesCash.turn.push(pushHintMoveData);
+        }
         playersInvestTurn[request.actions.turn[i].position] = parseInt(Math.round(+request.actions.turn[i].amount * 100));
     }
 
 
 
     //////////////////////////////////////// PUSH RIVER
-    if (!request.actions.turn) {
+    if (!request.actions.river) {
         return [setup.engineID, movesInvestArr];
     } else {
         if (request.board.c5 !== setup.movesCash.c5) {
             if (isCashSteelUseful) {
-                popMoves(setup.movesCash.flop.length - 1);
+                popMoves(setup.movesCash.preflop.length + setup.movesCash.flop.length + setup.movesCash.turn.length + 2);
             }
             isCashSteelUseful = false;
             PokerEngine.PushBoard1Move(setup.engineID, enumPoker.cardsName.indexOf(request.board.c4));
@@ -197,7 +218,32 @@ const movesHandler = (request, bbSize, setup) => {
     }
 
     //////////////////////////////////////// RIVER MOVES
+    const playersInvestRiver = {};
+    for (let i = 0; i < request.actions.river.length; i++) {
+        let curInvest = 0;
+        if (request.actions.river[i].position in playersInvestRiver) {
+            curInvest = parseInt(Math.round(+request.actions.river[i].amount * 100)) - playersInvestRiver[request.actions.river[i].position]
+        } else {curInvest = parseInt(Math.round(+request.actions.river[i].amount * 100))}
+        movesInvestArr.push(curInvest);
 
+        const position = request.actions.river[i].position;
+        const action = request.actions.river[i].action;
+        const pushHintMoveData = {
+            curInvest,
+            position,
+            action,
+        };
+
+        if (!_.isEqual(setup.movesCash.river[i], pushHintMoveData)) {      // no using cash
+            if (isCashSteelUseful) {        // if we used cash before this iteration
+                popMoves(setup.movesCash.preflop.length + setup.movesCash.flop.length + setup.movesCash.turn.length + 3 + i);
+            }
+            isCashSteelUseful = false;
+            PokerEngine.PushHintMove(setup.engineID, curInvest, position, action);
+            setup.movesCash.river.push(pushHintMoveData);
+        }
+        playersInvestRiver[request.actions.river[i].position] = parseInt(Math.round(+request.actions.river[i].amount * 100));
+    }
 
     return [setup.engineID, movesInvestArr];
 };
