@@ -34,7 +34,7 @@ const movesHandler = (request, bbSize, setup) => {
         return true;
     };
 
-    if (!isInitPlayersEqual) {
+    if (!isInitPlayersEqual()) {
         PokerEngine.ReleaseSetup(setup.engineID);
         setup.engineID = PokerEngine.InitSetup(bbSize);
         setup.resetCash();
@@ -64,15 +64,15 @@ const movesHandler = (request, bbSize, setup) => {
     }
 
     const popMoves = (nMove) => {
-        while(PokerEngine.GetLastMoveId(setup.engineID) >= nMove) {
-            PokerEngine.PopMove(setup.engineID);
-        }
+        // while(PokerEngine.GetLastMoveId(setup.engineID) >= nMove) {
+        //     PokerEngine.PopMove(setup.engineID);
+        // }
     };
 
     const movesInvestArr = [];
 
     //////////////////////////////////////// PREFLOP MOVES
-    let playersInvestPreflop = {};
+    const playersInvestPreflop = {};
     for (let i = 0; i < request.actions.preflop.length; i++) {
         let curInvest = 0;
         if (request.actions.preflop[i].position in playersInvestPreflop) {
@@ -121,11 +121,9 @@ const movesHandler = (request, bbSize, setup) => {
         }
     }
 
-    // console.log(`PushBoard3Move(${setup.engineID}, ${enumPoker.cardsName.indexOf(request.board.c1)}, ${enumPoker.cardsName.indexOf(request.board.c2)}, ${enumPoker.cardsName.indexOf(request.board.c3)})`);
-
 
     //////////////////////////////////////// FLOP MOVES
-    let playersInvestFlop = {};
+    const playersInvestFlop = {};
     for (let i = 0; i < request.actions.flop.length; i++) {
         let curInvest = 0;
         if (request.actions.flop[i].position in playersInvestFlop) {
@@ -155,18 +153,23 @@ const movesHandler = (request, bbSize, setup) => {
     }
 
 
-    //////////////////////////////////////// PUSH FLOP
+    //////////////////////////////////////// PUSH TURN
     if (!request.actions.turn) {
         return [setup.engineID, movesInvestArr];
     } else {
-        console.log('trying to push turn board');
-        const turnBoardTest = PokerEngine.PushBoardMove(setup.engineID, enumPoker.cardsName.indexOf(request.board.c4));
-        console.log(turnBoardTest);
+        if (request.board.c4 !== setup.movesCash.c4) {
+            if (isCashSteelUseful) {
+                popMoves(setup.movesCash.flop.length - 1);
+            }
+            isCashSteelUseful = false;
+            PokerEngine.PushBoard1Move(setup.engineID, enumPoker.cardsName.indexOf(request.board.c4));
+            setup.movesCash.c4 = request.board.c4;
+        }
     }
 
 
     //////////////////////////////////////// TURN MOVES
-    let playersInvestTurn = {};
+    const playersInvestTurn = {};
     for (let i = 0; i < request.actions.turn.length; i++) {
         let curInvest = 0;
         if (request.actions.flop[i].position in playersInvestTurn) {
@@ -178,43 +181,25 @@ const movesHandler = (request, bbSize, setup) => {
     }
 
 
-    // if (!request.actions.turn.length) {return setup.engineID}
-    // PokerEngine.PushBoardMove(setup.engineID, enumPoker.cardsName.indexOf(request.board.c4));
-    //
-    // for (let i = 0; i < request.actions.turn.length; i++) {
-    //     PokerEngine.PushHintMove(setup.engineID, parseInt(parseFloat(request.actions.turn[i].amount) * 100), request.actions.turn[i].position, i < 2 ? 0 : request.actions.turn[i].action);
-    // }
-    //
-    // if (!request.actions.river.length) {return setup.engineID}
-    // PokerEngine.PushBoardMove(setup.engineID, enumPoker.cardsName.indexOf(request.board.c5));
-    //
-    // for (let i = 0; i < request.actions.river.length; i++) {
-    //     PokerEngine.PushHintMove(setup.engineID, parseInt(parseFloat(request.actions.river[i].amount) * 100), request.actions.river[i].position, i < 2 ? 0 : request.actions.river[i].action);
-    // }
+
+    //////////////////////////////////////// PUSH RIVER
+    if (!request.actions.turn) {
+        return [setup.engineID, movesInvestArr];
+    } else {
+        if (request.board.c5 !== setup.movesCash.c5) {
+            if (isCashSteelUseful) {
+                popMoves(setup.movesCash.flop.length - 1);
+            }
+            isCashSteelUseful = false;
+            PokerEngine.PushBoard1Move(setup.engineID, enumPoker.cardsName.indexOf(request.board.c4));
+            setup.movesCash.c4 = request.board.c4;
+        }
+    }
+
+    //////////////////////////////////////// RIVER MOVES
+
 
     return [setup.engineID, movesInvestArr];
 };
-
-// let nengineID = PokerEngine.InitSetup(30);
-//
-// let adaptArr = [];
-// for (let i = 0; i < 50; i++) {
-//     adaptArr.push(0);
-// }
-//
-// PokerEngine.SetPlayer(nengineID, 480, 8, adaptArr); // linkki7  bb
-// PokerEngine.SetPlayer(nengineID, 1020, 0, adaptArr); // myrddin33 btn
-//
-// let move0 = PokerEngine.PushHintMove(nengineID, 15, 0, 0);
-// let move1 = PokerEngine.PushHintMove(nengineID, 30, 8, 0);
-// let move2 = PokerEngine.PushHintMove(nengineID, 45, 0, 2);
-// let move3 = PokerEngine.PushHintMove(nengineID, 30, 8, 3);
-// let board = PokerEngine.PushBoard3Move(nengineID, enumPoker.cardsName.indexOf("2h"), enumPoker.cardsName.indexOf("3h"), enumPoker.cardsName.indexOf("5h"));
-//
-// console.log(move0);
-// console.log(move1);
-// console.log(move2);
-// console.log(move3);
-// console.log(board);
 
 module.exports.movesHandler = movesHandler;
