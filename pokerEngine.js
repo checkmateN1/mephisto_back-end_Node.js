@@ -43,7 +43,7 @@ let PokerEngine = ffi.Library(path, {
     "GetHandsDict": [ref.types.void, [handRef]],
     "PushHintMove": [int, [int, int, int, int]],
     "PushBoard3Move": [int, [int, int, int, int]],
-    // "PushBoardMove": [int, [int]],
+    "PushBoard1Move": [int, [int, int]],
     "InitSetup": [int, [int]],
     "ReleaseSetup": [bool, [int]],
 });
@@ -74,6 +74,7 @@ module.exports = PokerEngine;
 // POKERENGINE_API bool PopMove(int nIDSetup);
 //
 // POKERENGINE_API bool GetHill(int nIDSetup, int nIDMove, float arrHill[1326]);
+// POKERENGINE_API int GetLastMoveId(int nIDSetup);   /// NEW
 
 // enum EMoves: char
 // {
