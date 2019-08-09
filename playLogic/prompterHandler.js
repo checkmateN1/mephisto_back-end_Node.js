@@ -89,7 +89,7 @@ class Move {
 }
 
 class Setup {
-    constructor(playFrame) {            // frame from recognition -> validator.dll ->
+    constructor(playFrame) {            // frame from recognition -> validator.dll -> playFrame
         this.initPlayers = [];
         this.positionMap = {};
         this.handNumber = 0;
