@@ -109,7 +109,7 @@ class PlaySetup {
         console.log('playFrame prompterHandler');
         console.log(playFrame);
         if (this.rejectHand && playFrame.handNumber === this.handNumber) {
-            return 'reject hand';
+            return REJECT_HAND;
         }
         if (playFrame.handNumber !== this.handNumber) {         // new hand
             this.handNumber = playFrame.handNumber;
@@ -121,7 +121,7 @@ class PlaySetup {
 
             if (playFrame.board.length !== 0) {           // reject new hand with board cards
                 this.rejectHand = true;
-                return 'reject hand';
+                return REJECT_HAND;
             }
             this.setInitPlayers(playFrame);
             this.setPositionsMap();
@@ -178,14 +178,11 @@ class PlaySetup {
             console.log('2 players!');
 
             playersWasActive.forEach(player => {
-                let iPlayer = new InitPlayer(
+                this.initPlayers[player.recognitionPosition] = new InitPlayer(
                     player.nickname,
                     player.curBalance + player.betAmount,
-                    enumPoker.positions.indexOf(player.isDealer ? 'BTN' : 'BB'));   // look up in telegram BB or SB
-
-                this.initPlayers[player.recognitionPosition] = iPlayer;
+                    enumPoker.positions.indexOf(player.isDealer ? 'BTN' : 'BB'));
             });
-            // console.log(this.initPlayers);
         } else if (playersWasActive.length === 3) {     // spins or other 3 max
             console.log('3 players!');
 
@@ -196,12 +193,10 @@ class PlaySetup {
                 }
             });
             playersWasActive.forEach(player => {
-                let iPlayer = new InitPlayer(
+                this.initPlayers[player.recognitionPosition] = new InitPlayer(
                     player.nickname,
                     player.curBalance + player.betAmount,
                     enumPoker.positions.indexOf(pXDealer[player.recognitionPosition]));
-
-                this.initPlayers[player.recognitionPosition] = iPlayer;
             });
         }
         console.log('this.initPlayers');
@@ -251,8 +246,9 @@ const getBBsize = (setupID, request) => {
     return bbSize;
 };
 
-const prompterListener = (setupID, request) => {
+const prompterListener = (setup, request) => {
     console.log('enter prompter listener');
+    request.client.emit('prompt', 'test prompt from promptHandler');
 };
 
 // old actions for example
