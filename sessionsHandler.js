@@ -22,12 +22,6 @@ const moves = require('./movesHandler');
 // all users sessions.. 1 token = 1 session
 const sessions = {};
 
-const tokens = Object.freeze({
-    'uidfksicnm730pdemg662oermfyf75jdf9djf': 'simulator',
-    'dfioulkdgdlb87jkj53pioifjlwlo8cvjksnj': 'cliker1',
-    '872k4j2k3mc8uvxoiaklsjfsdfudyjhm45nuu': 'cliker2',
-});
-
 const sessionTimeout = 120;
 const setupTimeout = 70;
 const timeoutStep = 5000;
@@ -35,10 +29,10 @@ const timeoutStep = 5000;
 // one specific user with many SessionSetups
 // setupID = one recognition table or simulator
 class Session {
-    constructor(setupID, bbSize) {
+    constructor(setupID) {
         this.setups = {};
         this.timeout = sessionTimeout;
-        this.setups[setupID] = new SessionSetup(PokerEngine.InitSetup(bbSize), bbSize);
+        this.setups[setupID] = new SessionSetup(-1);
         this.setups[setupID].timerToDestroy = setInterval(() => {
             this.setups[setupID].timeout--;
             if (this.setups[setupID].timeout < 0) {
@@ -74,7 +68,7 @@ const initCash = Object.freeze({
 
 // one specific table/simulator inside Session
 class SessionSetup {
-    constructor(engineID, bbSize) {
+    constructor(engineID) {
         this.engineID = engineID; // PokerEngine session number
         this.timeout = setupTimeout;
         this.movesCash = initCash;
@@ -99,7 +93,7 @@ class SessionSetup {
         }
         // last move hero simulation for prompter
         if (requestType === 'prompter') {
-            prompterHandler.prompterListener(this.engineID, request);
+            const handlerResponse = prompterHandler.prompterListener(this.engineID, request);
         }
     }
 
@@ -109,39 +103,20 @@ class SessionSetup {
 
 // calls every time when request comes to the server
 const sessionsListener = (token, setupID, request) => {
-    if (!(token in tokens)) {
-        console.log('unauthorized access');
-        return 'unauthorized access';
-    }
-
     const { requestType } = request.request;
-    let bbSize;
-
-    if (requestType !== 'prompter') {
-        bbSize = parseInt(Math.max(parseFloat(request.actions.preflop[0].amount), parseFloat(request.actions.preflop[1].amount)) * 100);
-    }
 
     if (token in sessions) {
         sessions[token].timeout = sessionTimeout;                              // reset timer to destroy session
         if (setupID in sessions[token].setups) {
-            sessions[token].setups[setupID].timeout = setupTimeout;           // reset timer to destroy setup
+            sessions[token].setups[setupID].timeout = setupTimeout;            // reset timer to destroy setup
             return sessions[token].setups[setupID].requestHandling(request);
         }
 
-        if (requestType === 'prompter') {
-            sessions[token].setups[setupID] = new SessionSetup(prompterHandler.getBBsize(setupID, request));
-            return sessions[token].setups[setupID].requestHandling(request);
-        }
-
-        sessions[token].setups[setupID] = new SessionSetup(PokerEngine.InitSetup(bbSize));
+        sessions[token].setups[setupID] = new SessionSetup(-1);
         return sessions[token].setups[setupID].requestHandling(request);
     }
 
-    if (requestType === 'prompter') {
-        sessions[token] = new Session(setupID, prompterHandler.getBBsize(setupID, request));
-    } else {
-        sessions[token] = new Session(setupID, bbSize);
-    }
+    sessions[token] = new Session(setupID);
 
     sessions[token].timerToDestroy = setInterval(() => {
         sessions[token].timeout--;

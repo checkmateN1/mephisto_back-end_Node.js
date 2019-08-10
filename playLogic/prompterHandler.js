@@ -88,15 +88,16 @@ class Move {
     }
 }
 
-class Setup {
+class PlaySetup {
     constructor(playFrame) {            // frame from recognition -> validator.dll -> playFrame
         this.initPlayers = [];
         this.positionMap = {};
-        this.handNumber = 0;
+        this.handNumber = -1;
         this.bbSize = [];           // chronology of bb sizes
         this.moves = [];
         this.playFrames = [];
         this.rejectHand = false;
+
         this.frameHandler(playFrame);
     }
     appendMove(moves) {
@@ -126,7 +127,6 @@ class Setup {
             this.setPositionsMap();
         }
         this.getMovesFromFrame(playFrame);
-
     };
 
     // let testPush = PokerEngine.PushHintMove(newSetupID, curInvest, request.actions.preflop[i].position, i < 2 ? 0 : request.actions.preflop[i].action);
@@ -300,7 +300,7 @@ let frame1 = new PlayFrame(12345, 35, playPlayers, [], true);
 // console.log(frame1);
 // console.log(enumPoker.positions[0]);
 
-//let testSetup = new Setup(frame1);
+//let testSetup = new PlaySetup(frame1);
 
 
 

@@ -10,9 +10,10 @@ ioClient.on('authorizationSuccess', () => {
 
     // config
     ioClient.emit('getConfig');
+    ioClient.emit('getCSS');
     const frame = {
-        id: 1,
-        frameInfo: 'frameTest',
+        id: 1,                      // table id
+        frameData: 'frameTest',
     };
 
     // test frames sending
@@ -37,6 +38,11 @@ ioClient.on('frameError', (data) => {
 ioClient.on('config', data => {
     console.info(data);
     ioClient.emit('getConfigSuccess');
+});
+
+ioClient.on('css', data => {
+    console.info(data);
+    ioClient.emit('getCSSSuccess');
 });
 
 ioClient.on('disconnect', () => {
