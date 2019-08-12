@@ -1,0 +1,35 @@
+{
+  "name": "mephisto_back-end_node",
+  "version": "1.0.0",
+  "description": "",
+  "main": "client.js",
+  "dependencies": {
+    "body-parser": "^1.18.3",
+    "express": "^4.16.4",
+    "ffi": "^2.3.0",
+    "fs": "^0.0.1-security",
+    "http": "^0.0.0",
+    "jsonwebtoken": "^8.5.1",
+    "lodash": "^4.17.15",
+    "moment": "^2.24.0",
+    "ref": "^1.3.5",
+    "ref-array": "^1.2.0",
+    "ref-struct": "^1.1.0",
+    "socket.io": "^2.2.0",
+    "socket.io-redis": "^5.2.0"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/checkmateN1/mephisto_back-end_Node.js.git"
+  },
+  "author": "Pushkar Yevhen",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/checkmateN1/mephisto_back-end_Node.js/issues"
+  },
+  "homepage": "https://github.com/checkmateN1/mephisto_back-end_Node.js#readme"
+}

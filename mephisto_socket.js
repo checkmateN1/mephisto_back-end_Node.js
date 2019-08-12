@@ -118,27 +118,3 @@ io.on('connection', client => {
         }
     });
 });
-
-
-// const sessionsHandler = require('./sessionsHandler');
-//
-// const oracledb = require('oracledb');
-// const bodyParser = require('body-parser');
-//
-// app.use(bodyParser.json());       // to support JSON-encoded bodies
-// app.use(express.json());       // to support JSON-encoded bodies
-//
-// app.use(function(req, res, next) {
-//     res.header("Access-Control-Allow-Origin", "*");
-//     res.header("Access-Control-Allow-Headers", "Content-Type, X-Requested-With");
-//     next();
-// });
-
-// app.listen(3001, "localhost", function(){
-//     console.log("Сервер ожидает подключения...");
-// });
-
-//console.log(testExpoFunc.sessionsListener('uidfksicnm730pdemg662oermfyf75jdf9djf', '123', 'yo!'));
-// app.listen(27990, "192.168.1.20", function(){
-//     console.log("Сервер ожидает подключения...");
-// });
