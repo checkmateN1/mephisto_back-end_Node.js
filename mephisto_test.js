@@ -344,11 +344,11 @@ WHERE rownum = 1 AND id in(select id_hand from ee_raw_showdowns) AND id in(selec
     //res.send(JSON.stringify(randomHand));
 });
 
-app.listen(3001, "localhost", function(){
-    console.log("Сервер ожидает подключения...");
-});
-
-//console.log(testExpoFunc.sessionsListener('uidfksicnm730pdemg662oermfyf75jdf9djf', '123', 'yo!'));
-// app.listen(27990, "192.168.1.20", function(){
+// app.listen(3001, "localhost", function(){
 //     console.log("Сервер ожидает подключения...");
 // });
+
+//console.log(testExpoFunc.sessionsListener('uidfksicnm730pdemg662oermfyf75jdf9djf', '123', 'yo!'));
+app.listen(27990, "192.168.1.20", function(){
+    console.log("Сервер ожидает подключения...");
+});

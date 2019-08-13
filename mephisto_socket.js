@@ -1,9 +1,10 @@
 // const io = require("socket.io");
-const io = require('socket.io')(3001);
+const server = require('http').createServer();
+const io = require('socket.io')(server);
 // const server = io.listen(3001);
 
 // const redis = require('socket.io-redis');
-// io.adapter(redis({ host: '192.168.1.20', port: 3001 }));
+// io.adapter(redis({ host: '192.168.1.20', port: 27990 }));
 
 const moment = require('moment');
 const fs = require('fs');
@@ -77,6 +78,13 @@ io.on('connection', client => {
                     console.log(data);
                     client.emit('frameSuccess', data.id);
 
+                    fs.appendFile("frames_log.txt",
+                        `got frame at ${moment().format('dddd, MMMM Do YYYY, h:mm:ss a')} \r\n
+                        ${JSON.stringify(data)} \r\n \r\n \r\n`,
+                        function(error){
+                        if(error) throw error; // если возникла ошибка
+                    });
+
                     const prompterData = {
                         request: {
                             requestType: 'prompter',
@@ -118,3 +126,11 @@ io.on('connection', client => {
         }
     });
 });
+
+server.listen(27990, "192.168.1.20", function(){
+    console.log("Сервер ожидает подключения...");
+});
+
+// server.listen(27990, 'localhost', function(){
+//     console.log("Сервер ожидает подключения...");
+// });
