@@ -78,7 +78,7 @@ io.on('connection', client => {
                     console.log(data);
                     client.emit('frameSuccess', data.id);
 
-                    fs.appendFile("frames_log.txt",
+                    fs.appendFileSync('frames_log.txt',
                         `got frame at ${moment().format('dddd, MMMM Do YYYY, h:mm:ss a')} \r\n
                         ${JSON.stringify(data)} \r\n \r\n \r\n`,
                         function(error){
@@ -127,10 +127,10 @@ io.on('connection', client => {
     });
 });
 
-server.listen(27990, "192.168.1.20", function(){
-    console.log("Сервер ожидает подключения...");
-});
-
-// server.listen(27990, 'localhost', function(){
+// server.listen(27990, '192.168.1.20', function(){
 //     console.log("Сервер ожидает подключения...");
 // });
+
+server.listen(27990, 'localhost', function(){
+    console.log("Сервер ожидает подключения...");
+});

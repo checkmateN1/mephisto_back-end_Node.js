@@ -1,6 +1,7 @@
 const io = require("socket.io-client");
 // const ioClient = io.connect("http://localhost:27990");
-const ioClient = io.connect("http://192.168.1.20:27990");
+// const ioClient = io.connect("http://192.168.1.20:27990");    
+const ioClient = io.connect("http://212.22.223.151:27990");
 
 const token = 'dfioulkdgdlb87jkj53pioifjlwlo8cvjksnj';
 
