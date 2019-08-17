@@ -75,12 +75,12 @@ io.on('connection', client => {
             client.on('frame', data => {
                 if (!_.isEmpty(data)) {
                     console.log(`got frame at ${moment().format('dddd, MMMM Do YYYY, h:mm:ss a')}`);
-                    console.log(data);
                     client.emit('frameSuccess', data.id);
+                    const frameData = JSON.parse(data);
 
                     fs.appendFileSync('frames_log.txt',
                         `got frame at ${moment().format('dddd, MMMM Do YYYY, h:mm:ss a')} \r\n
-                        ${JSON.stringify(data)} \r\n \r\n \r\n`,
+                        ${data} \r\n \r\n \r\n`,
                         function(error){
                         if(error) throw error; // если возникла ошибка
                     });
@@ -89,11 +89,11 @@ io.on('connection', client => {
                         request: {
                             requestType: 'prompter',
                         },
-                        data,
+                        data: frameData,
                         client,
                     };
 
-                    sessionsHandler.sessionsListener(token, data.id, prompterData);     // data.id == table id from recognition
+                    sessionsHandler.sessionsListener(token, frameData.id, prompterData);     // data.id == table id from recognition
                 } else {
                     client.emit('frameError', data);
                 }
@@ -127,10 +127,10 @@ io.on('connection', client => {
     });
 });
 
-// server.listen(27990, '192.168.1.20', function(){
-//     console.log("Сервер ожидает подключения...");
-// });
-
-server.listen(27990, 'localhost', function(){
+server.listen(27990, '192.168.1.20', function(){
     console.log("Сервер ожидает подключения...");
 });
+
+// server.listen(27990, 'localhost', function(){
+//     console.log("Сервер ожидает подключения...");
+// });

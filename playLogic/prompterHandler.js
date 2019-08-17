@@ -100,9 +100,6 @@ class PlaySetup {
 
         this.frameHandler(playFrame);
     }
-    appendMove(moves) {
-
-    }
 
     // PokerEngine.PushHintMove(setupID, invest, position, action);
     frameHandler(playFrame) {
@@ -126,7 +123,11 @@ class PlaySetup {
             this.setInitPlayers(playFrame);
             this.setPositionsMap();
         }
+
         this.getMovesFromFrame(playFrame);
+        if (this.rejectHand) {
+            return REJECT_HAND;
+        }
     };
 
     // let testPush = PokerEngine.PushHintMove(newSetupID, curInvest, request.actions.preflop[i].position, i < 2 ? 0 : request.actions.preflop[i].action);
@@ -135,25 +136,52 @@ class PlaySetup {
     // frame1 = new PlayFrame(12345, 35, playPlayers, [], true);
     // playPlayers[0] = new PlayPlayer('checkmateN1', 0, 715, 10, true, true,'');
     getMovesFromFrame(playFrame) {
-        if (this.initPlayers.length <= 2) {       // ha
-            if (this.moves.length === 0) {        // first frame
-                let BTNAmount = playFrame.playPlayers[this.positionEnumKeyMap[enumPoker.positions.indexOf('BTN')]].betAmount;
-                let BBAmount = playFrame.playPlayers[this.positionEnumKeyMap[enumPoker.positions.indexOf('BB')]].betAmount;
-                if (BBAmount > this.bbSize[this.bbSize.length - 1] * 3) {   // wrong BB recognition
-                    this.rejectHand = true;
-                    return true;
-                } else if (this.bbSize.length > 2){
-                    this.bbSize.shift();
-                }
-                this.bbSize.push(BBAmount);
+        if (this.moves.length === 0) {        // first frame
+            const BBAmount = playFrame.playPlayers[this.positionEnumKeyMap[enumPoker.positions.indexOf('BB')]].betAmount;
+            if (this.bbSize.length && BBAmount > this.bbSize[this.bbSize.length - 1] * 2.5) {   // wrong BB recognition or reraise
+                this.rejectHand = true;
+                return false;
+            } else if (this.bbSize.length > 2) {
+                this.bbSize.shift();
+            }
+            this.bbSize.push(BBAmount);
+            if (this.rejectHand) {
+                return false;
+            }
 
-                if (BTNAmount > BBAmount) {      // was raise
-                    const SBSize = BBAmount / 2;
-                    this.moves.push(new Move(SBSize, enumPoker.positions.indexOf('BTN'), 0));
-                    this.moves.push(new Move(BBAmount, enumPoker.positions.indexOf('BB'), 0));
+            const SBSize = BBAmount / 2;
+
+            if (this.initPlayers.length === 2) {        // ha
+                const BTNAmount = playFrame.playPlayers[this.positionEnumKeyMap[enumPoker.positions.indexOf('BTN')]].betAmount;
+
+                if (BTNAmount > BBAmount) {             // was raise
+                    this.moves.push(new Move(SBSize, enumPoker.positions.indexOf('BTN'), 0));       // post SB
+                    this.moves.push(new Move(BBAmount, enumPoker.positions.indexOf('BB'), 0));      // post BB
+                    this.moves.push(new Move(BTNAmount - SBSize, enumPoker.positions.indexOf('BTN'), enumPoker.actionsType.indexOf('raise')));
+                } else if (BTNAmount === BBAmount) {
+                    this.moves.push(new Move(SBSize, enumPoker.positions.indexOf('BTN'), 0));       // post SB
+                    this.moves.push(new Move(BBAmount, enumPoker.positions.indexOf('BB'), 0));      // post BB
+                    this.moves.push(new Move(SBSize, enumPoker.positions.indexOf('BTN'), enumPoker.actionsType.indexOf('call')));
+                } else {
+                    this.moves.push(new Move(BTNAmount, enumPoker.positions.indexOf('BTN'), 0));       // post SB
+                    this.moves.push(new Move(BBAmount, enumPoker.positions.indexOf('BB'), 0));      // post BB
+                }
+            } else {
+                const SBAmount = playFrame.playPlayers[this.positionEnumKeyMap[enumPoker.positions.indexOf('SB')]].betAmount;
+                const BTNAmount = playFrame.playPlayers[this.positionEnumKeyMap[enumPoker.positions.indexOf('BTN')]].betAmount;
+
+                if (SBAmount > BBAmount) {             // was raise
+                    this.moves.push(new Move(SBSize, enumPoker.positions.indexOf('SB'), 0));       // post SB
+                    this.moves.push(new Move(BBAmount, enumPoker.positions.indexOf('BB'), 0));      // post BB
+                    this.moves.push(new Move(BTNAmount, enumPoker.positions.indexOf('BTN'), enumPoker.actionsType.indexOf('raise')));
+                    this.moves.push(new Move(SBAmount - SBSize, enumPoker.positions.indexOf('SB'), enumPoker.actionsType.indexOf('raise')));
                 }
             }
         }
+
+        // not first frame
+
+
     }
 
     wasBet(street) {
@@ -199,7 +227,7 @@ class PlaySetup {
                     enumPoker.positions.indexOf(pXDealer[player.recognitionPosition]));
             });
         }
-        console.log('this.initPlayers');
+        console.log('setInitPlayers: this.initPlayers');
         console.log(this.initPlayers);
     }
 
@@ -211,8 +239,8 @@ class PlaySetup {
         console.log(this.positionEnumKeyMap);
     }
 
-    getFirstChairToMove(isPreflop) {
-
+    getFirstEnumPositionToMove(isPreflop) {
+        return isPreflop ? Math.max(0, (this.initPlayers.length - 3)) : (this.initPlayers.length === 2 ? 8 : 9);
     }
 
     movesOrder(numChairs, chairFrom, chairTo) {
@@ -232,7 +260,6 @@ class PlaySetup {
             })
         }
 
-
     }
 
     getEV() {
@@ -241,7 +268,7 @@ class PlaySetup {
 }
 
 const getBBsize = (setupID, request) => {
-    let bbSize = 50;
+    const bbSize = 50;
 
     return bbSize;
 };
@@ -377,7 +404,7 @@ class ActionString {
         this.player = newNickname;
     }
 
-};
+}
 
 // test ha old rawActionList for example
 rawActionList[0] = new ActionString(0, "checkmateN1", 7.25, 3, 0, 0.1, 0, false, false); // post BB  -30
@@ -387,7 +414,7 @@ rawActionList[3] = new ActionString(0, "joooe84", 4.75, 3, 1, 0.75, 8, false, fa
 
 // test ha
 // let initPlayers = [];
-let playPlayers = [];
+const playPlayers = [];
 
 // export const positions = ["BTN", "CO", "MP3", "MP2", "MP1", "UTG2", "UTG1", "UTG0", "BB", "SB"];
 playPlayers[0] = new PlayPlayer('checkmateN1', 0, 715, 10, true, true,'');
@@ -399,11 +426,11 @@ playPlayers[2] = new PlayPlayer('joooe84', 2, 475, 25, true, false,'AcAd');
 // playPlayers[1] = new PlayPlayer('joooe84', 0, 475, 25, true, false,'AcAd');
 // playPlayers[2] = new PlayPlayer('3DAction', 1, 475, 25, true, false,'');
 
-let frame1 = new PlayFrame(12345, 35, playPlayers, [], true);
+const frame1 = new PlayFrame(12345, 35, playPlayers, [], true);
 // console.log(frame1);
 // console.log(enumPoker.positions[0]);
 
-//let testSetup = new PlaySetup(frame1);
+const testSetup = new PlaySetup(frame1);
 
 
 

@@ -158,6 +158,7 @@ const multiplyStrategy = (request, arrayAllMovesStrategy, investArr) => {
 };
 
 const getAllHandsStrategy = (nIDSetup, nIDMove, request, investArr) => {
+    console.time("Time this");
     let allHandsStrategy = {
         allHands: []
     };
@@ -184,8 +185,10 @@ const getAllHandsStrategy = (nIDSetup, nIDMove, request, investArr) => {
         let el = handweight.get(handweightBuf, i * handweight.size);
         el.strategy = arrStrategies[i];
     }
+    console.timeEnd("Time this");
 
     PokerEngine.GetHill(nIDSetup, nIDMove, handweightBuf);
+    console.time("Time this2");
     for (let i = 0; i < allHandsCount; i++) {
         let el = handweight.get(handweightBuf, i * handweight.size);
         allHandsStrategy.allHands[i] = {
@@ -200,6 +203,7 @@ const getAllHandsStrategy = (nIDSetup, nIDMove, request, investArr) => {
             allHandsStrategy.allHands[i].moves[ss.invest] = {strategy: ss.probab};
         }
     }
+    console.timeEnd("Time this2");
     let maxInputWeight = 0;
     allHandsStrategy.allHands.forEach(el => {
         if (el.weight > maxInputWeight) maxInputWeight = el.weight;
