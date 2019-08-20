@@ -1,9 +1,10 @@
 // const io = require("socket.io");
-const io = require('socket.io')(3001);
+const server = require('http').createServer();
+const io = require('socket.io')(server);
 // const server = io.listen(3001);
 
 // const redis = require('socket.io-redis');
-// io.adapter(redis({ host: '192.168.1.20', port: 3001 }));
+// io.adapter(redis({ host: '192.168.1.20', port: 27990 }));
 
 const moment = require('moment');
 const fs = require('fs');
@@ -74,18 +75,25 @@ io.on('connection', client => {
             client.on('frame', data => {
                 if (!_.isEmpty(data)) {
                     console.log(`got frame at ${moment().format('dddd, MMMM Do YYYY, h:mm:ss a')}`);
-                    console.log(data);
                     client.emit('frameSuccess', data.id);
+                    const frameData = JSON.parse(data);
+
+                    fs.appendFileSync('frames_log.txt',
+                        `got frame at ${moment().format('dddd, MMMM Do YYYY, h:mm:ss a')} \r\n
+                        ${data} \r\n \r\n \r\n`,
+                        function(error){
+                        if(error) throw error; // если возникла ошибка
+                    });
 
                     const prompterData = {
                         request: {
                             requestType: 'prompter',
                         },
-                        data,
+                        data: frameData,
                         client,
                     };
 
-                    sessionsHandler.sessionsListener(token, data.id, prompterData);     // data.id == table id from recognition
+                    sessionsHandler.sessionsListener(token, frameData.id, prompterData);     // data.id == table id from recognition
                 } else {
                     client.emit('frameError', data);
                 }
@@ -119,26 +127,10 @@ io.on('connection', client => {
     });
 });
 
+server.listen(27990, '192.168.1.20', function(){
+    console.log("Сервер ожидает подключения...");
+});
 
-// const sessionsHandler = require('./sessionsHandler');
-//
-// const oracledb = require('oracledb');
-// const bodyParser = require('body-parser');
-//
-// app.use(bodyParser.json());       // to support JSON-encoded bodies
-// app.use(express.json());       // to support JSON-encoded bodies
-//
-// app.use(function(req, res, next) {
-//     res.header("Access-Control-Allow-Origin", "*");
-//     res.header("Access-Control-Allow-Headers", "Content-Type, X-Requested-With");
-//     next();
-// });
-
-// app.listen(3001, "localhost", function(){
-//     console.log("Сервер ожидает подключения...");
-// });
-
-//console.log(testExpoFunc.sessionsListener('uidfksicnm730pdemg662oermfyf75jdf9djf', '123', 'yo!'));
-// app.listen(27990, "192.168.1.20", function(){
+// server.listen(27990, 'localhost', function(){
 //     console.log("Сервер ожидает подключения...");
 // });

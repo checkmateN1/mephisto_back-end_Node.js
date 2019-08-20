@@ -4,3 +4,5 @@
 dll/
 
 node_modules/
+
+frames_log\.txt

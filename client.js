@@ -1,5 +1,7 @@
 const io = require("socket.io-client");
-const ioClient = io.connect("http://localhost:3001");
+// const ioClient = io.connect("http://localhost:27990");
+// const ioClient = io.connect("http://192.168.1.20:27990");
+const ioClient = io.connect("http://212.22.223.151:27990");
 
 const token = 'dfioulkdgdlb87jkj53pioifjlwlo8cvjksnj';
 
@@ -12,15 +14,12 @@ ioClient.on('authorizationSuccess', () => {
     ioClient.emit('getConfig');
     ioClient.emit('getCSS');
     const frame = {
-        id: 1,                      // table id
+        id: 1,                      // table id. 1,2,3...n
         frameData: 'frameTest',
     };
 
-    // test frames sending
-    // setInterval(() => {
-    //     ioClient.emit('frame', frame);
-    // }, 1000);
-    ioClient.emit('frame', frame);
+    // test 1 frame send
+    ioClient.emit('frame', JSON.stringify(frame));
 });
 
 ioClient.on('unauthorizedAccess', () => {

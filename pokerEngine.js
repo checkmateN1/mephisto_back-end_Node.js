@@ -35,9 +35,9 @@ var handweight = Struct({
 });
 let handweightRef = ref.refType(handweight);
 
-let path = './dll/PokerEngine.dll';
+const path = './dll/PokerEngine.dll';
 
-let PokerEngine = ffi.Library(path, {
+const PokerEngine = ffi.Library(path, {
     "SetPlayer" : [int, [int, int, int, FloatArray]],
     "GetHill": [bool, [int, int, handweightRef]],
     "GetHandsDict": [ref.types.void, [handRef]],

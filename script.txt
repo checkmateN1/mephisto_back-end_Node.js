@@ -1,0 +1,3 @@
+npm install forever -g
+
+forever start mephisto_socket.js
