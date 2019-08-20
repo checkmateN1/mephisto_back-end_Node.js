@@ -79,12 +79,34 @@ class PlayFrame {
     }
 }
 
+class ActionString {
+    constructor(street, player, balance, action, pot, amount, position, invest) {
+        this.street = street;
+        this.player = player;
+        this.balance = balance;
+        this.action = action;
+        this.pot = pot;
+        this.amount = amount;
+        this.position = position;
+        this.invest = invest;
+    }
+};
+
+const rawActionList = [];
+rawActionList[0] = new ActionString(0, "checkmateN1", 7.25, 3, 0, 0.1, 0); // post BB  -30
+rawActionList[1] = new ActionString(0, "joooe84", 5, 1, 0.1, 0.25, 8);       // bet 0.75 BTN   -55
+rawActionList[2] = new ActionString(0, "checkmateN1", 7.15, 2, 0.35, 0.75, 0);   // call BB
+rawActionList[3] = new ActionString(0, "joooe84", 4.75, 3, 1, 0.75, 8);       // bet 0.75 BTN   -55
+//
+
 // PokerEngine.PushHintMove(setupID, invest, position, action);
 class Move {
-    constructor(invest, enumPosition, action) {
+    constructor(invest, enumPosition, action, street, board) {
         this.invest = invest;
         this.enumPosition = enumPosition;
         this.action = action;
+        this.street = street;
+        this.board = board;
     }
 }
 
@@ -95,6 +117,7 @@ class PlaySetup {
         this.handNumber = -1;
         this.bbSize = [];           // chronology of bb sizes
         this.moves = [];
+        this.rawActionList = [];
         this.playFrames = [];
         this.rejectHand = false;
 
@@ -138,6 +161,7 @@ class PlaySetup {
     getMovesFromFrame(playFrame) {
         if (this.moves.length === 0) {        // first frame
             const BBAmount = playFrame.playPlayers[this.positionEnumKeyMap[enumPoker.positions.indexOf('BB')]].betAmount;
+
             if (this.bbSize.length && BBAmount > this.bbSize[this.bbSize.length - 1] * 2.5) {   // wrong BB recognition or reraise
                 this.rejectHand = true;
                 return false;
@@ -149,39 +173,34 @@ class PlaySetup {
                 return false;
             }
 
-            const SBSize = BBAmount / 2;
+            const SBSize = Math.floor(BBAmount / 2);
+            const BTNAmount = playFrame.playPlayers[this.positionEnumKeyMap[enumPoker.positions.indexOf('BTN')]].betAmount;
 
+            // posts
             if (this.initPlayers.length === 2) {        // ha
-                const BTNAmount = playFrame.playPlayers[this.positionEnumKeyMap[enumPoker.positions.indexOf('BTN')]].betAmount;
-
-                if (BTNAmount > BBAmount) {             // was raise
-                    this.moves.push(new Move(SBSize, enumPoker.positions.indexOf('BTN'), 0));       // post SB
-                    this.moves.push(new Move(BBAmount, enumPoker.positions.indexOf('BB'), 0));      // post BB
-                    this.moves.push(new Move(BTNAmount - SBSize, enumPoker.positions.indexOf('BTN'), enumPoker.actionsType.indexOf('raise')));
-                } else if (BTNAmount === BBAmount) {
-                    this.moves.push(new Move(SBSize, enumPoker.positions.indexOf('BTN'), 0));       // post SB
-                    this.moves.push(new Move(BBAmount, enumPoker.positions.indexOf('BB'), 0));      // post BB
-                    this.moves.push(new Move(SBSize, enumPoker.positions.indexOf('BTN'), enumPoker.actionsType.indexOf('call')));
-                } else {
-                    this.moves.push(new Move(BTNAmount, enumPoker.positions.indexOf('BTN'), 0));       // post SB
-                    this.moves.push(new Move(BBAmount, enumPoker.positions.indexOf('BB'), 0));      // post BB
-                }
+                this.moves.push(new Move(BTNAmount >= BBAmount ? SBSize : BTNAmount, enumPoker.positions.indexOf('BTN'), 0, 0));       // post SB
+                this.moves.push(new Move(BBAmount, enumPoker.positions.indexOf('BB'), 0, 0));      // post BB
             } else {
                 const SBAmount = playFrame.playPlayers[this.positionEnumKeyMap[enumPoker.positions.indexOf('SB')]].betAmount;
-                const BTNAmount = playFrame.playPlayers[this.positionEnumKeyMap[enumPoker.positions.indexOf('BTN')]].betAmount;
 
-                if (SBAmount > BBAmount) {             // was raise
-                    this.moves.push(new Move(SBSize, enumPoker.positions.indexOf('SB'), 0));       // post SB
-                    this.moves.push(new Move(BBAmount, enumPoker.positions.indexOf('BB'), 0));      // post BB
-                    this.moves.push(new Move(BTNAmount, enumPoker.positions.indexOf('BTN'), enumPoker.actionsType.indexOf('raise')));
-                    this.moves.push(new Move(SBAmount - SBSize, enumPoker.positions.indexOf('SB'), enumPoker.actionsType.indexOf('raise')));
-                }
+                this.moves.push(new Move(SBAmount >= BBAmount ? SBSize : SBAmount, enumPoker.positions.indexOf('SB'), 0, 0));   // post SB
+                this.moves.push(new Move(BBAmount, enumPoker.positions.indexOf('BB'), 0, 0));      // post BB
             }
         }
 
         // not first frame
+        // от последнего запушенного мува не включительно, начинаем ходить по часовой стрелке
 
+        // this.moves.push(new Move(undefined, undefined, undefined, ['Ac']));      // push board
 
+        if (!this.moves[this.moves.length - 1].board) {     // not first frame at new postflop street
+
+            console.log('yo');
+        }
+    }
+
+    getPot() {
+        return this.moves.reduce((sum, current) => sum + current.invest, 0);
     }
 
     wasBet(street) {
@@ -248,8 +267,6 @@ class PlaySetup {
             console.log(ch%numChairs);
         }
     }
-
-
 
     // находим минимальную ставку оставшихся в игре и походивших от начала торгов на улице или предыдущего фрейма
     getMinSmartAmount(playFrame) {
