@@ -92,7 +92,7 @@ class ActionString {
     }
 };
 
-const rawActionList = [];
+let rawActionList = [];
 rawActionList[0] = new ActionString(0, "checkmateN1", 7.25, 3, 0, 0.1, 0); // post BB  -30
 rawActionList[1] = new ActionString(0, "joooe84", 5, 1, 0.1, 0.25, 8);       // bet 0.75 BTN   -55
 rawActionList[2] = new ActionString(0, "checkmateN1", 7.15, 2, 0.35, 0.75, 0);   // call BB
@@ -116,7 +116,6 @@ class PlaySetup {
         this.positionMap = {};
         this.handNumber = -1;
         this.bbSize = [];           // chronology of bb sizes
-        this.moves = [];
         this.rawActionList = [];
         this.playFrames = [];
         this.rejectHand = false;
@@ -135,7 +134,7 @@ class PlaySetup {
             this.handNumber = playFrame.handNumber;
             this.initPlayers = [];
             this.positionEnumKeyMap = {};
-            this.moves = [];
+            this.rawActionList = [];
             this.playFrames = [];
             this.rejectHand = false;
 
@@ -159,7 +158,7 @@ class PlaySetup {
     // frame1 = new PlayFrame(12345, 35, playPlayers, [], true);
     // playPlayers[0] = new PlayPlayer('checkmateN1', 0, 715, 10, true, true,'');
     getMovesFromFrame(playFrame) {
-        if (this.moves.length === 0) {        // first frame
+        if (this.rawActionList.length === 0) {        // first frame
             const BBAmount = playFrame.playPlayers[this.positionEnumKeyMap[enumPoker.positions.indexOf('BB')]].betAmount;
 
             if (this.bbSize.length && BBAmount > this.bbSize[this.bbSize.length - 1] * 2.5) {   // wrong BB recognition or reraise
@@ -177,30 +176,54 @@ class PlaySetup {
             const BTNAmount = playFrame.playPlayers[this.positionEnumKeyMap[enumPoker.positions.indexOf('BTN')]].betAmount;
 
             // posts
+            // constructor(street, player, balance, action, pot, amount, position, invest)
             if (this.initPlayers.length === 2) {        // ha
-                this.moves.push(new Move(BTNAmount >= BBAmount ? SBSize : BTNAmount, enumPoker.positions.indexOf('BTN'), 0, 0));       // post SB
-                this.moves.push(new Move(BBAmount, enumPoker.positions.indexOf('BB'), 0, 0));      // post BB
+                this.rawActionList.push(new ActionString(0,
+                    this.initPlayers[this.positionEnumKeyMap[enumPoker.positions.indexOf('BTN')]].player,
+                    this.initPlayers[this.positionEnumKeyMap[enumPoker.positions.indexOf('BTN')]].initBalance,
+                    0,
+                    0,
+                    BTNAmount >= BBAmount ? SBSize : BTNAmount,
+                    enumPoker.positions.indexOf('BTN'),
+                    BTNAmount >= BBAmount ? SBSize : BTNAmount, enumPoker.positions.indexOf('BTN')));       // post SB
+                this.rawActionList.push(new ActionString(BBAmount, enumPoker.positions.indexOf('BB'), 0, 0));      // post BB
+                this.rawActionList.push(new ActionString(0,
+                    this.initPlayers[this.positionEnumKeyMap[enumPoker.positions.indexOf('BB')]].player,
+                    this.initPlayers[this.positionEnumKeyMap[enumPoker.positions.indexOf('BB')]].initBalance,
+                    0,
+                    BTNAmount >= BBAmount ? SBSize : BTNAmount,
+                    BBAmount,
+                    enumPoker.positions.indexOf('BB'),
+                    BTNAmount >= BBAmount ? SBSize : BTNAmount, enumPoker.positions.indexOf('BTN')));      // post BB
             } else {
                 const SBAmount = playFrame.playPlayers[this.positionEnumKeyMap[enumPoker.positions.indexOf('SB')]].betAmount;
 
-                this.moves.push(new Move(SBAmount >= BBAmount ? SBSize : SBAmount, enumPoker.positions.indexOf('SB'), 0, 0));   // post SB
-                this.moves.push(new Move(BBAmount, enumPoker.positions.indexOf('BB'), 0, 0));      // post BB
+                this.rawActionList.push(new ActionString(SBAmount >= BBAmount ? SBSize : SBAmount, enumPoker.positions.indexOf('SB'), 0, 0));   // post SB
+                this.rawActionList.push(new ActionString(0,
+                    this.initPlayers[this.positionEnumKeyMap[enumPoker.positions.indexOf('BTN')]].player,
+                    this.initPlayers[this.positionEnumKeyMap[enumPoker.positions.indexOf('BTN')]].initBalance,
+                    0,
+                    0,
+                    BTNAmount >= BBAmount ? SBSize : BTNAmount,
+                    enumPoker.positions.indexOf('BTN'),
+                    BTNAmount >= BBAmount ? SBSize : BTNAmount, enumPoker.positions.indexOf('BTN')));   // post SB
+                this.rawActionList.push(new ActionString(BBAmount, enumPoker.positions.indexOf('BB'), 0, 0));      // post BB
             }
         }
 
         // not first frame
         // от последнего запушенного мува не включительно, начинаем ходить по часовой стрелке
 
-        // this.moves.push(new Move(undefined, undefined, undefined, ['Ac']));      // push board
+        // this.rawActionList.push(new ActionString(undefined, undefined, undefined, ['Ac']));      // push board
 
-        if (!this.moves[this.moves.length - 1].board) {     // not first frame at new postflop street
+        if (!this.rawActionList[this.rawActionList.length - 1].board) {     // not first frame at new postflop street
 
             console.log('yo');
         }
     }
 
     getPot() {
-        return this.moves.reduce((sum, current) => sum + current.invest, 0);
+        return this.rawActionList.reduce((sum, current) => sum + current.invest, 0);
     }
 
     wasBet(street) {
@@ -402,32 +425,12 @@ const prompterListener = (setup, request) => {
     request.client.emit('prompt', promptData);
 };
 
-// old actions for example
-const rawActionList = [];
-class ActionString {
-    constructor(street, player, balance, action, pot, amount, position, gto, isHero) {
-        this.street = street;
-        this.player = player;
-        this.balance = balance;
-        this.action = action;
-        this.pot = pot;
-        this.amount = amount;
-        this.position = position;
-        this.gto = gto;
-        this.isHero = isHero;
-    }
-
-    set setNickname(newNickname) {
-        this.player = newNickname;
-    }
-
-}
 
 // test ha old rawActionList for example
-rawActionList[0] = new ActionString(0, "checkmateN1", 7.25, 3, 0, 0.1, 0, false, false); // post BB  -30
-rawActionList[1] = new ActionString(0, "joooe84", 5, 1, 0.1, 0.25, 8, false, false);       // bet 0.75 BTN   -55
-rawActionList[2] = new ActionString(0, "checkmateN1", 7.15, 2, 0.35, 0.75, 0, false, false);   // call BB
-rawActionList[3] = new ActionString(0, "joooe84", 4.75, 3, 1, 0.75, 8, false, false);
+// rawActionList[0] = new ActionString(0, "checkmateN1", 7.25, 3, 0, 0.1, 0, false, false); // post BB  -30
+// rawActionList[1] = new ActionString(0, "joooe84", 5, 1, 0.1, 0.25, 8, false, false);       // bet 0.75 BTN   -55
+// rawActionList[2] = new ActionString(0, "checkmateN1", 7.15, 2, 0.35, 0.75, 0, false, false);   // call BB
+// rawActionList[3] = new ActionString(0, "joooe84", 4.75, 3, 1, 0.75, 8, false, false);
 
 // test ha
 // let initPlayers = [];
