@@ -178,47 +178,140 @@ class PlaySetup {
             // posts
             // constructor(street, player, balance, action, pot, amount, position, invest)
             if (this.initPlayers.length === 2) {        // ha
-                this.rawActionList.push(new ActionString(0,
+                this.rawActionList.push(new ActionString(
+                    0,
                     this.initPlayers[this.positionEnumKeyMap[enumPoker.positions.indexOf('BTN')]].player,
                     this.initPlayers[this.positionEnumKeyMap[enumPoker.positions.indexOf('BTN')]].initBalance,
                     0,
                     0,
                     BTNAmount >= BBAmount ? SBSize : BTNAmount,
                     enumPoker.positions.indexOf('BTN'),
-                    BTNAmount >= BBAmount ? SBSize : BTNAmount, enumPoker.positions.indexOf('BTN')));       // post SB
-                this.rawActionList.push(new ActionString(BBAmount, enumPoker.positions.indexOf('BB'), 0, 0));      // post BB
-                this.rawActionList.push(new ActionString(0,
+                    BTNAmount >= BBAmount ? SBSize : BTNAmount));       // post SB
+
+                this.rawActionList.push(new ActionString(
+                    0,
                     this.initPlayers[this.positionEnumKeyMap[enumPoker.positions.indexOf('BB')]].player,
                     this.initPlayers[this.positionEnumKeyMap[enumPoker.positions.indexOf('BB')]].initBalance,
                     0,
                     BTNAmount >= BBAmount ? SBSize : BTNAmount,
                     BBAmount,
                     enumPoker.positions.indexOf('BB'),
-                    BTNAmount >= BBAmount ? SBSize : BTNAmount, enumPoker.positions.indexOf('BTN')));      // post BB
+                    BBAmount));      // post BB
             } else {
                 const SBAmount = playFrame.playPlayers[this.positionEnumKeyMap[enumPoker.positions.indexOf('SB')]].betAmount;
 
                 this.rawActionList.push(new ActionString(SBAmount >= BBAmount ? SBSize : SBAmount, enumPoker.positions.indexOf('SB'), 0, 0));   // post SB
                 this.rawActionList.push(new ActionString(0,
-                    this.initPlayers[this.positionEnumKeyMap[enumPoker.positions.indexOf('BTN')]].player,
-                    this.initPlayers[this.positionEnumKeyMap[enumPoker.positions.indexOf('BTN')]].initBalance,
+                    this.initPlayers[this.positionEnumKeyMap[enumPoker.positions.indexOf('SB')]].player,
+                    this.initPlayers[this.positionEnumKeyMap[enumPoker.positions.indexOf('SB')]].initBalance,
                     0,
                     0,
-                    BTNAmount >= BBAmount ? SBSize : BTNAmount,
-                    enumPoker.positions.indexOf('BTN'),
-                    BTNAmount >= BBAmount ? SBSize : BTNAmount, enumPoker.positions.indexOf('BTN')));   // post SB
-                this.rawActionList.push(new ActionString(BBAmount, enumPoker.positions.indexOf('BB'), 0, 0));      // post BB
+                    SBAmount >= BBAmount ? SBSize : SBAmount,
+                    enumPoker.positions.indexOf('SB'),
+                    SBAmount >= BBAmount ? SBSize : SBAmount));   // post SB
+
+                this.rawActionList.push(new ActionString(
+                    0,
+                    this.initPlayers[this.positionEnumKeyMap[enumPoker.positions.indexOf('BB')]].player,
+                    this.initPlayers[this.positionEnumKeyMap[enumPoker.positions.indexOf('BB')]].initBalance,
+                    0,
+                    SBAmount >= BBAmount ? SBSize : SBAmount,
+                    BBAmount,
+                    enumPoker.positions.indexOf('BB'),
+                    BBAmount));      // post BB
             }
         }
 
         // not first frame
-        // от последнего запушенного мува не включительно, начинаем ходить по часовой стрелке
+        // от последнего запушенного мува не включительно, начинаем ходить по часовой стрелке до chairTo
+        // constructor(street, player, balance, action, pot, amount, position, invest)
+        if (!this.isTerminalStreetState()) {
+            
+        }
 
-        // this.rawActionList.push(new ActionString(undefined, undefined, undefined, ['Ac']));      // push board
+        console.log('this.isTerminalStreetState()');
+        console.log(this.isTerminalStreetState());
+    }
 
-        if (!this.rawActionList[this.rawActionList.length - 1].board) {     // not first frame at new postflop street
+    maxAmountAtCurrentStreet() {
+        const currentStreet = this.rawActionList[this.rawActionList.length - 1].street;
+        for (let i = this.rawActionList.length - 2; i > 0; i--) {
+            if (this.rawActionList[i].street === currentStreet) {
+                if (rawActionList[i].action < 3) {
+                    return +rawActionList[i].amount;
+                }
+            } else {
+                return 0;
+            }
+        }
+    }
 
-            console.log('yo');
+    whoIsInGame() {
+        const playersInGame = []; //добавляем всех у кого УМНЫЙ баланc больше нуля и кто не делал фолд
+        const blackList = [];
+        const allPlayers = [];
+        for (let i = this.rawActionList.length - 1; i >= 0; i--) { //добавляем всех кто сфолдил или баланс = 0
+            if (Math.abs(this.initPlayerBalance(this.rawActionList[i].position, this.rawActionList.length - 1) - this.rawActionList[i].amount) < 0.0001 || this.rawActionList[i].action === 5) {
+                blackList.push(this.rawActionList[i].position);
+            }
+        }
+
+        for (let i = this.rawActionList.length - 1; i >= 0; i--) { // добавляем всех игроков
+            if (allPlayers.indexOf(this.rawActionList[i].position) < 0) {
+                allPlayers.push(this.rawActionList[i].position);
+            }
+        }
+        for (let i = allPlayers.length - 1; i >= 0; i--) { // добавляем только тех кто остался
+            if (blackList.indexOf(allPlayers[i]) < 0) {
+                playersInGame.push(allPlayers[i]);
+            }
+        }
+        return playersInGame;
+    }
+
+    initPlayerBalance(position, oldActionListLength) {
+        let currentStreetForBalance;
+        let lastPlayerAmount;
+        let initBalance;
+        for (let i = oldActionListLength - 1; i > 0; i--) {
+            if (this.rawActionList[i].position === position) {
+                currentStreetForBalance = this.rawActionList[i].street;
+                lastPlayerAmount = this.rawActionList[i].amount;
+                initBalance = this.rawActionList[i].balance;
+                break;
+            }
+        }
+
+        for (let i = oldActionListLength - 1; i > 0; i--) {
+            if (this.rawActionList[i].position === position) {
+                if (this.rawActionList[i].street === currentStreetForBalance) {
+                    initBalance = this.rawActionList[i].balance;
+                } else {return initBalance;}
+            }
+        }
+        return initBalance; // если улица префлоп
+    }
+
+    isTerminalStreetState() {
+        const currentAmount = this.maxAmountAtCurrentStreet();
+        const nPlayers = this.whoIsInGame().slice();
+
+        if (nPlayers.length <= 1 && this.rawActionList[this.rawActionList.length - 1].action >= 3 && this.whoIsInGame() === this.rawActionList[this.rawActionList.length - 1].position) {
+            return true;
+        }
+
+        const currentStreet = this.rawActionList[this.rawActionList.length - 1].street;
+        if (this.rawActionList[this.rawActionList.length - 1].action < 3) {return false;}
+
+        for (let i = this.rawActionList.length - 1; i > 0; i--) {
+            if (nPlayers.indexOf(this.rawActionList[i].position) >= 0) { // если среди играющих есть такой игрок
+                if (this.rawActionList[i].amount === currentAmount && this.rawActionList[i].street === currentStreet) { // проверяем совпадает ли значение его ставки и улица
+                    nPlayers.splice(nPlayers.indexOf(this.rawActionList[i].position), 1); // удаляем игрока с совпавшей позицией
+                    if (nPlayers.length === 0) {
+                        return true;
+                    }
+                } else {return false;}
+            }
         }
     }
 
@@ -291,6 +384,14 @@ class PlaySetup {
         }
     }
 
+    movesOrderReverse(numChairs, chairFrom) {
+        for(let i = numChairs; i > 0; i--) {
+            console.log((chairFrom + i)%numChairs);
+            if (this.rawActionList) {
+
+            }
+        }
+    }
     // находим минимальную ставку оставшихся в игре и походивших от начала торгов на улице или предыдущего фрейма
     getMinSmartAmount(playFrame) {
         if (!this.playFrames.length) {          // first frame
