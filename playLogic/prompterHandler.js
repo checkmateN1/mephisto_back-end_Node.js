@@ -70,12 +70,13 @@ class PlayPlayer {
 }
 
 class PlayFrame {
-    constructor(handNumber, pot, playPlayers, board, isButtons) {
+    constructor(handNumber, pot, playPlayers, board, isButtons, heroRecPosition) {
         this.handNumber = handNumber;
         this.pot = pot;
         this.playPlayers = playPlayers;
-        this.board = board;
+        this.board = board;         // []
         this.isButtons = isButtons;
+        this.heroRecPosition = heroRecPosition;       // 2 for spin&go
     }
 }
 
@@ -92,31 +93,33 @@ class ActionString {
     }
 };
 
-let rawActionList = [];
-rawActionList[0] = new ActionString(0, "checkmateN1", 7.25, 3, 0, 0.1, 0); // post BB  -30
-rawActionList[1] = new ActionString(0, "joooe84", 5, 1, 0.1, 0.25, 8);       // bet 0.75 BTN   -55
-rawActionList[2] = new ActionString(0, "checkmateN1", 7.15, 2, 0.35, 0.75, 0);   // call BB
-rawActionList[3] = new ActionString(0, "joooe84", 4.75, 3, 1, 0.75, 8);       // bet 0.75 BTN   -55
-//
+// let rawActionList = [];
+// rawActionList[0] = new ActionString(0, "checkmateN1", 7.25, 3, 0, 0.1, 0);
+// rawActionList[1] = new ActionString(0, "joooe84", 5, 1, 0.1, 0.25, 8);
+// rawActionList[2] = new ActionString(0, "checkmateN1", 7.15, 2, 0.35, 0.75, 0);
+// rawActionList[3] = new ActionString(0, "joooe84", 4.75, 3, 1, 0.75, 8);
+// //
 
 // PokerEngine.PushHintMove(setupID, invest, position, action);
-class Move {
-    constructor(invest, enumPosition, action, street, board) {
-        this.invest = invest;
-        this.enumPosition = enumPosition;
-        this.action = action;
-        this.street = street;
-        this.board = board;
-    }
-}
+// class Move {
+//     constructor(invest, enumPosition, action, street, board) {
+//         this.invest = invest;
+//         this.enumPosition = enumPosition;
+//         this.action = action;
+//         this.street = street;
+//         this.board = board;
+//     }
+// }
 
 class PlaySetup {
     constructor(playFrame) {            // frame from recognition -> validator.dll -> playFrame
-        this.initPlayers = [];
-        this.positionMap = {};
+        this.initPlayers = [];      // all players who was active in start. Index === recPosition, some indexes == undefined!
+        this.playersWasActive = [];   // all players who was active in start without empty chairs or waiting players
+        this.positionEnumKeyMap = {};
         this.handNumber = -1;
         this.bbSize = [];           // chronology of bb sizes
         this.rawActionList = [];
+        this.board = [];
         this.playFrames = [];
         this.rejectHand = false;
 
@@ -135,10 +138,12 @@ class PlaySetup {
             this.initPlayers = [];
             this.positionEnumKeyMap = {};
             this.rawActionList = [];
+            this.playersWasActive = [];
             this.playFrames = [];
+            this.board = [];
             this.rejectHand = false;
 
-            if (playFrame.board.length !== 0) {           // reject new hand with board cards
+            if (playFrame.board.length) {           // reject new hand with board cards
                 this.rejectHand = true;
                 return REJECT_HAND;
             }
@@ -177,7 +182,7 @@ class PlaySetup {
 
             // posts
             // constructor(street, player, balance, action, pot, amount, position, invest)
-            if (this.initPlayers.length === 2) {        // ha
+            if (this.playersWasActive.length === 2) {        // ha
                 this.rawActionList.push(new ActionString(
                     0,
                     this.initPlayers[this.positionEnumKeyMap[enumPoker.positions.indexOf('BTN')]].player,
@@ -200,8 +205,8 @@ class PlaySetup {
             } else {
                 const SBAmount = playFrame.playPlayers[this.positionEnumKeyMap[enumPoker.positions.indexOf('SB')]].betAmount;
 
-                this.rawActionList.push(new ActionString(SBAmount >= BBAmount ? SBSize : SBAmount, enumPoker.positions.indexOf('SB'), 0, 0));   // post SB
-                this.rawActionList.push(new ActionString(0,
+                this.rawActionList.push(new ActionString(
+                    0,
                     this.initPlayers[this.positionEnumKeyMap[enumPoker.positions.indexOf('SB')]].player,
                     this.initPlayers[this.positionEnumKeyMap[enumPoker.positions.indexOf('SB')]].initBalance,
                     0,
@@ -225,25 +230,66 @@ class PlaySetup {
         // not first frame
         // от последнего запушенного мува не включительно, начинаем ходить по часовой стрелке до chairTo
         // constructor(street, player, balance, action, pot, amount, position, invest)
-        if (!this.isTerminalStreetState()) {
-            
-        }
 
-        console.log('this.isTerminalStreetState()');
-        console.log(this.isTerminalStreetState());
+        const lastRecPosition = this.positionEnumKeyMap[this.rawActionList[this.rawActionList.length - 1].position];
+        let chairTo;
+
+        console.log('lastRecPosition');
+        console.log(lastRecPosition);
+        console.log('///////////////////////');
+
+        if (!this.isTerminalStreetState()) {        // еще нужно добавлять мувы на эту улицу
+            const curStreet = this.rawActionList[this.rawActionList.length - 1].street;
+
+            if (playFrame.board.length === this.board.length) {             // нету перехода улицы
+                console.log('no changing street');
+                if (playFrame.isButtons) {
+                    chairTo = playFrame.heroRecPosition;        // 2 for spin&go
+                    console.log(`see buttons - hero's turn`);
+                } else {
+                    this.getReversListOrder(this.initPlayers.length, lastRecPosition).forEach(chair => {
+                        console.log(`chair: ${chair}`);
+
+                        // проверяем изменилось ли состояние стула: сфолдил ли или поставил ли.
+                        // Сфолдил - ищем по всем улицам с конца был ли фолд до этого. Поставил ли - изменение состояния на текущей улице
+                        // в противном случае - стул НЕ чайрТу
+                        for (let i = this.rawActionList.length - 1; i >= 0; i--) {
+                            // console.log('i');
+                            // console.log(i);
+                            // console.log('///////////////////////');
+                            if (this.rawActionList[i].street === curStreet) {
+                                if (this.rawActionList[i].position === this.initPlayers[chair].enumPosition) {
+                                    // console.log('lastRecPosition');
+                                    // console.log(lastRecPosition);
+                                }
+                            } else {
+
+                            }
+                        }
+                    })
+                }
+
+            }
+
+        }
+    }
+
+    wasFoldBefore(playerRecPosition) {
+        return !!this.rawActionList.filter(action => this.initPlayers[playerRecPosition] === action.position && action.action === 5).length;
     }
 
     maxAmountAtCurrentStreet() {
         const currentStreet = this.rawActionList[this.rawActionList.length - 1].street;
         for (let i = this.rawActionList.length - 2; i > 0; i--) {
             if (this.rawActionList[i].street === currentStreet) {
-                if (rawActionList[i].action < 3) {
-                    return +rawActionList[i].amount;
+                if (this.rawActionList[i].action < 3) {
+                    return +this.rawActionList[i].amount;
                 }
             } else {
                 return 0;
             }
         }
+        return +this.rawActionList[1].amount;       // BB
     }
 
     whoIsInGame() {
@@ -328,34 +374,32 @@ class PlaySetup {
     }
 
     setInitPlayers(firstPlayFrame) {
-        const activePlayers = firstPlayFrame.playPlayers.filter(player => player.isActive).length;
-        const foldPlayers = firstPlayFrame.playPlayers.filter(player => !player.isActive && player.curBalance > 0.001).length;
-        const playersWasActive = firstPlayFrame.playPlayers.filter(player => (player.isActive || !player.isActive && player.curBalance > 0.001));
+        this.playersWasActive = firstPlayFrame.playPlayers.filter(player => (player.isActive || (!player.isActive && player.curBalance > 1)));
 
         const p0Dealer = ['BTN', 'SB', 'BB'];
         const p1Dealer = ['BB', 'BTN', 'SB'];
         const p2Dealer = ['SB', 'BB', 'BTN'];
         const pXD = [p0Dealer, p1Dealer, p2Dealer];
 
-        if (activePlayers === 2 && foldPlayers === 0) {    // ha
+        if (this.playersWasActive === 2) {    // ha
             console.log('2 players!');
 
-            playersWasActive.forEach(player => {
+            this.playersWasActive.forEach(player => {
                 this.initPlayers[player.recognitionPosition] = new InitPlayer(
                     player.nickname,
                     player.curBalance + player.betAmount,
                     enumPoker.positions.indexOf(player.isDealer ? 'BTN' : 'BB'));
             });
-        } else if (playersWasActive.length === 3) {     // spins or other 3 max
+        } else if (this.playersWasActive.length === 3) {     // spins or other 3 max
             console.log('3 players!');
 
             let pXDealer;
-            playersWasActive.forEach(player => {
+            this.playersWasActive.forEach(player => {
                 if (player.isDealer) {
                     pXDealer = pXD[player.recognitionPosition];
                 }
             });
-            playersWasActive.forEach(player => {
+            this.playersWasActive.forEach(player => {
                 this.initPlayers[player.recognitionPosition] = new InitPlayer(
                     player.nickname,
                     player.curBalance + player.betAmount,
@@ -367,15 +411,19 @@ class PlaySetup {
     }
 
     setPositionsMap() {
+        console.log('this.playersWasActive');
+        console.log(this.playersWasActive);
         this.initPlayers.forEach((initPlayer, index) => {
-            this.positionEnumKeyMap[initPlayer.enumPosition] = index;
+            if (initPlayer !== undefined) {
+                this.positionEnumKeyMap[initPlayer.enumPosition] = index;
+            }
         });
         console.log('this.positionEnumKeyMap');
         console.log(this.positionEnumKeyMap);
     }
 
     getFirstEnumPositionToMove(isPreflop) {
-        return isPreflop ? Math.max(0, (this.initPlayers.length - 3)) : (this.initPlayers.length === 2 ? 8 : 9);
+        return isPreflop ? Math.max(0, (this.playersWasActive.length - 3)) : (this.playersWasActive.length === 2 ? 8 : 9);
     }
 
     movesOrder(numChairs, chairFrom, chairTo) {
@@ -392,6 +440,15 @@ class PlaySetup {
             }
         }
     }
+
+    getReversListOrder(numChairs, chairFrom) {
+        const arr = [];
+        for(let i = numChairs; i > 0; i--) {
+            arr.push((chairFrom + i)%numChairs);
+        }
+        return arr;
+    }
+
     // находим минимальную ставку оставшихся в игре и походивших от начала торгов на улице или предыдущего фрейма
     getMinSmartAmount(playFrame) {
         if (!this.playFrames.length) {          // first frame
@@ -407,12 +464,6 @@ class PlaySetup {
 
     }
 }
-
-const getBBsize = (setupID, request) => {
-    const bbSize = 50;
-
-    return bbSize;
-};
 
 const prompterListener = (setup, request) => {
     console.log('enter prompter listener');
@@ -538,25 +589,17 @@ const prompterListener = (setup, request) => {
 const playPlayers = [];
 
 // export const positions = ["BTN", "CO", "MP3", "MP2", "MP1", "UTG2", "UTG1", "UTG0", "BB", "SB"];
+// !!!!!!! indexes of playPlayers === recognitionPosition !!!!!!!!
 playPlayers[0] = new PlayPlayer('checkmateN1', 0, 715, 10, true, true,'');
 playPlayers[1] = new PlayPlayer('3DAction', 1, 475, 25, true, false,'');
 playPlayers[2] = new PlayPlayer('joooe84', 2, 475, 25, true, false,'AcAd');
 
-
-// playPlayers[0] = new PlayPlayer('checkmateN1', 2, 715, 10, true, true,'');
-// playPlayers[1] = new PlayPlayer('joooe84', 0, 475, 25, true, false,'AcAd');
-// playPlayers[2] = new PlayPlayer('3DAction', 1, 475, 25, true, false,'');
-
-const frame1 = new PlayFrame(12345, 35, playPlayers, [], true);
-// console.log(frame1);
-// console.log(enumPoker.positions[0]);
+const frame1 = new PlayFrame(12345, 35, playPlayers, [], true, 2);
 
 const testSetup = new PlaySetup(frame1);
 
 
 
 module.exports.prompterListener = prompterListener;
-module.exports.getBBsize = getBBsize;
-
 
 
