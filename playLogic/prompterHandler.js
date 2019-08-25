@@ -232,7 +232,7 @@ class PlaySetup {
         // constructor(street, player, balance, action, pot, amount, position, invest)
 
         const lastRecPosition = this.positionEnumKeyMap[this.rawActionList[this.rawActionList.length - 1].position];
-        let chairTo;
+        let chairTo;        // стул до которого нам нужно идти в цикле по часовой стрелке, включительно - тот, который точно изменил состояние!
 
         console.log('lastRecPosition');
         console.log(lastRecPosition);
@@ -249,33 +249,48 @@ class PlaySetup {
                 } else {
                     this.getReversListOrder(this.initPlayers.length, lastRecPosition).forEach(chair => {
                         console.log(`chair: ${chair}`);
-
-                        // проверяем изменилось ли состояние стула: сфолдил ли или поставил ли.
-                        // Сфолдил - ищем по всем улицам с конца был ли фолд до этого. Поставил ли - изменение состояния на текущей улице
-                        // в противном случае - стул НЕ чайрТу
-                        for (let i = this.rawActionList.length - 1; i >= 0; i--) {
-                            // console.log('i');
-                            // console.log(i);
-                            // console.log('///////////////////////');
-                            if (this.rawActionList[i].street === curStreet) {
-                                if (this.rawActionList[i].position === this.initPlayers[chair].enumPosition) {
-                                    // console.log('lastRecPosition');
-                                    // console.log(lastRecPosition);
+                        // played
+                        if (chairTo !== undefined && this.initPlayers[chair] !== undefined) {
+                            if (!playFrame.playPlayers[chair].isActive) {
+                                // check on fold
+                                if (!this.wasFoldBefore(chair)) {     // folded in first time
+                                    chairTo = chair;
                                 }
                             } else {
-
+                                for (let i = this.rawActionList.length - 1; i >= 0; i--) { // кто сфолдил или баланс = 0
+                                    if (this.rawActionList[i].position === this.initPlayers[chair].enumPosition) {
+                                        if (this.rawActionList[i].balance - this.rawActionList[i].amount !== playFrame.playPlayers[chair].curBalance) {     // если не совпал баланс
+                                            chairTo = chair;
+                                            break;
+                                        }
+                                    }
+                                }
                             }
                         }
-                    })
+                    });
+                    console.log(`don't see buttons. chairTo: ${chairTo}`);
                 }
 
+            } else {        // есть переход улицы
+                let potBefore = playFrame.playPlayers.reduce();
+                // возвращаем все амаунты в балансы игроков и смотрим предыдущую улицу - чтобы сошелся пот если все поколят до терминального состояния.
+                // Если не сойдется пот - значит вероятно первый следующий за запушенными мувами игрок зарейзил - тот у кого изменился баланс относительно
+                // баланса если бы все просто поколили макс ставку.
             }
 
+            if (chairTo !== undefined) {        // есть игрок с измененным состоянием
+                console.log(`запускаем movesOrder()`);
+            } else {
+                console.log(`players did't change their states`);
+            }
         }
     }
 
     wasFoldBefore(playerRecPosition) {
-        return !!this.rawActionList.filter(action => this.initPlayers[playerRecPosition] === action.position && action.action === 5).length;
+        // if (this.initPlayers[playerRecPosition] === undefined) {
+        //     return true;
+        // }
+        return !!this.rawActionList.filter(action => this.initPlayers[playerRecPosition].enumPosition === action.position && action.action === 5).length;
     }
 
     maxAmountAtCurrentStreet() {
@@ -297,7 +312,7 @@ class PlaySetup {
         const blackList = [];
         const allPlayers = [];
         for (let i = this.rawActionList.length - 1; i >= 0; i--) { //добавляем всех кто сфолдил или баланс = 0
-            if (Math.abs(this.initPlayerBalance(this.rawActionList[i].position, this.rawActionList.length - 1) - this.rawActionList[i].amount) < 0.0001 || this.rawActionList[i].action === 5) {
+            if (Math.abs(this.initPlayerBalance(this.rawActionList[i].position, this.rawActionList.length - 1) - this.rawActionList[i].amount) < 1 || this.rawActionList[i].action === 5) {
                 blackList.push(this.rawActionList[i].position);
             }
         }
@@ -315,11 +330,12 @@ class PlaySetup {
         return playersInGame;
     }
 
+    // инициальный баланс на текущей улице
     initPlayerBalance(position, oldActionListLength) {
         let currentStreetForBalance;
         let lastPlayerAmount;
         let initBalance;
-        for (let i = oldActionListLength - 1; i > 0; i--) {
+        for (let i = oldActionListLength - 1; i >= 0; i--) {
             if (this.rawActionList[i].position === position) {
                 currentStreetForBalance = this.rawActionList[i].street;
                 lastPlayerAmount = this.rawActionList[i].amount;
@@ -328,7 +344,7 @@ class PlaySetup {
             }
         }
 
-        for (let i = oldActionListLength - 1; i > 0; i--) {
+        for (let i = oldActionListLength - 1; i >= 0; i--) {
             if (this.rawActionList[i].position === position) {
                 if (this.rawActionList[i].street === currentStreetForBalance) {
                     initBalance = this.rawActionList[i].balance;
@@ -590,11 +606,11 @@ const playPlayers = [];
 
 // export const positions = ["BTN", "CO", "MP3", "MP2", "MP1", "UTG2", "UTG1", "UTG0", "BB", "SB"];
 // !!!!!!! indexes of playPlayers === recognitionPosition !!!!!!!!
-playPlayers[0] = new PlayPlayer('checkmateN1', 0, 715, 10, true, true,'');
+playPlayers[0] = new PlayPlayer('checkmateN1', 0, 715, 10, true, false,'');
 playPlayers[1] = new PlayPlayer('3DAction', 1, 475, 25, true, false,'');
-playPlayers[2] = new PlayPlayer('joooe84', 2, 475, 25, true, false,'AcAd');
+playPlayers[2] = new PlayPlayer('joooe84', 2, 475, 25, true, true,'AcAd');
 
-const frame1 = new PlayFrame(12345, 35, playPlayers, [], true, 2);
+const frame1 = new PlayFrame(12345, 60, playPlayers, [], true, 2);
 
 const testSetup = new PlaySetup(frame1);
 
