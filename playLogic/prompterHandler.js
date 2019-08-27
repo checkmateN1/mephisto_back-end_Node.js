@@ -128,8 +128,8 @@ class PlaySetup {
 
     // PokerEngine.PushHintMove(setupID, invest, position, action);
     frameHandler(playFrame) {
-        console.log('playFrame prompterHandler');
-        console.log(playFrame);
+        // console.log('playFrame prompterHandler');
+        // console.log(playFrame);
         if (this.rejectHand && playFrame.handNumber === this.handNumber) {
             return REJECT_HAND;
         }
@@ -149,6 +149,12 @@ class PlaySetup {
             }
             this.setInitPlayers(playFrame);
             this.setPositionsMap();
+            if (this.rejectHand) {
+                return REJECT_HAND;     // something wrong with first frame
+            }
+        }
+        if (this.rejectHand) {
+            return REJECT_HAND;
         }
 
         this.getMovesFromFrame(playFrame);
@@ -238,22 +244,40 @@ class PlaySetup {
         console.log(lastRecPosition);
         console.log('///////////////////////');
 
-        if (!this.isTerminalStreetState()) {        // еще нужно добавлять мувы на эту улицу
+        if (!this.isTerminalStreetState()) {        // еще нужно добавлять мувы на эту улицу + на этой улице есть какие-то мувы
             const curStreet = this.rawActionList[this.rawActionList.length - 1].street;
+
+            // если количество запушенных мувов на этой улице больше 0 - делаем то, что делали..
+            // если === 0, то выставляем lastRecPosition = getFirstEnumPositionToMove, и стандартно
+            // если не 0 И ход хиро ИЛИ вырос пот по сравнению с запушенными
+            // определяем чайрТу
 
             if (playFrame.board.length === this.board.length) {             // нету перехода улицы
                 console.log('no changing street');
-                if (playFrame.isButtons) {
-                    chairTo = playFrame.heroRecPosition;        // 2 for spin&go
-                    console.log(`see buttons - hero's turn`);
-                } else {
-                    this.getReversListOrder(this.initPlayers.length, lastRecPosition).forEach(chair => {
-                        console.log(`chair: ${chair}`);
-                        // played
-                        if (chairTo !== undefined && this.initPlayers[chair] !== undefined) {
-                            if (!playFrame.playPlayers[chair].isActive) {
-                                // check on fold
-                                if (!this.wasFoldBefore(chair)) {     // folded in first time
+                // if (playFrame.isButtons) {
+                //     chairTo = this.getRecPositionBefore(this.initPlayers.length, playFrame.heroRecPosition);        // 2 for spin&go
+                //     console.log(`see buttons - hero's turn. ChairTo: ${chairTo}`);
+                // } else {
+                //
+                // }
+                // const chairFromForReversList = playFrame.isButtons ? this.getRecPositionBefore(this.initPlayers.length, playFrame.heroRecPosition) : lastRecPosition;
+                this.getReversListOrder(this.initPlayers.length, lastRecPosition).forEach(chair => {
+                    console.log(`chair: ${chair}`);
+                    // played
+                    if (chairTo === undefined && this.initPlayers[chair] !== undefined) {
+                        console.log(`player with recPosition ${chair} played`);
+                        if (!playFrame.playPlayers[chair].isActive) {
+                            // check on fold
+                            if (!this.wasFoldBefore(chair)) {     // folded in first time
+                                chairTo = chair;
+                            }
+                        } else {
+                            console.log(`chair ${chair} check on wasAnyMove`);
+                            if (!this.wasAnyMoveBefore(chair)) {     // no moves before but steel isActive
+                                console.log(`chair ${chair} no moved before`);
+                                // вложил деньги
+                                if (playFrame.playPlayers[chair].betAmount > 0) {
+                                    console.log(`chair ${chair} invest money and he will be set as chairTo`);
                                     chairTo = chair;
                                 }
                             } else {
@@ -267,9 +291,9 @@ class PlaySetup {
                                 }
                             }
                         }
-                    });
-                    console.log(`don't see buttons. chairTo: ${chairTo}`);
-                }
+                    }
+                });
+                console.log(`chairTo: ${chairTo}`);
 
             } else {        // есть переход улицы
                 let potBefore = playFrame.playPlayers.reduce();
@@ -279,11 +303,30 @@ class PlaySetup {
             }
 
             if (chairTo !== undefined) {        // есть игрок с измененным состоянием
-                console.log(`запускаем movesOrder()`);
+                // запускаем цикл от последнего игрока в rawActionList до chairTo игрока и пытаемся вычислить какой тип мува и сколько вложил каждый игрок
+                this.movesOrder(this.initPlayers.length, lastRecPosition, chairTo).forEach(chair => {
+                    // если был бет на этой улице - записываем действие рейз.
+
+                });
             } else {
-                console.log(`players did't change their states`);
+                console.log(`players did't change their states. Waiting for next frame`);
+            }
+
+        } else {        // ждем борда или кнопок хиро или чайрТу, вложившего деньги
+            if (playFrame.board.length === this.board.length) {             // нету перехода улицы
+
+            } else {        // появилась новая карта борда и возможно мувы
+
             }
         }
+    }
+
+    getMovesCount(street) {
+        return this.rawActionList.filter(action => action.street === street).length;
+    }
+
+    wasAnyMoveBefore(playerRecPosition) {
+        return !!this.rawActionList.filter(action => this.initPlayers[playerRecPosition].enumPosition === action.position).length;
     }
 
     wasFoldBefore(playerRecPosition) {
@@ -397,6 +440,9 @@ class PlaySetup {
         const p2Dealer = ['SB', 'BB', 'BTN'];
         const pXD = [p0Dealer, p1Dealer, p2Dealer];
 
+        console.log('this.playersWasActive');
+        console.log(this.playersWasActive);
+
         if (this.playersWasActive === 2) {    // ha
             console.log('2 players!');
 
@@ -424,6 +470,9 @@ class PlaySetup {
         }
         console.log('setInitPlayers: this.initPlayers');
         console.log(this.initPlayers);
+        if (!this.initPlayers.length) {
+            this.rejectHand = true;
+        }
     }
 
     setPositionsMap() {
@@ -442,20 +491,26 @@ class PlaySetup {
         return isPreflop ? Math.max(0, (this.playersWasActive.length - 3)) : (this.playersWasActive.length === 2 ? 8 : 9);
     }
 
+    // movesOrder(numChairs, chairFrom, chairTo) {
+    //     for(let ch = chairFrom; ch%numChairs !== chairTo; ch++) {
+    //         console.log(ch%numChairs);
+    //     }
+    // }
+
     movesOrder(numChairs, chairFrom, chairTo) {
-        for(let ch = chairFrom; ch%numChairs !== chairTo; ch++) {
-            console.log(ch%numChairs);
-        }
-    }
-
-    movesOrderReverse(numChairs, chairFrom) {
-        for(let i = numChairs; i > 0; i--) {
-            console.log((chairFrom + i)%numChairs);
-            if (this.rawActionList) {
-
+        const arr = [];
+        for(let i = 1; i <= numChairs; i++) {
+            arr.push((chairFrom + i)%numChairs);
+            if ((chairFrom + i)%numChairs === chairTo) {
+                break;
             }
         }
+        return arr;
     }
+
+    // getRecPositionBefore(numChairs, chairFrom) {
+    //     return (chairFrom + numChairs - 1)%numChairs;
+    // }
 
     getReversListOrder(numChairs, chairFrom) {
         const arr = [];
