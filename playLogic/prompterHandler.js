@@ -237,30 +237,18 @@ class PlaySetup {
         // от последнего запушенного мува не включительно, начинаем ходить по часовой стрелке до chairTo
         // constructor(street, player, balance, action, pot, amount, position, invest)
 
-        const lastRecPosition = this.positionEnumKeyMap[this.rawActionList[this.rawActionList.length - 1].position];
         let chairTo;        // стул до которого нам нужно идти в цикле по часовой стрелке, включительно - тот, который точно изменил состояние!
 
-        console.log('lastRecPosition');
-        console.log(lastRecPosition);
-        console.log('///////////////////////');
-
-        if (!this.isTerminalStreetState()) {        // еще нужно добавлять мувы на эту улицу + на этой улице есть какие-то мувы
+        if (!this.isTerminalStreetState()) {        // еще нужно добавлять мувы на эту улицу + на этой улице есть какие-то мувы!
+            const lastRecPosition = this.positionEnumKeyMap[this.rawActionList[this.rawActionList.length - 1].position];
+            console.log('lastRecPosition');
+            console.log(lastRecPosition);
+            console.log('///////////////////////');
             const curStreet = this.rawActionList[this.rawActionList.length - 1].street;
-
-            // если количество запушенных мувов на этой улице больше 0 - делаем то, что делали..
-            // если === 0, то выставляем lastRecPosition = getFirstEnumPositionToMove, и стандартно
-            // если не 0 И ход хиро ИЛИ вырос пот по сравнению с запушенными
-            // определяем чайрТу
 
             if (playFrame.board.length === this.board.length) {             // нету перехода улицы
                 console.log('no changing street');
-                // if (playFrame.isButtons) {
-                //     chairTo = this.getRecPositionBefore(this.initPlayers.length, playFrame.heroRecPosition);        // 2 for spin&go
-                //     console.log(`see buttons - hero's turn. ChairTo: ${chairTo}`);
-                // } else {
-                //
-                // }
-                // const chairFromForReversList = playFrame.isButtons ? this.getRecPositionBefore(this.initPlayers.length, playFrame.heroRecPosition) : lastRecPosition;
+
                 this.getReversListOrder(this.initPlayers.length, lastRecPosition).forEach(chair => {
                     console.log(`chair: ${chair}`);
                     // played
@@ -273,7 +261,7 @@ class PlaySetup {
                             }
                         } else {
                             console.log(`chair ${chair} check on wasAnyMove`);
-                            if (!this.wasAnyMoveBefore(chair)) {     // no moves before but steel isActive
+                            if (!this.wasAnyMoveBeforeOnCurStreet(chair)) {     // no moves before but steel isActive
                                 console.log(`chair ${chair} no moved before`);
                                 // вложил деньги
                                 if (playFrame.playPlayers[chair].betAmount > 0) {
@@ -295,7 +283,7 @@ class PlaySetup {
                 });
                 console.log(`chairTo: ${chairTo}`);
 
-            } else {        // есть переход улицы
+            } else {        // !!! есть переход улицы и на предыдущей улице все еще нужно пушить мувы
                 let potBefore = playFrame.playPlayers.reduce();
                 // возвращаем все амаунты в балансы игроков и смотрим предыдущую улицу - чтобы сошелся пот если все поколят до терминального состояния.
                 // Если не сойдется пот - значит вероятно первый следующий за запушенными мувами игрок зарейзил - тот у кого изменился баланс относительно
@@ -304,16 +292,70 @@ class PlaySetup {
 
             if (chairTo !== undefined) {        // есть игрок с измененным состоянием
                 // запускаем цикл от последнего игрока в rawActionList до chairTo игрока и пытаемся вычислить какой тип мува и сколько вложил каждый игрок
+                // в этом состоянии всегда есть запушенные мувы(хотя бы 1) на этой улице, поэтому всегда есть lastRecPosition
                 this.movesOrder(this.initPlayers.length, lastRecPosition, chairTo).forEach(chair => {
-                    // если был бет на этой улице - записываем действие рейз.
-
+                    if (this.initPlayers[chair] !== undefined) {
+                        if (!playFrame.playPlayers[chair].isActive) {
+                            // check on fold
+                            if (!this.wasFoldBefore(chair)) {     // folded in first time
+                                this.rawActionList.push(new ActionString(
+                                    curStreet,
+                                    this.initPlayers[chair].player,
+                                    playFrame.playPlayers[chair].curBalance,
+                                    enumPoker.actionsType.indexOf('fold'),
+                                    this.rawActionList[this.rawActionList.length - 1].pot + this.rawActionList[this.rawActionList.length - 1].invest,
+                                    0,
+                                    this.initPlayers[chair].enumPosition,
+                                    0));
+                            }
+                        } else {
+                            // если был бет на этой улице - записываем агро действие рейз.
+                            const prevBetAmount = this.wasBet(this.rawActionList.length - 1);
+                            if (prevBetAmount) {    // was bet or raise
+                                const prevAmount = this.getPrevAmountOnCurStreet(chair);
+                                console.log(`chair ${chair} prevAmount: ${prevAmount}`);
+                                if (prevBetAmount < playFrame.playPlayers[chair].betAmount) {       // raise
+                                    this.rawActionList.push(new ActionString(
+                                        curStreet,
+                                        this.initPlayers[chair].player,
+                                        playFrame.playPlayers[chair].curBalance + playFrame.playPlayers[chair].betAmount - prevAmount,
+                                        enumPoker.actionsType.indexOf('raise'),
+                                        this.rawActionList[this.rawActionList.length - 1].pot + this.rawActionList[this.rawActionList.length - 1].invest,
+                                        playFrame.playPlayers[chair].betAmount,
+                                        this.initPlayers[chair].enumPosition,
+                                        playFrame.playPlayers[chair].betAmount - prevAmount));
+                                } else if (prevBetAmount === playFrame.playPlayers[chair].betAmount) {      // call
+                                    this.rawActionList.push(new ActionString(
+                                        curStreet,
+                                        this.initPlayers[chair].player,
+                                        playFrame.playPlayers[chair].curBalance + playFrame.playPlayers[chair].betAmount - prevAmount,
+                                        enumPoker.actionsType.indexOf('call'),
+                                        this.rawActionList[this.rawActionList.length - 1].pot + this.rawActionList[this.rawActionList.length - 1].invest,
+                                        playFrame.playPlayers[chair].betAmount,
+                                        this.initPlayers[chair].enumPosition,
+                                        playFrame.playPlayers[chair].betAmount - prevAmount));
+                                }
+                            } else {    // bet or check
+                                this.rawActionList.push(new ActionString(
+                                    curStreet,
+                                    this.initPlayers[chair].player,
+                                    playFrame.playPlayers[chair].curBalance + playFrame.playPlayers[chair].betAmount,
+                                    enumPoker.actionsType.indexOf(playFrame.playPlayers[chair].betAmount ? 'bet' : 'check'),
+                                    this.rawActionList[this.rawActionList.length - 1].pot + this.rawActionList[this.rawActionList.length - 1].invest,
+                                    playFrame.playPlayers[chair].betAmount,
+                                    this.initPlayers[chair].enumPosition,
+                                    playFrame.playPlayers[chair].betAmount));
+                            }
+                        }
+                    }
                 });
+                console.log(this.rawActionList);
             } else {
                 console.log(`players did't change their states. Waiting for next frame`);
             }
 
-        } else {        // ждем борда или кнопок хиро или чайрТу, вложившего деньги
-            if (playFrame.board.length === this.board.length) {             // нету перехода улицы
+        } else {        // !!терминальное состояние!! ждем борда или кнопок хиро или чайрТу, вложившего деньги
+            if (playFrame.board.length === this.board.length) {             // нету нового борда
 
             } else {        // появилась новая карта борда и возможно мувы
 
@@ -325,8 +367,26 @@ class PlaySetup {
         return this.rawActionList.filter(action => action.street === street).length;
     }
 
-    wasAnyMoveBefore(playerRecPosition) {
-        return !!this.rawActionList.filter(action => this.initPlayers[playerRecPosition].enumPosition === action.position).length;
+    wasAnyMoveBeforeOnCurStreet(playerRecPosition) {
+        const currentStreet = this.rawActionList[this.rawActionList.length - 1].street;
+        return !!this.rawActionList.filter(action => this.initPlayers[playerRecPosition].enumPosition === action.position && action.street === currentStreet).length;
+    }
+
+    getPrevAmountOnCurStreet(playerRecPosition) {
+        const currentStreet = this.rawActionList[this.rawActionList.length - 1].street;
+        for (let i = this.rawActionList.length - 1; i >= 0; i--) {
+            if (currentStreet === this.rawActionList[i].street) {
+                if (this.initPlayers[playerRecPosition].enumPosition === this.rawActionList[i].position) {
+                    console.log(this.rawActionList[i].amount);
+                }
+                if (this.initPlayers[playerRecPosition].enumPosition === this.rawActionList[i].position) {
+                    return this.rawActionList[i].amount;
+                }
+            } else {
+                return 0;
+            }
+        }
+        return 0;
     }
 
     wasFoldBefore(playerRecPosition) {
@@ -424,12 +484,17 @@ class PlaySetup {
         return this.rawActionList.reduce((sum, current) => sum + current.invest, 0);
     }
 
-    wasBet(street) {
-
-    }
-
-    wasRaise() {
-
+    wasBet(oldActionListLength) {
+        let currentStreet = this.rawActionList[oldActionListLength].street;
+        for (let i = oldActionListLength; i >= 0; i--) {
+            if (this.rawActionList[i].street === currentStreet) {
+                if (this.rawActionList[i].action < 3) {
+                    return this.rawActionList[i].amount;
+                }
+            } else {
+                return 0;
+            }
+        }
     }
 
     setInitPlayers(firstPlayFrame) {
@@ -658,6 +723,7 @@ const prompterListener = (setup, request) => {
 // test ha
 // let initPlayers = [];
 const playPlayers = [];
+const playPlayers2 = [];
 
 // export const positions = ["BTN", "CO", "MP3", "MP2", "MP1", "UTG2", "UTG1", "UTG0", "BB", "SB"];
 // !!!!!!! indexes of playPlayers === recognitionPosition !!!!!!!!
@@ -665,9 +731,15 @@ playPlayers[0] = new PlayPlayer('checkmateN1', 0, 715, 10, true, false,'');
 playPlayers[1] = new PlayPlayer('3DAction', 1, 475, 25, true, false,'');
 playPlayers[2] = new PlayPlayer('joooe84', 2, 475, 25, true, true,'AcAd');
 
-const frame1 = new PlayFrame(12345, 60, playPlayers, [], true, 2);
+playPlayers2[0] = new PlayPlayer('checkmateN1', 0, 625, 100, true, false,'');
+playPlayers2[1] = new PlayPlayer('3DAction', 1, 475, 25, true, false,'');
+playPlayers2[2] = new PlayPlayer('joooe84', 2, 475, 25, true, true,'AcAd');
 
-const testSetup = new PlaySetup(frame1);
+const frame1 = new PlayFrame(12345, 60, playPlayers, [], false, 2);
+const frame2 = new PlayFrame(12345, 150, playPlayers2, [], false, 2);
+
+const testSetup = new PlaySetup(frame1);    // first test frame
+testSetup.frameHandler(frame2);             // second test frame
 
 
 
