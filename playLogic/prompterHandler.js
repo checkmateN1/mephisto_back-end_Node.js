@@ -70,13 +70,14 @@ class PlayPlayer {
 }
 
 class PlayFrame {
-    constructor(handNumber, pot, playPlayers, board, isButtons, heroRecPosition) {
+    constructor(handNumber, pot, playPlayers, board, isButtons, heroRecPosition, testNumber) {
         this.handNumber = handNumber;
         this.pot = pot;
         this.playPlayers = playPlayers;
         this.board = board;         // []
         this.isButtons = isButtons;
         this.heroRecPosition = heroRecPosition;       // 2 for spin&go
+        this.testNumber = testNumber;
     }
 }
 
@@ -271,8 +272,10 @@ class PlaySetup {
                             } else {
                                 for (let i = this.rawActionList.length - 1; i >= 0; i--) { // кто сфолдил или баланс = 0
                                     if (this.rawActionList[i].position === this.initPlayers[chair].enumPosition) {
-                                        if (this.rawActionList[i].balance - this.rawActionList[i].amount !== playFrame.playPlayers[chair].curBalance) {     // если не совпал баланс
+                                        if (this.rawActionList[i].balance - this.rawActionList[i].invest !== playFrame.playPlayers[chair].curBalance) {     // если не совпал баланс
                                             chairTo = chair;
+                                            break;
+                                        } else {
                                             break;
                                         }
                                     }
@@ -284,10 +287,11 @@ class PlaySetup {
                 console.log(`chairTo: ${chairTo}`);
 
             } else {        // !!! есть переход улицы и на предыдущей улице все еще нужно пушить мувы
-                let potBefore = playFrame.playPlayers.reduce();
+                const potBefore = playFrame.playPlayers.reduce((sum, player) => sum - player.amount, playFrame.pot);  // пот в терминальном состоянии пред улицы
                 // возвращаем все амаунты в балансы игроков и смотрим предыдущую улицу - чтобы сошелся пот если все поколят до терминального состояния.
                 // Если не сойдется пот - значит вероятно первый следующий за запушенными мувами игрок зарейзил - тот у кого изменился баланс относительно
                 // баланса если бы все просто поколили макс ставку.
+                console.log(`New street and need to fill previous. New pot: ${playFrame.pot}.Pot before new street: ${potBefore}`);
             }
 
             if (chairTo !== undefined) {        // есть игрок с измененным состоянием
@@ -354,9 +358,12 @@ class PlaySetup {
                 console.log(`players did't change their states. Waiting for next frame`);
             }
 
-        } else {        // !!терминальное состояние!! ждем борда или кнопок хиро или чайрТу, вложившего деньги
-            if (playFrame.board.length === this.board.length) {             // нету нового борда
-
+        } else {        // !!терминальное состояние!! ждем борда или кнопок хиро или чайрТу, вложившего деньги, или распознаем шоудауны
+            console.log('!!!terminal state');
+            if (playFrame.board.length === 5 && this.rawActionList[this.rawActionList.length - 1].street === 3) {   // терминальное на ривере
+                // ждем и собираем шоудауны.. формируем историю руки с победами
+            } else if (playFrame.board.length === this.board.length) {             // нету нового борда
+                // waiting new bord card
             } else {        // появилась новая карта борда и возможно мувы
 
             }
@@ -556,7 +563,7 @@ class PlaySetup {
         return isPreflop ? Math.max(0, (this.playersWasActive.length - 3)) : (this.playersWasActive.length === 2 ? 8 : 9);
     }
 
-    // movesOrder(numChairs, chairFrom, chairTo) {
+    // movesOrderC(numChairs, chairFrom, chairTo) {
     //     for(let ch = chairFrom; ch%numChairs !== chairTo; ch++) {
     //         console.log(ch%numChairs);
     //     }
@@ -724,6 +731,8 @@ const prompterListener = (setup, request) => {
 // let initPlayers = [];
 const playPlayers = [];
 const playPlayers2 = [];
+const playPlayers3 = [];
+const playPlayers4 = [];
 
 // export const positions = ["BTN", "CO", "MP3", "MP2", "MP1", "UTG2", "UTG1", "UTG0", "BB", "SB"];
 // !!!!!!! indexes of playPlayers === recognitionPosition !!!!!!!!
@@ -735,11 +744,25 @@ playPlayers2[0] = new PlayPlayer('checkmateN1', 0, 625, 100, true, false,'');
 playPlayers2[1] = new PlayPlayer('3DAction', 1, 475, 25, true, false,'');
 playPlayers2[2] = new PlayPlayer('joooe84', 2, 475, 25, true, true,'AcAd');
 
-const frame1 = new PlayFrame(12345, 60, playPlayers, [], false, 2);
-const frame2 = new PlayFrame(12345, 150, playPlayers2, [], false, 2);
+playPlayers3[0] = new PlayPlayer('checkmateN1', 0, 625, 100, true, false,'');
+playPlayers3[1] = new PlayPlayer('3DAction', 1, 400, 100, true, false,'');
+playPlayers3[2] = new PlayPlayer('joooe84', 2, 475, 25, true, true,'AcAd');
+
+playPlayers4[0] = new PlayPlayer('checkmateN1', 0, 625, 100, true, false,'');
+playPlayers4[1] = new PlayPlayer('3DAction', 1, 400, 100, true, false,'');
+playPlayers4[2] = new PlayPlayer('joooe84', 2, 'fold', 25, false, true,'AcAd');
+
+const frame1 = new PlayFrame(12345, 60, playPlayers, [], false, 2, 1);
+const frame2 = new PlayFrame(12345, 150, playPlayers2, [], false, 2, 2);
+const frame3 = new PlayFrame(12345, 225, playPlayers3, [], false, 2, 3);
+const frame4 = new PlayFrame(12345, 225, playPlayers4, [], false, 2, 4);
+// const frame5 = new PlayFrame(12345, 225, playPlayers4, [], false, 2, 5);    // the same frame with 4
 
 const testSetup = new PlaySetup(frame1);    // first test frame
 testSetup.frameHandler(frame2);             // second test frame
+testSetup.frameHandler(frame3);             // third test frame
+testSetup.frameHandler(frame4);             // third test frame
+// testSetup.frameHandler(frame5);             // third test frame
 
 
 
