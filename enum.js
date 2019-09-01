@@ -5,7 +5,7 @@ const enumPoker = Object.freeze({
     adequatePositionsOrder6: ["SB", "BB", "MP2", "MP3", "CO", "BTN"],
     adequatePositionsOrder3: ["SB", "BB", "BTN"],
     adequateHaPreflopPositionsOrder: ["BTN", "SB"],
-    actionsType: [null, "bet", "raise", "call", "check", "fold"],
+    actionsType: ['post', "bet", "raise", "call", "check", "fold"],
     streets: ["preflop", "flop", "turn", "river"],
     allHandsCount: 1326,
 });

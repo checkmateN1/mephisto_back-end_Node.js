@@ -1,3 +1,5 @@
+const moment = require('moment');
+
 const enumPoker = require('../enum');
 
 const REJECT_HAND = 'reject hand';
@@ -121,8 +123,10 @@ class PlaySetup {
         this.bbSize = [];           // chronology of bb sizes
         this.rawActionList = [];
         this.board = [];
-        this.playFrames = [];
         this.rejectHand = false;
+        this.prevPlayFrame = null;
+        this.prevPlayFrameTime = null;
+        this.lastPromptMoveType = null; // используем для эвристики по поводу того, кто именно ставил, когда это не известно.
 
         this.frameHandler(playFrame);
     }
@@ -140,8 +144,9 @@ class PlaySetup {
             this.positionEnumKeyMap = {};
             this.rawActionList = [];
             this.playersWasActive = [];
-            this.playFrames = [];
             this.board = [];
+            this.prevPlayFrame = null;
+            this.prevPlayFrameTime = null;
             this.rejectHand = false;
 
             if (playFrame.board.length) {           // reject new hand with board cards
@@ -162,6 +167,8 @@ class PlaySetup {
         if (this.rejectHand) {
             return REJECT_HAND;
         }
+        this.prevPlayFrame = playFrame;
+        this.prevPlayFrameTime = moment().format('h:mm:ss');
     };
 
     // let testPush = PokerEngine.PushHintMove(newSetupID, curInvest, request.actions.preflop[i].position, i < 2 ? 0 : request.actions.preflop[i].action);
@@ -170,6 +177,7 @@ class PlaySetup {
     // frame1 = new PlayFrame(12345, 35, playPlayers, [], true);
     // playPlayers[0] = new PlayPlayer('checkmateN1', 0, 715, 10, true, true,'');
     getMovesFromFrame(playFrame) {
+        // first frame
         if (this.rawActionList.length === 0) {        // first frame
             const BBAmount = playFrame.playPlayers[this.positionEnumKeyMap[enumPoker.positions.indexOf('BB')]].betAmount;
 
@@ -233,11 +241,10 @@ class PlaySetup {
                     BBAmount));      // post BB
             }
         }
-
+        ///////////////////////////////////////////////////////
         // not first frame
         // от последнего запушенного мува не включительно, начинаем ходить по часовой стрелке до chairTo
         // constructor(street, player, balance, action, pot, amount, position, invest)
-
         let chairTo;        // стул до которого нам нужно идти в цикле по часовой стрелке, включительно - тот, который точно изменил состояние!
 
         if (!this.isTerminalStreetState()) {        // еще нужно добавлять мувы на эту улицу + на этой улице есть какие-то мувы!
@@ -287,11 +294,95 @@ class PlaySetup {
                 console.log(`chairTo: ${chairTo}`);
 
             } else {        // !!! есть переход улицы и на предыдущей улице все еще нужно пушить мувы
+
                 const potBefore = playFrame.playPlayers.reduce((sum, player) => sum - player.amount, playFrame.pot);  // пот в терминальном состоянии пред улицы
-                // возвращаем все амаунты в балансы игроков и смотрим предыдущую улицу - чтобы сошелся пот если все поколят до терминального состояния.
-                // Если не сойдется пот - значит вероятно первый следующий за запушенными мувами игрок зарейзил - тот у кого изменился баланс относительно
-                // баланса если бы все просто поколили макс ставку.
                 console.log(`New street and need to fill previous. New pot: ${playFrame.pot}.Pot before new street: ${potBefore}`);
+                const isClearAllBalances = playFrame.playPlayers.reduce((isNumber, player) => isNumber && !isNaN(player.curBalance), true);
+
+                // проверяем пот если все вколят макс ставку на пред улице на равенство с potBefore
+                // const maxAmount = this.maxAmountAtCurrentStreet();
+
+                // ходим по кругу от игрока с макс амаунтом и за всех колим умную разницу между амаунтом игрока и макс амаунтом
+                const chairWithMaxAmount = this.getRecChairWithMaxAmount();
+                const maxAmount = this.maxAmountAtCurrentStreet();
+                // const virtualCallPlayersBalances = [];
+                let potIfAllCallFold;
+
+                if (maxAmount) {  // was bet+
+                    const currentStreet = this.rawActionList[this.rawActionList.length - 1].street;
+                    potIfAllCallFold = this.movesOrder(this.initPlayers, chairWithMaxAmount, this.getRecPositionBefore()).reduce((pot, chair) => {
+                        if (this.initPlayers[chair] !== undefined) {
+                            for (let i = this.rawActionList.length - 1; i >= 0; i--) {
+                                if (currentStreet === this.rawActionList[i].street) {
+                                    if (this.initPlayers[chair].enumPosition === this.rawActionList[i].position) {
+                                        if (this.rawActionList[i].action === 5) {     // was fold and could't invest
+                                            return pot;
+                                        }
+
+                                // если не уменьшился баланс относительно запушенного И амаунт меньше макс амаунта И баланс > 0 - то игрок сфолдил здесь
+                                        if (this.rawActionList[i].balance + this.rawActionList[i].invest === playFrame.playPlayers[chair].curBalance
+                                            && this.rawActionList[i].amount < maxAmount
+                                            && this.rawActionList[i].balance > 0) {     // fold here
+                                            return pot;
+                                        }
+                                        const smartRestBalance = this.rawActionList[i].balance - this.rawActionList[i].invest;
+                                        const amountsDiff = maxAmount - this.rawActionList[i].amount;
+                                        // virtualCallPlayersBalances[chair] = this.rawActionList[i].balance - Math.min(smartRestBalance, amountsDiff);
+                                        return pot + Math.min(smartRestBalance, amountsDiff);
+                                    }
+                                } else {
+                                    return pot;
+                                }
+                            }
+                        } else {
+                            return pot;
+                        }
+                    }, this.rawActionList[this.rawActionList.length - 1].pot + this.rawActionList[this.rawActionList.length - 1].invest);
+                } else {        // was't bet+
+                    potIfAllCallFold = this.rawActionList[this.rawActionList.length - 1].pot;
+                }
+                console.log('potIfAllCallFold');
+                console.log(potIfAllCallFold);
+
+                if (potIfAllCallFold === potBefore) {
+                    // coздаем фрейм где все или чекают или колят или фолдят в зависимости от chairWithMaxAmount >= 0
+                } else if (potBefore > potIfAllCallFold) {  // было повышение
+                    // пытаемся предположить кто.. если не очевидно кто - отменяем раздачу
+                    if (this.prevPlayFrame.isButtons) {
+                        const now = moment().format('h:mm:ss');
+                        const ms = moment(now,'h:mm:ss').diff(moment(this.prevPlayFrameTime,'h:mm:ss'));
+                        if (ms < 3500) {    // предполагаем, что повышал хиро, а его оппоненты колили/фолдили
+                            // определяем размер повышения хиро относительно maxAmount
+                            if (!isNaN(playFrame.playPlayers[playFrame.heroRecPosition].curBalance)) {      // видим баланс
+                                // проверяем - максимальный ли амаунт был именно у хиро
+                                // const heroStartBalance =
+                                // const heroAmount = playFrame.playPlayers[playFrame.heroRecPosition].curBalance - ;
+                                // playFrame.playPlayers.reduce((sum, player) => sum - player.amount, playFrame.pot);
+
+                            }
+                        } else {
+                            // пытаемся определить по стеку - кто повышал, если у кого-то стек меньше чем амаунт необходимый для повышения
+                        }
+                    }
+                }
+
+                if (isClearAllBalances) {   // если все балансы цифры
+
+                };
+                // возвращаем амаунты плеерам в балансы если видим все балансы(а не надписи bet, call, check и тд)
+                //
+                // reject hand ЕСЛИ количество активных игроков в запушенных мувах более 2 И не совпал ни один баланс
+                // если видим надписи фолд и чек И все амаунты === 0,
+                // если видим текст мува в балансах - такой мув и будем пушить
+                // формируем промежуточный фрейм, где всем игрокам вернули амаунты с новой улицы в балансы и соответственно уменьшили пот.
+
+                //////////////////////////////////////////
+                // если игрок не активный в новом фрейме - определяем - уменьшился ли его баланс по сравнению с запушенными мувами(на предыдущей улице).
+                // если баланс уменьшился и его амаунт в последнем муве был строго меньше топ амаунта на этой улице - значит делаем его активным
+                // в промежуточном фрейме или наоборот.. так же в промежуточном фрейме isButtons = false
+
+                //////////////////////////////////////////
+                // запускаем промежуточный фрейм и текущий
             }
 
             if (chairTo !== undefined) {        // есть игрок с измененным состоянием
@@ -370,6 +461,10 @@ class PlaySetup {
         }
     }
 
+    isSomeOfTextMoves(balanceRecognition) {
+        return !!enumPoker.actionsType.filter(moveType => moveType === balanceRecognition.toLowerCase()).length;
+    }
+
     getMovesCount(street) {
         return this.rawActionList.filter(action => action.street === street).length;
     }
@@ -405,7 +500,7 @@ class PlaySetup {
 
     maxAmountAtCurrentStreet() {
         const currentStreet = this.rawActionList[this.rawActionList.length - 1].street;
-        for (let i = this.rawActionList.length - 2; i > 0; i--) {
+        for (let i = this.rawActionList.length - 1; i > 0; i--) {
             if (this.rawActionList[i].street === currentStreet) {
                 if (this.rawActionList[i].action < 3) {
                     return +this.rawActionList[i].amount;
@@ -415,6 +510,20 @@ class PlaySetup {
             }
         }
         return +this.rawActionList[1].amount;       // BB
+    }
+
+    getRecChairWithMaxAmount() {
+        const currentStreet = this.rawActionList[this.rawActionList.length - 1].street;
+        for (let i = this.rawActionList.length - 1; i > 0; i--) {
+            if (this.rawActionList[i].street === currentStreet) {
+                if (this.rawActionList[i].action < 3) {
+                    return this.positionEnumKeyMap[this.rawActionList[i].position];
+                }
+            } else {
+                return -1;
+            }
+        }
+        return this.positionEnumKeyMap[this.rawActionList[1].position];       // BB
     }
 
     whoIsInGame() {
@@ -441,21 +550,19 @@ class PlaySetup {
     }
 
     // инициальный баланс на текущей улице
-    initPlayerBalance(position, oldActionListLength) {
+    initPlayerBalance(enumPosition, oldActionListLength) {
         let currentStreetForBalance;
-        let lastPlayerAmount;
-        let initBalance;
+        let initBalance = this.initPlayers[this.positionEnumKeyMap[enumPosition]].initBalance; // start balance if it will not change
         for (let i = oldActionListLength - 1; i >= 0; i--) {
-            if (this.rawActionList[i].position === position) {
+            if (this.rawActionList[i].position === enumPosition) {
                 currentStreetForBalance = this.rawActionList[i].street;
-                lastPlayerAmount = this.rawActionList[i].amount;
                 initBalance = this.rawActionList[i].balance;
                 break;
             }
         }
 
         for (let i = oldActionListLength - 1; i >= 0; i--) {
-            if (this.rawActionList[i].position === position) {
+            if (this.rawActionList[i].position === enumPosition) {
                 if (this.rawActionList[i].street === currentStreetForBalance) {
                     initBalance = this.rawActionList[i].balance;
                 } else {return initBalance;}
@@ -580,9 +687,9 @@ class PlaySetup {
         return arr;
     }
 
-    // getRecPositionBefore(numChairs, chairFrom) {
-    //     return (chairFrom + numChairs - 1)%numChairs;
-    // }
+    getRecPositionBefore(numChairs, chairFrom) {
+        return (chairFrom + numChairs - 1)%numChairs;
+    }
 
     getReversListOrder(numChairs, chairFrom) {
         const arr = [];
@@ -758,11 +865,11 @@ const frame3 = new PlayFrame(12345, 225, playPlayers3, [], false, 2, 3);
 const frame4 = new PlayFrame(12345, 225, playPlayers4, [], false, 2, 4);
 // const frame5 = new PlayFrame(12345, 225, playPlayers4, [], false, 2, 5);    // the same frame with 4
 
-const testSetup = new PlaySetup(frame1);    // first test frame
-testSetup.frameHandler(frame2);             // second test frame
-testSetup.frameHandler(frame3);             // third test frame
-testSetup.frameHandler(frame4);             // third test frame
-// testSetup.frameHandler(frame5);             // third test frame
+const testSetup = new PlaySetup(frame1);
+testSetup.frameHandler(frame2);
+testSetup.frameHandler(frame3);
+testSetup.frameHandler(frame4);
+// testSetup.frameHandler(frame5);
 
 
 
