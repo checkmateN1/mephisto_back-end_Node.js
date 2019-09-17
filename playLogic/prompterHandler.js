@@ -94,7 +94,7 @@ class ActionString {
         this.position = position;
         this.invest = invest;
     }
-};
+}
 
 // let rawActionList = [];
 // rawActionList[0] = new ActionString(0, "checkmateN1", 7.25, 3, 0, 0.1, 0);
@@ -265,12 +265,12 @@ class PlaySetup {
                 const chairTo = this.getChairTo(playFrame, lastRecPosition);
                 console.log(`chairTo: ${chairTo}`);
 
-                if (chairTo !== undefined) {        // есть игрок с измененным состоянием + нету перехода улицы!
+                if (chairTo.chairTo !== undefined) {        // есть игрок с измененным состоянием + нету перехода улицы!
                     // запускаем цикл от последнего игрока в rawActionList до chairTo игрока и пытаемся вычислить какой тип мува и сколько вложил каждый игрок
                     // в этом состоянии всегда есть запушенные мувы(хотя бы 1) на этой улице, поэтому всегда есть lastRecPosition
                     let wasDeferredMove = false;        // был ли отложенный мув, такой как call-fold или check-raise
 
-                    this.movesOrder(this.initPlayers.length, lastRecPosition, chairTo).forEach(chair => {
+                    this.movesOrder(this.initPlayers.length, lastRecPosition, chairTo.chairTo).forEach(chair => {
                         if (this.initPlayers[chair] !== undefined) {
                             const prevBetAmount = this.wasBet(this.rawActionList.length - 1);   // also raise
                             const prevAmount = this.getPrevAmountOnCurStreet(chair);
@@ -297,12 +297,10 @@ class PlaySetup {
                                         isCallFold ? playFrame.playPlayers[chair].betAmount - prevAmount : 0));
                                 }
                             } else {        // steel in game
-                                const isDeferredRaise = this.isDeferredRaise(playFrame, prevBetAmount, chair, chairTo);
+                                const isDeferredRaise = this.isDeferredRaise(playFrame, prevBetAmount, chair, chairTo.chairTo);
                                 if (isDeferredRaise) {
                                     wasDeferredMove = true;
                                 }
-
-                                console.log(1);
 
                                 if (prevBetAmount) {    // was bet or raise
                                     if (prevBetAmount < playFrame.playPlayers[chair].betAmount) {       // raise or call-raise?
@@ -352,6 +350,8 @@ class PlaySetup {
                     });
 
                     if (wasDeferredMove) {      // был отложенный мув, который прошел через круг
+                        this.fantomRawActionsCount = 0;
+                        this.needToPrompt = false;
                         this.frameHandler(playFrame);        // запускаем еще раз фрейм, так как не все действия были добавлены при первом проходе
                     }
 
@@ -360,6 +360,7 @@ class PlaySetup {
                 }
 
             } else {        // !!! есть переход улицы и на предыдущей улице все еще нужно пушить мувы
+                console.log(`!!! есть переход улицы и на предыдущей улице все еще нужно пушить мувы`);
 
                 const potTerminal = playFrame.playPlayers.reduce((sum, player, index) => sum - player.betAmount, playFrame.pot);  // пот в терминальном состоянии пред улицы
                 console.log(`New street and need to fill previous. New pot: ${playFrame.pot}. Pot before new street: ${potTerminal}`);
@@ -367,7 +368,7 @@ class PlaySetup {
                 // проверяем пот если все вколят макс ставку на пред улице на равенство с potTerminal
 
                 // ходим по кругу от игрока с макс амаунтом и за всех колим/фолдим умную разницу между амаунтом игрока и макс амаунтом
-                const chairWithMaxAmount = this.getRecChairWithMaxAmount();
+                const chairWithMaxAmount = this.getRecAgroChairWithMaxAmount();
                 const maxAmount = this.maxAmountAtCurrentStreet();
                 const currentStreet = this.rawActionList[this.rawActionList.length - 1].street;
                 let potIfAllCallFold;
@@ -381,6 +382,9 @@ class PlaySetup {
                 if (potIfAllCallFold === potTerminal) {
                     console.log(`nobody raise again. Make to all call/fold actions`);
                     // угадали и уже запушили мувы в равАктионс
+                    this.fantomRawActionsCount = 0;
+                    this.needToPrompt = false;
+                    this.frameHandler(playFrame);
                 } else if (potTerminal > potIfAllCallFold) {  // был bet или рейз!
                     this.restoreRawAction();
                     // пытаемся предположить кто.. если не очевидно кто - отменяем подсказывания для этой раздачи
@@ -576,101 +580,124 @@ class PlaySetup {
                 // или игроки выставились. Ждем и собираем шоудауны.. формируем историю руки с победами.
             } else if (this.board.length < playFrame.board.length) {     // появилась новая карта борда и возможно мувы
                 console.log('new board card!');
-                this.setBoard(playFrame);
-                // запускаем Поиск чайрТу и пушим мувы по стандартной схеме
-                const firstChair = this.positionEnumKeyMap[this.getFirstEnumPositionToMove(false)];
-                const chairTo = this.getChairTo(playFrame, this.getRecPositionBefore(this.initPlayers.length, firstChair), true);
+                const isBoardOk = this.setBoard(playFrame);
 
-                if (chairTo !== undefined) {        // есть игрок с измененным состоянием + нету перехода улицы!
-                    // запускаем цикл от последнего игрока в rawActionList до chairTo игрока и пытаемся вычислить какой тип мува и сколько вложил каждый игрок
-                    // в этом состоянии всегда есть запушенные мувы(хотя бы 1) на этой улице, поэтому всегда есть lastRecPosition
-                    const curStreet = this.getStreetNumber();
-                    let wasDeferredMove = false;        // был ли отложенный мув, такой как call-fold или check-raise
+                if (isBoardOk) {
+                    // запускаем Поиск чайрТу и пушим мувы по стандартной схеме
+                    const firstChair = this.positionEnumKeyMap[this.getFirstEnumPositionToMove(false)];
+                    const chairTo = this.getChairTo(playFrame, this.getRecPositionBefore(this.initPlayers.length, firstChair), true);
 
-                    this.movesOrder(this.initPlayers.length, this.getRecPositionBefore(this.initPlayers.length, firstChair), chairTo).forEach((chair, index) => {
-                        if (this.initPlayers[chair] !== undefined) {
-                            const prevBetAmount = index === 0 ? 0 : this.wasBet(this.rawActionList.length - 1);   // also raise
-                            const prevAmount = index === 0 ? 0 : this.getPrevAmountOnCurStreet(chair);
-                            console.log(`chair ${chair} prevAmount: ${prevAmount}`);
+                    console.log(`new street and terminal state. Try to get chairTo: ${chairTo}`);
 
-                            if (!playFrame.playPlayers[chair].isActive) {
-                                // check on fold
-                                if (!this.wasFoldBefore(chair)) {     // folded in first time
-                                    // check on fold or call-fold
-                                    const playerAmount = this.initPlayerBalance(this.initPlayers[chair].enumPosition, curStreet) - playFrame.playPlayers[chair].curBalance;    // на случай если фишки уезжают при фолде
-                                    const isCallFold = prevBetAmount === playerAmount;     // call-fold!
-                                    if (isCallFold) {
-                                        wasDeferredMove = true;
+                    if (chairTo.chairTo !== undefined) {        // есть игрок с измененным состоянием + нету перехода улицы!
+                        // запускаем цикл от последнего игрока в rawActionList до chairTo игрока и пытаемся вычислить какой тип мува и сколько вложил каждый игрок
+                        // в этом состоянии всегда есть запушенные мувы(хотя бы 1) на этой улице, поэтому всегда есть lastRecPosition
+                        const curStreet = this.getStreetNumber();
+
+                        console.log(`chairTo.movedCount: ${chairTo.movedCount}`);
+
+                        if (chairTo.movedCount === 1) {
+
+                            this.rawActionList.push(new ActionString(
+                                curStreet,
+                                this.initPlayers[firstChair].player,
+                                playFrame.playPlayers[firstChair].curBalance + playFrame.playPlayers[firstChair].betAmount,
+                                enumPoker.actionsType.indexOf(playFrame.playPlayers[firstChair].betAmount ? 'bet' : 'check'),
+                                this.rawActionList[this.rawActionList.length - 1].pot + this.rawActionList[this.rawActionList.length - 1].invest,
+                                playFrame.playPlayers[firstChair].betAmount,
+                                this.initPlayers[firstChair].enumPosition,
+                                playFrame.playPlayers[firstChair].betAmount));
+
+                        } else {
+                            let wasDeferredMove = false;        // был ли отложенный мув, такой как call-fold или check-raise
+
+                            this.movesOrder(this.initPlayers.length, firstChair, chairTo.chairTo).forEach((chair, index) => {
+                                if (this.initPlayers[chair] !== undefined) {
+                                    const prevBetAmount = index === 0 ? 0 : this.wasBet(this.rawActionList.length - 1);   // also raise
+                                    const prevAmount = index === 0 ? 0 : this.getPrevAmountOnCurStreet(chair);
+                                    console.log(`chair ${chair} prevAmount: ${prevAmount}`);
+
+                                    if (!playFrame.playPlayers[chair].isActive) {
+                                        // check on fold
+                                        if (!this.wasFoldBefore(chair)) {     // folded in first time
+                                            // check on fold or call-fold
+                                            const playerAmount = this.initPlayerBalance(this.initPlayers[chair].enumPosition, curStreet) - playFrame.playPlayers[chair].curBalance;    // на случай если фишки уезжают при фолде
+                                            const isCallFold = prevBetAmount === playerAmount;     // call-fold!
+                                            if (isCallFold) {
+                                                wasDeferredMove = true;
+                                            }
+
+                                            this.rawActionList.push(new ActionString(
+                                                curStreet,
+                                                this.initPlayers[chair].player,
+                                                playFrame.playPlayers[chair].curBalance + (isCallFold ? prevBetAmount : playFrame.playPlayers[chair].betAmount) - prevAmount,
+                                                enumPoker.actionsType.indexOf(isCallFold ? (prevBetAmount ? 'call' : 'check') : 'fold'),
+                                                this.rawActionList[this.rawActionList.length - 1].pot + this.rawActionList[this.rawActionList.length - 1].invest,
+                                                playFrame.playPlayers[chair].betAmount,
+                                                this.initPlayers[chair].enumPosition,
+                                                isCallFold ? playFrame.playPlayers[chair].betAmount - prevAmount : 0));
+                                        }
+                                    } else {        // steel in game
+                                        const isDeferredRaise = this.isDeferredRaise(playFrame, prevBetAmount, chair, chairTo.chairTo);
+                                        if (isDeferredRaise) {
+                                            wasDeferredMove = true;
+                                        }
+
+                                        if (prevBetAmount) {    // was bet or raise
+                                            if (prevBetAmount < playFrame.playPlayers[chair].betAmount) {       // raise or call-raise?
+
+                                                this.rawActionList.push(new ActionString(
+                                                    curStreet,
+                                                    this.initPlayers[chair].player,
+                                                    playFrame.playPlayers[chair].curBalance + (isDeferredRaise ? prevBetAmount : playFrame.playPlayers[chair].betAmount) - prevAmount,
+                                                    enumPoker.actionsType.indexOf(isDeferredRaise ? 'call' : 'raise'),
+                                                    this.rawActionList[this.rawActionList.length - 1].pot + this.rawActionList[this.rawActionList.length - 1].invest,
+                                                    isDeferredRaise ? prevBetAmount : playFrame.playPlayers[chair].betAmount,
+                                                    this.initPlayers[chair].enumPosition,
+                                                    (isDeferredRaise ? prevBetAmount : playFrame.playPlayers[chair].betAmount) - prevAmount));
+
+                                            } else if (prevBetAmount === playFrame.playPlayers[chair].betAmount) {      // call
+                                                this.rawActionList.push(new ActionString(
+                                                    curStreet,
+                                                    this.initPlayers[chair].player,
+                                                    playFrame.playPlayers[chair].curBalance + playFrame.playPlayers[chair].betAmount - prevAmount,
+                                                    enumPoker.actionsType.indexOf('call'),
+                                                    this.rawActionList[this.rawActionList.length - 1].pot + this.rawActionList[this.rawActionList.length - 1].invest,
+                                                    playFrame.playPlayers[chair].betAmount,
+                                                    this.initPlayers[chair].enumPosition,
+                                                    playFrame.playPlayers[chair].betAmount - prevAmount));
+                                            }
+                                        } else {    // check or bet or check-raise?
+
+                                            this.rawActionList.push(new ActionString(
+                                                curStreet,
+                                                this.initPlayers[chair].player,
+                                                playFrame.playPlayers[chair].curBalance + playFrame.playPlayers[chair].betAmount,
+                                                enumPoker.actionsType.indexOf(playFrame.playPlayers[chair].betAmount && !isDeferredRaise ? 'bet' : 'check'),
+                                                this.rawActionList[this.rawActionList.length - 1].pot + this.rawActionList[this.rawActionList.length - 1].invest,
+                                                isDeferredRaise ? 0 : playFrame.playPlayers[chair].betAmount,
+                                                this.initPlayers[chair].enumPosition,
+                                                isDeferredRaise ? 0 : playFrame.playPlayers[chair].betAmount));
+                                        }
                                     }
-
-                                    this.rawActionList.push(new ActionString(
-                                        curStreet,
-                                        this.initPlayers[chair].player,
-                                        playFrame.playPlayers[chair].curBalance + (isCallFold ? prevBetAmount : playFrame.playPlayers[chair].betAmount) - prevAmount,
-                                        enumPoker.actionsType.indexOf(isCallFold ? (prevBetAmount ? 'call' : 'check') : 'fold'),
-                                        this.rawActionList[this.rawActionList.length - 1].pot + this.rawActionList[this.rawActionList.length - 1].invest,
-                                        playFrame.playPlayers[chair].betAmount,
-                                        this.initPlayers[chair].enumPosition,
-                                        isCallFold ? playFrame.playPlayers[chair].betAmount - prevAmount : 0));
                                 }
-                            } else {        // steel in game
-                                const isDeferredRaise = this.isDeferredRaise(playFrame, prevBetAmount, chair);
-                                if (isDeferredRaise) {
-                                    wasDeferredMove = true;
-                                }
+                            });
 
-                                if (prevBetAmount) {    // was bet or raise
-                                    if (prevBetAmount < playFrame.playPlayers[chair].betAmount) {       // raise or call-raise?
-
-                                        this.rawActionList.push(new ActionString(
-                                            curStreet,
-                                            this.initPlayers[chair].player,
-                                            playFrame.playPlayers[chair].curBalance + (isDeferredRaise ? prevBetAmount : playFrame.playPlayers[chair].betAmount) - prevAmount,
-                                            enumPoker.actionsType.indexOf(isDeferredRaise ? 'call' : 'raise'),
-                                            this.rawActionList[this.rawActionList.length - 1].pot + this.rawActionList[this.rawActionList.length - 1].invest,
-                                            isDeferredRaise ? prevBetAmount : playFrame.playPlayers[chair].betAmount,
-                                            this.initPlayers[chair].enumPosition,
-                                            (isDeferredRaise ? prevBetAmount : playFrame.playPlayers[chair].betAmount) - prevAmount));
-
-                                    } else if (prevBetAmount === playFrame.playPlayers[chair].betAmount) {      // call
-                                        this.rawActionList.push(new ActionString(
-                                            curStreet,
-                                            this.initPlayers[chair].player,
-                                            playFrame.playPlayers[chair].curBalance + playFrame.playPlayers[chair].betAmount - prevAmount,
-                                            enumPoker.actionsType.indexOf('call'),
-                                            this.rawActionList[this.rawActionList.length - 1].pot + this.rawActionList[this.rawActionList.length - 1].invest,
-                                            playFrame.playPlayers[chair].betAmount,
-                                            this.initPlayers[chair].enumPosition,
-                                            playFrame.playPlayers[chair].betAmount - prevAmount));
-                                    }
-                                } else {    // check or bet or check-raise?
-
-                                    this.rawActionList.push(new ActionString(
-                                        curStreet,
-                                        this.initPlayers[chair].player,
-                                        playFrame.playPlayers[chair].curBalance + playFrame.playPlayers[chair].betAmount,
-                                        enumPoker.actionsType.indexOf(playFrame.playPlayers[chair].betAmount && !isDeferredRaise ? 'bet' : 'check'),
-                                        this.rawActionList[this.rawActionList.length - 1].pot + this.rawActionList[this.rawActionList.length - 1].invest,
-                                        isDeferredRaise ? 0 : playFrame.playPlayers[chair].betAmount,
-                                        this.initPlayers[chair].enumPosition,
-                                        isDeferredRaise ? 0 : playFrame.playPlayers[chair].betAmount));
-                                }
+                            if (wasDeferredMove) {      // был отложенный мув, который прошел через круг
+                                this.fantomRawActionsCount = 0;
+                                this.needToPrompt = false;
+                                this.frameHandler(playFrame);        // запускаем еще раз фрейм, так как не все действия были добавлены при первом проходе
                             }
                         }
-                    });
-
-                    if (wasDeferredMove) {      // был отложенный мув, который прошел через круг
-                        this.needToPrompt = false;
-                        this.frameHandler(playFrame);        // запускаем еще раз фрейм, так как не все действия были добавлены при первом проходе
+                    } else {
+                        console.log(`players did't change their states. Waiting for next frame`);
                     }
-
-                } else {
-                    console.log(`players did't change their states. Waiting for next frame`);
                 }
             }
         }
 
         console.log(this.rawActionList);
+        console.log(this.board);
     }
 
     restoreRawAction() {
@@ -684,8 +711,10 @@ class PlaySetup {
         if (this.rawActionList[this.rawActionList.length - 1].street < playFrame.board.length) {
             if (playFrame.board.filter(card => card !== undefined).length === playFrame.board.length) {
                 this.board = playFrame.board;
+                return true;
             }
         }
+        return false;
     }
 
     isDeferredRaise(playFrame, prevMaxAmount, chair, chairTo) {
@@ -717,52 +746,47 @@ class PlaySetup {
                 for (let i = this.rawActionList.length - 1; i >= -1; i--) {
                     if (i > -1 && currentStreet === this.rawActionList[i].street) {
                         if (this.initPlayers[chair].enumPosition === this.rawActionList[i].position) {
-                            if (this.rawActionList[i].action === 5) {     // was fold and could't invest
+                            if (this.rawActionList[i].action === 5                                  // folded
+                            || this.rawActionList[i].balance - this.rawActionList[i].invest === 0   // player in all-in
+                            || this.rawActionList[i].amount === maxAmount ) {                       // called max amount
                                 return pot;
-                            }
+                            } else {
+                                // если не уменьшился баланс относительно запушенного И амаунт меньше макс амаунта И баланс > 0 - то игрок сфолдил здесь
+                                if (this.rawActionList[i].balance - this.rawActionList[i].invest === playFrame.playPlayers[chair].curBalance
+                                    && this.rawActionList[i].amount < maxAmount
+                                    && this.rawActionList[i].balance - this.rawActionList[i].invest > 0) {     // fold here
 
-                            if (playFrame.testNumber === 6) {
-                                console.log('getCallFoldPot joe');
-                                console.log(`chair: ${chair}`);
-                                console.log(this.rawActionList[i].balance - this.rawActionList[i].invest === playFrame.playPlayers[chair].curBalance
-                                && this.rawActionList[i].amount < maxAmount
-                                && this.rawActionList[i].balance - this.rawActionList[i].invest > 0);
-                            }
+                                    this.rawActionList.push(new ActionString(
+                                        currentStreet,
+                                        this.initPlayers[chair].player,
+                                        this.rawActionList[i].balance - this.rawActionList[i].invest,
+                                        enumPoker.actionsType.indexOf(maxAmount ? 'fold' : 'check'),
+                                        this.rawActionList[this.rawActionList.length - 1].pot + this.rawActionList[this.rawActionList.length - 1].invest,
+                                        0,
+                                        this.initPlayers[chair].enumPosition,
+                                        0));
 
-                            // если не уменьшился баланс относительно запушенного И амаунт меньше макс амаунта И баланс > 0 - то игрок сфолдил здесь
-                            if (this.rawActionList[i].balance - this.rawActionList[i].invest === playFrame.playPlayers[chair].curBalance
-                                && this.rawActionList[i].amount < maxAmount
-                                && this.rawActionList[i].balance - this.rawActionList[i].invest > 0) {     // fold here
+                                    this.fantomRawActionsCount++;
+                                    return pot;
+                                }
+
+                                const smartRestBalance = this.rawActionList[i].balance - this.rawActionList[i].invest;
+                                const amountsDiff = maxAmount - this.rawActionList[i].amount;
+                                const callAmount = Math.min(smartRestBalance, amountsDiff);
 
                                 this.rawActionList.push(new ActionString(
                                     currentStreet,
                                     this.initPlayers[chair].player,
-                                    this.rawActionList[i].balance - this.rawActionList[i].invest,
-                                    enumPoker.actionsType.indexOf(maxAmount ? 'fold' : 'check'),
+                                    smartRestBalance,
+                                    enumPoker.actionsType.indexOf(maxAmount ? 'call' : 'check'),
                                     this.rawActionList[this.rawActionList.length - 1].pot + this.rawActionList[this.rawActionList.length - 1].invest,
-                                    0,
+                                    this.rawActionList[i].amount + callAmount,
                                     this.initPlayers[chair].enumPosition,
-                                    0));
+                                    callAmount));
 
                                 this.fantomRawActionsCount++;
-                                return pot;
+                                return pot + callAmount;
                             }
-                            const smartRestBalance = this.rawActionList[i].balance - this.rawActionList[i].invest;
-                            const amountsDiff = maxAmount - this.rawActionList[i].amount;
-                            const callAmount = Math.min(smartRestBalance, amountsDiff);
-
-                            this.rawActionList.push(new ActionString(
-                                currentStreet,
-                                this.initPlayers[chair].player,
-                                smartRestBalance,
-                                enumPoker.actionsType.indexOf(maxAmount ? 'call' : 'check'),
-                                this.rawActionList[this.rawActionList.length - 1].pot + this.rawActionList[this.rawActionList.length - 1].invest,
-                                this.rawActionList[i].amount + callAmount,
-                                this.initPlayers[chair].enumPosition,
-                                callAmount));
-
-                            this.fantomRawActionsCount++;
-                            return pot + callAmount;
                         }
                     } else {    // не ходил на этой улице
                         if (!this.wasFoldBefore(chair)) {
@@ -810,8 +834,11 @@ class PlaySetup {
 
     getChairTo(playFrame, lastRecPosition, isTerminalState) {
         let chairTo;
-        this.getReversListOrder(this.initPlayers.length, lastRecPosition).forEach((chair, index) => {
-            console.log(`chair: ${chair}, index: ${index}`);
+
+        const movedCount = this.getReversListOrder(this.initPlayers.length, lastRecPosition).reduce((count, chair) => {
+            if (chairTo === undefined) {
+                count--;
+            }
             // played
             if (chairTo === undefined && this.initPlayers[chair] !== undefined) {
                 console.log(`player with recPosition ${chair} played`);
@@ -821,11 +848,9 @@ class PlaySetup {
                         chairTo = chair;
                     }
                 } else {
-                    console.log(`chair ${chair} check on wasAnyMove`);
                     if (isTerminalState || !this.wasAnyMoveBeforeOnCurStreet(chair)) {     // no moves before but steel isActive
-                        console.log(`chair ${chair} no moved before`);
                         // вложил деньги
-                        if (playFrame.playPlayers[chair].betAmount > 0) {
+                        if (playFrame.playPlayers[chair].betAmount) {
                             console.log(`chair ${chair} invest money and he will be set as chairTo`);
                             chairTo = chair;
                         }
@@ -843,9 +868,10 @@ class PlaySetup {
                     }
                 }
             }
-        });
+            return count;
+        }, this.initPlayers.length + 1);
 
-        return chairTo;
+        return {chairTo, movedCount};
     }
 
     isSomeOfTextMoves(balanceRecognition) {
@@ -898,7 +924,7 @@ class PlaySetup {
         return +this.rawActionList[1].amount;       // BB
     }
 
-    getRecChairWithMaxAmount() {
+    getRecAgroChairWithMaxAmount() {
         const currentStreet = this.rawActionList[this.rawActionList.length - 1].street;
         for (let i = this.rawActionList.length - 1; i > 0; i--) {
             if (this.rawActionList[i].street === currentStreet) {
@@ -1231,7 +1257,7 @@ const playPlayers = [];
 const playPlayers2 = [];
 const playPlayers3 = [];
 const playPlayers4 = [];
-const playPlayers5 = [];        //flop
+const playPlayers5 = [];        // flop
 
 // export const positions = ["BTN", "CO", "MP3", "MP2", "MP1", "UTG2", "UTG1", "UTG0", "BB", "SB"];
 // !!!!!!! indexes of playPlayers === recognitionPosition !!!!!!!!
@@ -1267,7 +1293,7 @@ const testSetup = new PlaySetup(frame1);
 testSetup.frameHandler(frame2);
 testSetup.frameHandler(frame3);
 testSetup.frameHandler(frame4);
-// testSetup.frameHandler(frame5);
+testSetup.frameHandler(frame5);
 testSetup.frameHandler(frame6);
 console.timeEnd('test time');
 
