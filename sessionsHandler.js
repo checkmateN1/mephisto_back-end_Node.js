@@ -93,7 +93,7 @@ class SessionSetup {
         }
         // last move hero simulation for prompter
         if (requestType === 'prompter') {
-            prompterHandler.prompterListener(this, request);
+            prompterHandler.prompterListener(this, request, heroChairReqPosition);
         }
     }
 
