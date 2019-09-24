@@ -4,6 +4,7 @@ const enumPoker = require('../enum');
 const moves = require('./prompterMovesHandler');
 
 const REJECT_HAND = 'reject hand';
+const PROMPT = 'prompt';
 
 class PlayersHandler {
     constructor() {
@@ -130,6 +131,7 @@ class PlaySetup {
         this.needToPrompt = true;
         this.fantomRawActionsCount = 0;
         this.lastPromptMoveType = null; // используем для эвристики по поводу того, кто именно ставил, когда это не известно.
+        this.isNewHand = true;
 
         this.frameHandler(playFrame);
     }
@@ -158,9 +160,6 @@ class PlaySetup {
             }
             this.setInitPlayers(playFrame);
             this.setPositionsMap();
-            if (this.rejectHand) {
-                return REJECT_HAND;     // something wrong with first frame
-            }
         }
         if (this.rejectHand) {
             return REJECT_HAND;
@@ -170,14 +169,13 @@ class PlaySetup {
         this.getMovesFromFrame(playFrame);
         if (this.rejectHand) {
             return REJECT_HAND;
-        } else {
-            this.prevPlayFrame = playFrame;
-            this.prevPlayFrameTime = moment().format('h:mm:ss');
+        }
 
-            if (this.needToPrompt && playFrame.isButtons) {
-                const request = {};
-                const handlerResponse = moves.prompterMovesHandler(this);
-            }
+        this.prevPlayFrame = playFrame;
+        this.prevPlayFrameTime = moment().format('h:mm:ss');
+
+        if (this.needToPrompt && playFrame.isButtons) {
+            return PROMPT;
         }
     };
 
@@ -198,9 +196,8 @@ class PlaySetup {
                 this.bbSize.shift();
             }
             this.bbSize.push(BBAmount);
-            if (this.rejectHand) {
-                return false;
-            }
+
+            this.isNewHand = true; // сетим на фолс ВНУТРИ мувсХендлер!(callback)
 
             const SBSize = Math.floor(BBAmount / 2);
             const BTNAmount = playFrame.playPlayers[this.positionEnumKeyMap[enumPoker.positions.indexOf('BTN')]].betAmount;
@@ -1146,7 +1143,7 @@ class PlaySetup {
 }
 
 // 1) из реквеста создаем полноценный фрейм
-// 2) в setup записываем setup.playSetup = new PlaySetup, и дальше всегда работаем с ним при поступлении реквестов.
+// 2) в setup записываем setup.playSetup = new PlaySetup(если его там не было), и дальше всегда работаем с ним при поступлении реквестов.
 const prompterListener = (setup, request) => {
     console.log('enter prompter listener');
     const prompt =
@@ -1256,7 +1253,25 @@ const prompterListener = (setup, request) => {
         id,
     };
 
+    // create playFrame
+
+    if (setup.playSetup === undefined) {
+        setup.playSetup = new PlaySetup(createPlayFrame());
+    } else {
+        setup.playSetup.frameHandler(createPlayFrame());
+    }
+
     request.client.emit('prompt', promptData);
+};
+
+const createPlayPlayers = (recognitionFrame) => {
+    return [] // playPlayers
+};
+
+const createPlayFrame = (recognitionFrame) => {
+    const playPlayers = createPlayPlayers(recognitionFrame);
+
+    return new PlayFrame(); // PlayFrame
 };
 
 
