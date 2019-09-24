@@ -18,6 +18,34 @@ const prompterHandler = require('./playLogic/prompterHandler');
 const middleware = require('./engineMiddleware_work');
 const moves = require('./movesHandler');
 
+class SimulationsQueue {
+    constructor() {
+        this.maxActiveTasks = 2;
+        this.activeSimulations = [];
+        this.tasksQueue = [];
+    }
+
+    queueHandler = (engineID, request) => {
+        this.tasksQueue.push({ engineID, request });
+
+        taskHandler();
+        const taskHandler = () => {
+            if (this.activeSimulations.length < this.maxActiveTasks) {
+                const task = this.tasksQueue.shift();
+                task ? this.activeSimulations.push(task) : '';
+
+                const result = middleware.getAllHandsStrategy(engineID, request);
+                // handle result
+
+
+                this.activeSimulations = this.activeSimulations.filter(simulation => simulation.engineID !== task.engineID);
+                taskHandler();
+            }
+        }
+    };
+}
+
+const simulationsQueue = new SimulationsQueue();
 
 // all users sessions.. 1 token = 1 session
 const sessions = {};
@@ -93,7 +121,11 @@ class SessionSetup {
         }
         // last move hero simulation for prompter
         if (requestType === 'prompter') {
-            prompterHandler.prompterListener(this, request, heroChairReqPosition);
+            const heroChairReqPosition = 2;   // spin&go
+
+            // должен записать в себя(this.playSetup = new PlaySetup, в котором записан текущий rawActionList, а так же нужно ли ресетить сетап
+            const requestPrompter = prompterHandler.prompterListener(this, request, heroChairReqPosition);
+            simulationsQueue.queueHandler(this.engineID, request);
         }
     }
 

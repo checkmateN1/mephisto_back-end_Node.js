@@ -1,6 +1,7 @@
 const moment = require('moment');
 
 const enumPoker = require('../enum');
+const moves = require('./prompterMovesHandler');
 
 const REJECT_HAND = 'reject hand';
 
@@ -169,9 +170,15 @@ class PlaySetup {
         this.getMovesFromFrame(playFrame);
         if (this.rejectHand) {
             return REJECT_HAND;
+        } else {
+            this.prevPlayFrame = playFrame;
+            this.prevPlayFrameTime = moment().format('h:mm:ss');
+
+            if (this.needToPrompt && playFrame.isButtons) {
+                const request = {};
+                const handlerResponse = moves.prompterMovesHandler(this);
+            }
         }
-        this.prevPlayFrame = playFrame;
-        this.prevPlayFrameTime = moment().format('h:mm:ss');
     };
 
     // let testPush = PokerEngine.PushHintMove(newSetupID, curInvest, request.actions.preflop[i].position, i < 2 ? 0 : request.actions.preflop[i].action);
@@ -360,6 +367,10 @@ class PlaySetup {
                 }
 
             } else {        // !!! есть переход улицы и на предыдущей улице все еще нужно пушить мувы
+                if ((this.board.length === 3 && playFrame.board.length === 5) || (this.board.length === 0 && playFrame.board.length > 3)) {
+                    this.rejectHand = true;
+                    return false;
+                }
                 console.log(`!!! есть переход улицы и на предыдущей улице все еще нужно пушить мувы`);
 
                 const potTerminal = playFrame.playPlayers.reduce((sum, player, index) => sum - player.betAmount, playFrame.pot);  // пот в терминальном состоянии пред улицы
@@ -561,6 +572,7 @@ class PlaySetup {
                 } else {        // терминальный пот меньше
                     console.log('аномально большой пот если все вколили/сфолдили... разбираться!');
                     this.rejectHand = true;
+                    return false;
                 }
             }
         } else {        // !!терминальное состояние!! ждем борда или кнопок хиро или чайрТу, вложившего деньги, или распознаем шоудауны
@@ -571,18 +583,20 @@ class PlaySetup {
             } else if ((this.board.length === 3 && playFrame.board.length === 5) || (this.board.length === 0 && playFrame.board.length > 3)) {
                 console.log('skipped one street between frames');
                 // если вырос пот - отменяем раздачу.. если нет - пушим за всех чеки и сетим борд
-                const pot = this.rawActionList[this.rawActionList.length - 1].pot + this.rawActionList[this.rawActionList.length - 1].invest;
-                    if (pot === playFrame.pot) {
-
-                    } else {
-                        this.rejectHand = true;
-                    }
+                this.rejectHand = true;
+                return false;
                 // или игроки выставились. Ждем и собираем шоудауны.. формируем историю руки с победами.
-            } else if (this.board.length < playFrame.board.length) {     // появилась новая карта борда и возможно мувы
-                console.log('new board card!');
-                const isBoardOk = this.setBoard(playFrame);
+            } else {     // появилась новая карта борда и возможно мувы ИЛИ просто ждем новых мувов
+                let isBoardOk;
+                if (this.board.length < playFrame.board.length) {
+                    console.log('new board card!');
+                    isBoardOk = this.setBoard(playFrame);
+                }
 
-                if (isBoardOk) {
+                const curStreet = this.getStreetNumber();
+                if (isBoardOk
+                    || (this.board.length === playFrame.board.length
+                    && this.rawActionList[this.rawActionList.length - 1].street < curStreet)) {
                     // запускаем Поиск чайрТу и пушим мувы по стандартной схеме
                     const firstChair = this.positionEnumKeyMap[this.getFirstEnumPositionToMove(false)];
                     const chairTo = this.getChairTo(playFrame, this.getRecPositionBefore(this.initPlayers.length, firstChair), true);
@@ -592,7 +606,6 @@ class PlaySetup {
                     if (chairTo.chairTo !== undefined) {        // есть игрок с измененным состоянием + нету перехода улицы!
                         // запускаем цикл от последнего игрока в rawActionList до chairTo игрока и пытаемся вычислить какой тип мува и сколько вложил каждый игрок
                         // в этом состоянии всегда есть запушенные мувы(хотя бы 1) на этой улице, поэтому всегда есть lastRecPosition
-                        const curStreet = this.getStreetNumber();
 
                         console.log(`chairTo.movedCount: ${chairTo.movedCount}`);
 
@@ -1132,6 +1145,8 @@ class PlaySetup {
     }
 }
 
+// 1) из реквеста создаем полноценный фрейм
+// 2) в setup записываем setup.playSetup = new PlaySetup, и дальше всегда работаем с ним при поступлении реквестов.
 const prompterListener = (setup, request) => {
     console.log('enter prompter listener');
     const prompt =
@@ -1288,16 +1303,12 @@ const frame4 = new PlayFrame(12345, 225, playPlayers4, [], false, 2, 4);     // 
 const frame5 = new PlayFrame(12345, 225, playPlayers4, [], false, 2, 5);    // the same frame with 4
 const frame6 = new PlayFrame(12345, 325, playPlayers5, ['Ac', 'Ad', 'As'], false, 2, 6);  // new street, checkmate bet 100
 
-console.time('test time');
 const testSetup = new PlaySetup(frame1);
 testSetup.frameHandler(frame2);
 testSetup.frameHandler(frame3);
 testSetup.frameHandler(frame4);
 testSetup.frameHandler(frame5);
 testSetup.frameHandler(frame6);
-console.timeEnd('test time');
-
-
 
 module.exports.prompterListener = prompterListener;
 

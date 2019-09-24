@@ -94,7 +94,7 @@ const multiplyStrategy = (request, arrayAllMovesStrategy, investArr) => {
     let flopLength = (request.actions.flop ? request.actions.flop.length : 0) + preflopLength;
     let turnLength = (request.actions.turn ? request.actions.turn.length : 0) + flopLength;
 
-    let getRequestPosition = () => {
+    const getRequestPosition = () => {
         let prevLength = 0;
         switch (request.request.street) {
             case 0:
@@ -112,7 +112,7 @@ const multiplyStrategy = (request, arrayAllMovesStrategy, investArr) => {
         }
         return request.actions[targetStreet][request.request.act_num - prevLength].position;
     };
-    let curRequestPosition = getRequestPosition();
+    const curRequestPosition = getRequestPosition();
     enumPoker.streets.reduce((prevStreetCount, street) => {
         if (enumPoker.streets.indexOf(street) <= request.request.street) {
             request.actions[street].forEach((move, i) => {
@@ -127,7 +127,7 @@ const multiplyStrategy = (request, arrayAllMovesStrategy, investArr) => {
 
     console.log(arrMovesActNums);
     console.log(investArr);
-    let arrayAllMovesStrategyMap = [];
+    const arrayAllMovesStrategyMap = [];
 
     arrayAllMovesStrategy.forEach((allHands, i) => {
         arrayAllMovesStrategyMap[i] = {};
