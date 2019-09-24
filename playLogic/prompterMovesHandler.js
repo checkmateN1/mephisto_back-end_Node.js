@@ -1,5 +1,5 @@
-const PokerEngine = require('./pokerEngine');
-const enumPoker = require('./enum');
+const PokerEngine = require('../pokerEngine');
+const enumPoker = require('../enum');
 
 const _ = require('lodash');
 
@@ -7,32 +7,9 @@ const _ = require('lodash');
 const adapt_size = 10;
 
 // simulator only!
-const movesHandler = (request, bbSize, setup) => {
-    console.log(request);
+const prompterMovesHandler = (setup) => {
 
     let isCashSteelUseful = true;
-
-    const isInitPlayersEqual = () => {
-        if (request.players.length !== setup.movesCash.players.length) {
-            return false;
-        }
-        for (let i = 0; i < request.players.length; i++) {
-            const nickname = request.players[i].name;
-            const stack = parseInt(request.players[i].stack * 100);
-            const position = request.players[i].position;
-
-            const checkCashPlayer = {
-                nickname,
-                stack,
-                position,
-            };
-
-            if (!_.isEqual(checkCashPlayer, setup.movesCash.players[i])) {
-                return false;
-            }
-        }
-        return true;
-    };
 
     if (!isInitPlayersEqual()) {
         PokerEngine.ReleaseSetup(setup.engineID);
@@ -84,20 +61,8 @@ const movesHandler = (request, bbSize, setup) => {
 
         const position = request.actions.preflop[i].position;
         const action = i < 2 ? 0 : request.actions.preflop[i].action;
-        const pushHintMoveData = {
-            curInvest,
-            position,
-            action,
-        };
 
-        if (!_.isEqual(setup.movesCash.preflop[i], pushHintMoveData)) {      // no using cash
-            if (isCashSteelUseful) {        // if we used cash before this iteration
-                popMoves(i);
-            }
-            isCashSteelUseful = false;
-            PokerEngine.PushHintMove(setup.engineID, curInvest, position, action);
-            setup.movesCash.preflop.push(pushHintMoveData);
-        }
+        PokerEngine.PushHintMove(setup.engineID, curInvest, position, action);
         playersInvestPreflop[position] = parseInt(Math.round(+request.actions.preflop[i].amount * 100));
     }
 
@@ -248,4 +213,4 @@ const movesHandler = (request, bbSize, setup) => {
     return [setup.engineID, movesInvestArr];
 };
 
-module.exports.movesHandler = movesHandler;
+module.exports.prompterMovesHandler = prompterMovesHandler;
