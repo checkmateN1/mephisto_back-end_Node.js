@@ -25,8 +25,8 @@ class SimulationsQueue {
         this.tasksQueue = [];
     }
 
-    queueHandler = (engineID, request) => {
-        this.tasksQueue.push({ engineID, request });
+    queueHandler = (sessionSetup, request) => {
+        this.tasksQueue.push({ engineID: sessionSetup.engineID, sessionSetup, request });
 
         taskHandler();
         const taskHandler = () => {
@@ -34,9 +34,8 @@ class SimulationsQueue {
                 const task = this.tasksQueue.shift();
                 task ? this.activeSimulations.push(task) : '';
 
-                const result = middleware.getAllHandsStrategy(engineID, request);
+                const result = middleware.getAllHandsStrategy(sessionSetup, request);   // request need for client and stuff
                 // handle result
-
 
                 this.activeSimulations = this.activeSimulations.filter(simulation => simulation.engineID !== task.engineID);
                 taskHandler();
@@ -100,6 +99,7 @@ class SessionSetup {
         this.engineID = engineID; // PokerEngine session number
         this.timeout = setupTimeout;
         this.movesCash = initCash;
+        // this.playSetup
     }
 
     resetCash() {
@@ -121,11 +121,13 @@ class SessionSetup {
         }
         // last move hero simulation for prompter
         if (requestType === 'prompter') {
-            const heroChairReqPosition = 2;   // spin&go
+            const heroChairReqPosition = 2;   // spin&go config
 
             // должен записать в себя(this.playSetup = new PlaySetup, в котором записан текущий rawActionList, а так же нужно ли ресетить сетап
             const requestPrompter = prompterHandler.prompterListener(this, request, heroChairReqPosition);
-            simulationsQueue.queueHandler(this.engineID, request);
+            if (requestPrompter === 'prompt') {
+                simulationsQueue.queueHandler(this, request);
+            }
         }
     }
 

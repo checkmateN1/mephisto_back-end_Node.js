@@ -3,7 +3,7 @@ const moment = require('moment');
 const enumPoker = require('../enum');
 const moves = require('./prompterMovesHandler');
 
-const REJECT_HAND = 'reject hand';
+const REJECT_HAND = 'reject_hand';
 const PROMPT = 'prompt';
 
 class PlayersHandler {
@@ -1253,7 +1253,7 @@ const prompterListener = (setup, request) => {
         id,
     };
 
-    // create playFrame
+    // check on valid recognition frame
 
     if (setup.playSetup === undefined) {
         setup.playSetup = new PlaySetup(createPlayFrame());
