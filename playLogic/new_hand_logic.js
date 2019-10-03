@@ -1,6 +1,6 @@
 const config = {
     'Spin&Go': {
-        heroChair: 0,   // смотрим в конфиге для вида покера Spin&Go стул хиро: spin&go = 0 (практически всегда это нижний игрок)
+        heroChair: 2,   // смотрим в конфиге для вида покера Spin&Go стул хиро: spin&go = 2 (практически всегда это нижний игрок)
         // stuff
     },
     // stuff
@@ -43,10 +43,10 @@ const player2DealerDiff = curFrame.Player2_isDealer !== prevFrame.Player2_isDeal
 const isDealerMoved = player0DealerDiff + player1DealerDiff + player2DealerDiff + ... + player9DealerDiff === 2; // 2 - one disappeared and another one appeared
 
 // hero
-const isHeroCardsChanged = curFrame.Player0_hole1_suit !== prevFrame.Player0_hole1_suit  // one and more cards have changed
-    || curFrame.Player0_hole1_value !== prevFrame.Player0_hole1_value
-    || curFrame.Player0_hole2_suit !== prevFrame.Player0_hole2_suit
-    || curFrame.Player0_hole2_value !== prevFrame.Player0_hole2_value;
+const isHeroCardsChanged = curFrame.Player2_hole1_suit !== prevFrame.Player2_hole1_suit  // one and more cards have changed
+    || curFrame.Player2_hole1_value !== prevFrame.Player2_hole1_value
+    || curFrame.Player2_hole2_suit !== prevFrame.Player2_hole2_suit
+    || curFrame.Player2_hole2_value !== prevFrame.Player2_hole2_value;
 
 // final test
 if (sumBoardCardsDiff > 1 || (isHeroCardsChanged && isDealerMoved)) {      // new hand!!!
@@ -54,7 +54,7 @@ if (sumBoardCardsDiff > 1 || (isHeroCardsChanged && isDealerMoved)) {      // ne
     // 2) определяем тяжелыми сетями никнеймы, а так же карты игроков которые распознаны как не 'none' легкими сетями(почти всегда это только хиро)
     // 3) ждем когда легкие сети распознают конкретную масть и номинал карты и включаем распознавание тяжелыми сетями и записываем их в кэш!
     //  3.1) если тяжелые сети определили карту как 'none', повторить распознавание в след фрейме если легкие сети распознали конкретную карту(страховка для пункта 3)
-    // 4) пока не сработает условие начала новой руки - слать по сети, а так же логировать все карты и никнеймы ТОЛЬКО ИЗ КЭША
+    // 4) слать по сети, а так же логировать все карты и никнеймы ТОЛЬКО ИЗ КЭША, куда пишут ТОЛЬКО ТЯЖЕЛЫЕ СЕТИ
 }
 
 

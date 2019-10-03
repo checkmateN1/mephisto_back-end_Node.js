@@ -98,24 +98,6 @@ class ActionString {
     }
 }
 
-// let rawActionList = [];
-// rawActionList[0] = new ActionString(0, "checkmateN1", 7.25, 3, 0, 0.1, 0);
-// rawActionList[1] = new ActionString(0, "joooe84", 5, 1, 0.1, 0.25, 8);
-// rawActionList[2] = new ActionString(0, "checkmateN1", 7.15, 2, 0.35, 0.75, 0);
-// rawActionList[3] = new ActionString(0, "joooe84", 4.75, 3, 1, 0.75, 8);
-// //
-
-// PokerEngine.PushHintMove(setupID, invest, position, action);
-// class Move {
-//     constructor(invest, enumPosition, action, street, board) {
-//         this.invest = invest;
-//         this.enumPosition = enumPosition;
-//         this.action = action;
-//         this.street = street;
-//         this.board = board;
-//     }
-// }
-
 class PlaySetup {
     constructor(playFrame) {            // frame from recognition -> validator.dll -> playFrame
         this.initPlayers = [];      // all players who was active in start. Index === recPosition, some indexes == undefined!
@@ -136,10 +118,7 @@ class PlaySetup {
         this.frameHandler(playFrame);
     }
 
-    // PokerEngine.PushHintMove(setupID, invest, position, action);
     frameHandler(playFrame) {
-        // console.log('playFrame prompterHandler');
-        // console.log(playFrame);
         if (this.rejectHand && playFrame.handNumber === this.handNumber) {
             return REJECT_HAND;
         }
@@ -179,11 +158,6 @@ class PlaySetup {
         }
     };
 
-    // let testPush = PokerEngine.PushHintMove(newSetupID, curInvest, request.actions.preflop[i].position, i < 2 ? 0 : request.actions.preflop[i].action);
-
-
-    // frame1 = new PlayFrame(12345, 35, playPlayers, [], true);
-    // playPlayers[0] = new PlayPlayer('checkmateN1', 0, 715, 10, true, true,'');
     getMovesFromFrame(playFrame) {
         // first frame
         if (this.rawActionList.length === 0) {        // first frame
@@ -413,7 +387,7 @@ class PlaySetup {
                         let potIfAllCallFoldHero;
 
                         // доколиваем/фолдим за остальных игроков так, чтоб сошелся пот
-                        this.movesOrder(this.initPlayers.length, chairWithMaxAmount, this.getRecPositionBefore(this.initPlayers.length, chairWithMaxAmount)).reduce((pot, chair) => {
+                        this.movesOrder(this.initPlayers.length, this.getLastRawActionsChair(), this.getRecPositionBefore(this.initPlayers.length, chairWithMaxAmount)).reduce((pot, chair) => {
                             if (!passHero && this.initPlayers[chair] !== undefined) {
                                 for (let i = this.rawActionList.length - 1; i >= -1; i--) {
                                     if (i > -1 && currentStreet === this.rawActionList[i].street) {
@@ -561,9 +535,146 @@ class PlaySetup {
                         }
 
                     } else {        // прошло много времени между фреймами
-                        // пытаемся определить по стеку - кто повышал, если у кого-то стек меньше чем амаунт необходимый для повышения
-                        // если повышать могли многие - отменяем подсказывание этой руки
+                        // 1) определяем последнего повышающего. Если кроме него активны 2 и более игрока, которые могли повысить по стеку - отменяем подсказывание
+                        // 2) если активный игрок кроме повышающего 1 - считаем, что повысил он.
+                        // если не было повышений - отменяем подсказывание
+                        if (maxAmount) {
+                            let raisedChair = -1;
+                            let freezeFantomRawActionsCount = 0;        // инкрементируем при добавлении не агрессивного действия за игрока
+                            const possibleToRaiseCount = this.movesOrder(this.initPlayers.length, this.getLastRawActionsChair(), this.getRecPositionBefore(this.initPlayers.length, chairWithMaxAmount)).reduce((isSteelPossible, chair) => {
+                                if (isSteelPossible && this.initPlayers[chair] !== undefined) {
+                                    const terminalBalance = playFrame.playPlayers[chair].curBalance + playFrame.playPlayers[chair].betAmount;
+                                    const nextRawActionBalance = this.getPrevRecBalanceOnCurStreet(chair);
+                                    const prevAmount = this.getPrevAmountOnCurStreet(chair);
+                                    const balanceDiff = nextRawActionBalance - terminalBalance;
+                                    if (!this.wasFoldBefore(chair)) {
+                                        if (!balanceDiff) {     // call-call or raise!
+                                            // raise
+                                            this.rawActionList.push(new ActionString(
+                                                curStreet,
+                                                this.initPlayers[chair].player,
+                                                nextRawActionBalance,
+                                                enumPoker.actionsType.indexOf('raise'),
+                                                this.rawActionList[this.rawActionList.length - 1].pot + this.rawActionList[this.rawActionList.length - 1].invest,
+                                                maxAmount + balanceDiff,
+                                                this.initPlayers[chair].enumPosition,
+                                                balanceDiff));
 
+                                            this.fantomRawActionsCount++;
+
+                                            const potIfAllCallFold = this.getCallFoldPot(playFrame, chair, maxAmount + balanceDiff);
+
+                                            if (potIfAllCallFold === potTerminal) {
+                                                if (raisedChair < 0) {
+                                                    raisedChair = chair;
+                                                } else {        // 2 or more raisers
+                                                    raisedChair = -1;
+                                                    return false;   // isSteelPossible = false;
+                                                }
+                                            }
+                                            this.restoreRawAction(freezeFantomRawActionsCount);
+
+                                            // call-call
+                                            const callAmount = Math.min(nextRawActionBalance + prevAmount, maxAmount);
+                                            this.rawActionList.push(new ActionString(
+                                                curStreet,
+                                                this.initPlayers[chair].player,
+                                                nextRawActionBalance,
+                                                enumPoker.actionsType.indexOf('call'),
+                                                this.rawActionList[this.rawActionList.length - 1].pot + this.rawActionList[this.rawActionList.length - 1].invest,
+                                                callAmount,
+                                                this.initPlayers[chair].enumPosition,
+                                                Math.min(maxAmount - prevAmount, nextRawActionBalance)));
+
+                                            this.fantomRawActionsCount++;
+                                            freezeFantomRawActionsCount++;
+
+                                        } else {    // fold
+                                            this.rawActionList.push(new ActionString(
+                                                curStreet,
+                                                this.initPlayers[chair].player,
+                                                nextRawActionBalance,
+                                                enumPoker.actionsType.indexOf('fold'),
+                                                this.rawActionList[this.rawActionList.length - 1].pot + this.rawActionList[this.rawActionList.length - 1].invest,
+                                                prevAmount,
+                                                this.initPlayers[chair].enumPosition,
+                                                0));
+
+                                            this.fantomRawActionsCount++;
+                                            freezeFantomRawActionsCount++;
+                                        }
+                                    }
+                                } else {
+                                    return isSteelPossible;
+                                }
+                            }, true);
+
+                            this.restoreRawAction();
+                            if (possibleToRaiseCount && raisedChair > -1) {         // found ONE raiser!
+                                let passHero = false;
+                                this.movesOrder(this.initPlayers.length, this.getLastRawActionsChair(), this.getRecPositionBefore(this.initPlayers.length, chairWithMaxAmount)).forEach(chair => {
+                                    if (!passHero && this.initPlayers[chair] !== undefined) {
+                                        const terminalBalance = playFrame.playPlayers[chair].curBalance + playFrame.playPlayers[chair].betAmount;
+                                        const nextRawActionBalance = this.getPrevRecBalanceOnCurStreet(chair);
+                                        const prevAmount = this.getPrevAmountOnCurStreet(chair);
+                                        const balanceDiff = nextRawActionBalance - terminalBalance;
+                                        if (!this.wasFoldBefore(chair)) {
+                                            if (!balanceDiff) {     // call-call or raise!
+                                                // raise
+                                                if (raisedChair === chair) {
+                                                    this.rawActionList.push(new ActionString(
+                                                        curStreet,
+                                                        this.initPlayers[chair].player,
+                                                        nextRawActionBalance,
+                                                        enumPoker.actionsType.indexOf('raise'),
+                                                        this.rawActionList[this.rawActionList.length - 1].pot + this.rawActionList[this.rawActionList.length - 1].invest,
+                                                        maxAmount + balanceDiff,
+                                                        this.initPlayers[chair].enumPosition,
+                                                        balanceDiff));
+
+                                                    this.getCallFoldPot(playFrame, chair, maxAmount + balanceDiff);
+                                                    passHero = true;
+                                                } else {
+                                                    // call-call
+                                                    const callAmount = Math.min(nextRawActionBalance + prevAmount, maxAmount);
+                                                    this.rawActionList.push(new ActionString(
+                                                        curStreet,
+                                                        this.initPlayers[chair].player,
+                                                        nextRawActionBalance,
+                                                        enumPoker.actionsType.indexOf('call'),
+                                                        this.rawActionList[this.rawActionList.length - 1].pot + this.rawActionList[this.rawActionList.length - 1].invest,
+                                                        callAmount,
+                                                        this.initPlayers[chair].enumPosition,
+                                                        Math.min(maxAmount - prevAmount, nextRawActionBalance)));
+                                                }
+
+                                            } else {    // fold
+                                                this.rawActionList.push(new ActionString(
+                                                    curStreet,
+                                                    this.initPlayers[chair].player,
+                                                    nextRawActionBalance,
+                                                    enumPoker.actionsType.indexOf('fold'),
+                                                    this.rawActionList[this.rawActionList.length - 1].pot + this.rawActionList[this.rawActionList.length - 1].invest,
+                                                    prevAmount,
+                                                    this.initPlayers[chair].enumPosition,
+                                                    0));
+                                            }
+                                        }
+                                    }
+                                });
+                                this.fantomRawActionsCount = 0;
+
+                            } else {
+                                console.log('Ошибка с рассчетом пота или 2 и более возможных рейзера');
+                                this.rejectHand = true;
+                                return false;
+                            }
+
+                        } else {
+                            console.log('невозможно определить повышающего после чеков! Отменяем подсказывание');
+                            this.rejectHand = true;
+                            return false;
+                        }
                     }
 
                 } else {        // терминальный пот меньше
@@ -710,8 +821,8 @@ class PlaySetup {
         console.log(this.board);
     }
 
-    restoreRawAction() {
-        while(this.fantomRawActionsCount) {
+    restoreRawAction(count) {
+        while(this.fantomRawActionsCount - count || 0) {
             this.rawActionList.pop();
             this.fantomRawActionsCount--
         }
@@ -749,9 +860,13 @@ class PlaySetup {
         }, false);
     }
 
+    getLastRawActionsChair() {
+        return this.positionEnumKeyMap[this.rawActionList[this.rawActionList.length - 1].position];
+    }
+
     getCallFoldPot (playFrame, chairWithMaxAmount, maxAmount) {
         const currentStreet = this.rawActionList[this.rawActionList.length - 1].street;
-        return this.movesOrder(this.initPlayers.length, chairWithMaxAmount, this.getRecPositionBefore(this.initPlayers.length, chairWithMaxAmount)).reduce((pot, chair) => {
+        return this.movesOrder(this.initPlayers.length, this.getLastRawActionsChair(), this.getRecPositionBefore(this.initPlayers.length, chairWithMaxAmount)).reduce((pot, chair) => {
             if (this.initPlayers[chair] !== undefined) {
                 for (let i = this.rawActionList.length - 1; i >= -1; i--) {
                     if (i > -1 && currentStreet === this.rawActionList[i].street) {
@@ -909,6 +1024,20 @@ class PlaySetup {
             }
         }
         return 0;
+    }
+
+    getPrevRecBalanceOnCurStreet(chair) {
+        const currentStreet = this.rawActionList[this.rawActionList.length - 1].street;
+        for (let i = this.rawActionList.length - 1; i >= 0; i--) {
+            if (currentStreet === this.rawActionList[i].street) {
+                if (this.initPlayers[chair].enumPosition === this.rawActionList[i].position) {
+                    return this.rawActionList[i].balance - this.rawActionList[i].invest;
+                }
+            } else {
+                return this.initPlayerBalance(this.initPlayers[chair].enumPosition, currentStreet);
+            }
+        }
+        return this.initPlayers[chair].initBalance;   // was't any move before
     }
 
     wasFoldBefore(playerRecPosition) {
@@ -1136,10 +1265,6 @@ class PlaySetup {
         }
         return arr;
     }
-
-    getEV() {
-
-    }
 }
 
 // 1) из реквеста создаем полноценный фрейм
@@ -1321,8 +1446,8 @@ const frame6 = new PlayFrame(12345, 325, playPlayers5, ['Ac', 'Ad', 'As'], false
 const testSetup = new PlaySetup(frame1);
 testSetup.frameHandler(frame2);
 testSetup.frameHandler(frame3);
-testSetup.frameHandler(frame4);
-testSetup.frameHandler(frame5);
+// testSetup.frameHandler(frame4);
+// testSetup.frameHandler(frame5);
 testSetup.frameHandler(frame6);
 
 module.exports.prompterListener = prompterListener;
