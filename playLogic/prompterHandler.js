@@ -960,13 +960,12 @@ class PlaySetup {
     getChairTo(playFrame, lastRecPosition, isTerminalState) {
         let chairTo;
 
-        const movedCount = this.getReversListOrder(this.initPlayers.length, lastRecPosition).reduce((count, chair) => {
+        let movedCount = this.getReversListOrder(this.initPlayers.length, lastRecPosition).reduce((count, chair) => {
             if (chairTo === undefined) {
                 count--;
             }
             // played
             if (chairTo === undefined && this.initPlayers[chair] !== undefined) {
-                console.log(`player with recPosition ${chair} played`);
                 if (!playFrame.playPlayers[chair].isActive) {
                     // check on fold
                     if (!this.wasFoldBefore(chair)) {     // folded in first time
@@ -995,6 +994,13 @@ class PlaySetup {
             }
             return count;
         }, this.initPlayers.length + 1);
+
+        // если видим кнопки - игрок перед хиро походил
+        if (chairTo === undefined && playFrame.isButtons) {     // hero's turn
+            console.log('see buttons and nobody invested - setting chairTo as player before hero');
+            chairTo = this.getRecPositionBefore(this.initPlayers.length, playFrame.heroRecPosition);     // spin&go chair 2
+            movedCount = this.movesOrder(this.initPlayers.length, lastRecPosition, chairTo).length;
+        }
 
         return {chairTo, movedCount};
     }
@@ -1100,7 +1106,7 @@ class PlaySetup {
         return playersInGame;
     }
 
-    // инициальный баланс на текущей улице
+    // инициальный баланс на текущей улице(или указанной). Так же используется для валидации и замены глючных амаунтов или балансов
     initPlayerBalance(enumPosition, street) {
         const currentStreet = street || this.rawActionList[this.rawActionList.length - 1].street;
         let initBalance;

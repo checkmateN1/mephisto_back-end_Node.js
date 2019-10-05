@@ -1,0 +1,19 @@
+// pot
+const str = 'Pot- 4,0 BB';          // 4.0
+const str2 = 'Pot 8.0 BB';          // 8.0
+const str3 = 'Port 60';             // 60
+const str4 = 'Pot12,0 BB';          // 12.0
+const str5 = 'Potz 21.5 BB';        // 21.5
+const str6 = 'Pot 3.,0 BB';         // 3.0
+const str7 = 'Potc25,.5 BB';        // 25.5
+const str8 = 'POL3.0 BB';           // 3.0
+const str9 = 'Pot_7,.,0 BB';        // 7.0
+const str10 = 'Pot-7.2 BB';         // 7.2
+const str11 = 'Port 11,8 BB';       // 11.8
+const str12 = 'Pot-.-17.9BB';       // 17.9       !!
+const str13 = 'Polt, 3,0 BB';       // 3.0
+const str14 = 'Pot2 6,0 BB';        // 6.0        !!
+const str15 = 'Pot2 3,0 BB';        // 3.0        !!
+const str16 = 'Pot_30';             // 30
+const str17 = 'PotS,5 BB';          // 5.5        !!
+const str18 = '16,0 BB';            // 16.0       !!
