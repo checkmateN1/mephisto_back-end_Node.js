@@ -121,10 +121,10 @@ class SessionSetup {
         }
         // last move hero simulation for prompter
         if (requestType === 'prompter') {
-            const heroChairReqPosition = 2;   // spin&go config
+            const gameTypesSettings = 'Spin&Go';   // config
 
             // должен записать в себя(this.playSetup = new PlaySetup, в котором записан текущий rawActionList, а так же нужно ли ресетить сетап
-            const requestPrompter = prompterHandler.prompterListener(this, request, heroChairReqPosition);
+            const requestPrompter = prompterHandler.prompterListener(this, request, gameTypesSettings);
             if (requestPrompter === 'prompt') {
                 simulationsQueue.queueHandler(this, request);
             }

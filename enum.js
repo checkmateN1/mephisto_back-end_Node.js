@@ -8,6 +8,14 @@ const enumPoker = Object.freeze({
     actionsType: ['post', "bet", "raise", "call", "check", "fold"],
     streets: ["preflop", "flop", "turn", "river"],
     allHandsCount: 1326,
+    gameTypesSettings: {
+        'Spin&Go': {
+            heroChair: 2,
+            playersCount: 3,
+        }
+    },
+    cardsValues: [2, 3, 4, 5, 6, 7, 8, 9, 10, 'j', 'q', 'k', 'a'],
+    cardsSuits: ['c', 's', 'd', 'h'],
 });
 
 module.exports = enumPoker;

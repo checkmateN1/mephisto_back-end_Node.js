@@ -64,9 +64,9 @@ const movesHandler = (request, bbSize, setup) => {
     }
 
     const popMoves = (nMove) => {
-        // while(PokerEngine.GetLastMoveId(setup.engineID) >= nMove) {
-        //     PokerEngine.PopMove(setup.engineID);
-        // }
+        while(PokerEngine.GetLastMoveId(setup.engineID) >= nMove) {
+            PokerEngine.PopMove(setup.engineID);
+        }
     };
 
     const movesInvestArr = [];

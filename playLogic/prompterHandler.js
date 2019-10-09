@@ -2,6 +2,7 @@ const moment = require('moment');
 
 const enumPoker = require('../enum');
 const moves = require('./prompterMovesHandler');
+const validator = require('./frameCreator');
 
 const REJECT_HAND = 'reject_hand';
 const PROMPT = 'prompt';
@@ -99,7 +100,7 @@ class ActionString {
 }
 
 class PlaySetup {
-    constructor(playFrame) {            // frame from recognition -> validator.dll -> playFrame
+    constructor(rawFrame, gameTypesSettings) {            // frame from recognition -> validator.dll -> playFrame
         this.initPlayers = [];      // all players who was active in start. Index === recPosition, some indexes == undefined!
         this.playersWasActive = [];   // all players who was active in start without empty chairs or waiting players
         this.positionEnumKeyMap = {};
@@ -114,11 +115,16 @@ class PlaySetup {
         this.fantomRawActionsCount = 0;
         this.lastPromptMoveType = null; // используем для эвристики по поводу того, кто именно ставил, когда это не известно.
         this.isNewHand = true;
+        this.gameTypesSettings = gameTypesSettings;
+        this.validator = validator.validatorCreator(this);
 
-        this.frameHandler(playFrame);
+        this.frameHandler(rawFrame);
     }
 
-    frameHandler(playFrame) {
+    frameHandler(rawFrame, gameTypesSettings) {
+        this.gameTypesSettings = gameTypesSettings;
+        const playFrame = this.validator.createFrame(rawFrame);
+
         if (this.rejectHand && playFrame.handNumber === this.handNumber) {
             return REJECT_HAND;
         }
@@ -1275,7 +1281,7 @@ class PlaySetup {
 
 // 1) из реквеста создаем полноценный фрейм
 // 2) в setup записываем setup.playSetup = new PlaySetup(если его там не было), и дальше всегда работаем с ним при поступлении реквестов.
-const prompterListener = (setup, request) => {
+const prompterListener = (setup, request, gameTypesSettings) => {
     console.log('enter prompter listener');
     const prompt =
         `<div class="main-container spins party-poker">
@@ -1387,23 +1393,14 @@ const prompterListener = (setup, request) => {
     // check on valid recognition frame
 
     if (setup.playSetup === undefined) {
-        setup.playSetup = new PlaySetup(createPlayFrame());
+        setup.playSetup = new PlaySetup(request.rawFrame, gameTypesSettings);
     } else {
-        setup.playSetup.frameHandler(createPlayFrame());
+        setup.playSetup.frameHandler(request.rawFrame, gameTypesSettings);
     }
 
     request.client.emit('prompt', promptData);
 };
 
-const createPlayPlayers = (recognitionFrame) => {
-    return [] // playPlayers
-};
-
-const createPlayFrame = (recognitionFrame) => {
-    const playPlayers = createPlayPlayers(recognitionFrame);
-
-    return new PlayFrame(); // PlayFrame
-};
 
 
 // test ha old rawActionList for example
