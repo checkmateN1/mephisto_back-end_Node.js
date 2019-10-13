@@ -123,7 +123,7 @@ class PlaySetup {
 
     frameHandler(rawFrame, gameTypesSettings) {
         this.gameTypesSettings = gameTypesSettings;
-        const playFrame = this.validator.createFrame(rawFrame);
+        const playFrame = this.needToPrompt ? this.validator.createFrame(rawFrame) : rawFrame;
 
         if (this.rejectHand && playFrame.handNumber === this.handNumber) {
             return REJECT_HAND;
@@ -139,10 +139,6 @@ class PlaySetup {
             this.prevPlayFrameTime = null;
             this.rejectHand = false;
 
-            if (playFrame.board.length) {           // reject new hand with board cards
-                this.rejectHand = true;
-                return REJECT_HAND;
-            }
             this.setInitPlayers(playFrame);
             this.setPositionsMap();
         }
@@ -1052,13 +1048,22 @@ class PlaySetup {
         return this.initPlayers[chair].initBalance;   // was't any move before
     }
 
-    wasFoldBefore(playerRecPosition) {
+    wasFoldBefore(chair) {
         for (let i = this.rawActionList.length - 1; i >= 0; i--) {
-            if (this.rawActionList[i].position === this.initPlayers[playerRecPosition].enumPosition) {
+            if (this.rawActionList[i].position === this.initPlayers[chair].enumPosition) {
                 return this.rawActionList[i].action === 5;  // fold
             }
         }
         return false;
+    }
+
+    // use only with this.wasFoldBefore() === true;
+    getFoldBalance(chair) {
+        for (let i = this.rawActionList.length - 1; i >= 0; i--) {
+            if (this.rawActionList[i].position === this.initPlayers[chair].enumPosition && this.rawActionList[i].action === 5) {
+                return this.rawActionList[i].balance;
+            }
+        }
     }
 
     maxAmountAtCurrentStreet() {
@@ -1113,6 +1118,7 @@ class PlaySetup {
     }
 
     // инициальный баланс на текущей улице(или указанной). Так же используется для валидации и замены глючных амаунтов или балансов
+    // выдает то, что мы запишем в баланс первого мува на текущей улице в rawActions
     initPlayerBalance(enumPosition, street) {
         const currentStreet = street || this.rawActionList[this.rawActionList.length - 1].street;
         let initBalance;

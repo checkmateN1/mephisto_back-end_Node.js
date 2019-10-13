@@ -40,5 +40,7 @@ str.forEach(str => {
 });
 console.timeEnd('find and replace time pot');
 
+console.log(!isNaN('12.2'));
+
 
 

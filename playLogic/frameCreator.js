@@ -71,44 +71,68 @@ class Validator {
         }
 
         const isNewHand = this.checkNewHand(recFrame);
-        this.validateFrame(recFrame);
+        if (this.playSetup.rejectHand && !isNewHand) {
+            return false;
+        }
+
+        if (isNewHand && enumPoker.cardsSuits.includes(recFrame.Card1_suit.value)) {           // reject new hand with board cards
+            this.playSetup.rejectHand = true;
+            return false;
+        }
+
+        this.validateFrame(recFrame, isNewHand);
+
+        // после валидации при создании фрейма - смотрим кто сфолдил в rawActions и заполняем им валидный баланс из последнего баланса а ставки 0!
+        const newHandNumer = this.getHandNumber();
         return recFrame;
     };
 
-    validateFrame(recFrame) {
-        // проверяем новая ли рука - если нет используем initPlayers чтобы не валидировать неиграющие с начала руки стулья
+    validateFrame(recFrame, isNewHand) {
         const playerBalances = {};
-        let isClearAllBalances = true;
-        for (let i = 0; i < this.playersCount; i++) {
-            const matchBalance = recFrame[`Player${i}_balance`].match(regBalance);
-            playerBalances[`Player${i}_balance`] = matchBalance ? matchBalance[0]
-                    .replace(/S/, 5)
-                    .replace(/D/, 0)
-                    .replace(/B/, 8)
-                    .replace(/(\.|\,)+(?=(\d)){0,1}/, '.')
-                : null;
-            if (isClearAllBalances) {
-                if (playerBalances[`Player${i}_balance`] !== null) {
+        const playerBets = {};
+        let unclearBalancesCount = 0;
+        let unclearBetsCount = 0;
+        let dealersCount = 0;
+        let activeCount = 0;
+        Array(this.playersCount).fill().forEach((pl, i) => {
+            if ((isNewHand && recFrame[`Player${i}_isActive`].value === 'a') ||
+                (!isNewHand && this.playSetup.initPlayers[i] !== undefined && !this.playSetup.wasFoldBefore(i))) {
+                const player_balance = `Player${i}_balance`;
+                const player_bet = `Player${i}_bet`;
+                const matchBalance = recFrame[player_balance].match(regBalance);
+                playerBalances[player_balance] = matchBalance ? +matchBalance[0]
+                        .replace(/S/, 5)
+                        .replace(/D/, 0)
+                        .replace(/B/, 8)
+                        .replace(/(\.|\,)+(?=(\d)){0,1}/, '.')
+                    : null;
 
+                const matchBet = recFrame[player_bet].match(regBеt);
+                playerBets[player_bet] = matchBet ? +matchBet[0]
+                        .replace(/S/, 5)
+                        .replace(/D/, 0)
+                        .replace(/B/, 8)
+                        .replace(/(\.|\,)+(?=(\d)){0,1}/, '.')
+                    : null;
+
+                if (this.isNumber(parseFloat(playerBalances[player_balance]))) {
+                    unclearBalancesCount++;
+                }
+                if (this.isNumber(parseFloat(playerBets[player_bet]))) {
+                    unclearBetsCount++;
+                }
+                if (recFrame[`Player${i}_isDealer`].value !== 'a') {
+                    dealersCount++;
+                }
+                if (recFrame[`Player${i}_isActive`].value !== 'a') {
+                    activeCount++;
                 }
             }
-        }
-
-        const playerBets = {};
-        let isClearAllBets = true;
-        for (let i = 0; i < this.playersCount; i++) {
-            const matchBet = recFrame[`Player${i}_balance`].match(regBalance);
-            playerBets[`Player${i}_bet`] = matchBet ? matchBet[0]
-                    .replace(/S/, 5)
-                    .replace(/D/, 0)
-                    .replace(/B/, 8)
-                    .replace(/(\.|\,)+(?=(\d)){0,1}/, '.')
-                : null;
-        }
+        });
 
         const matchPot = recFrame.Pot.match(regPot);
         const pot = {
-            Pot: matchPot ? matchPot[0]
+            Pot: matchPot ? +matchPot[0]
                     .replace(/S/, 5)
                     .replace(/D/, 0)
                     .replace(/B/, 8)
@@ -116,17 +140,28 @@ class Validator {
                 : null,
         };
 
-        const isBalancesAndPotCorrect = pot;
+        if (isNewHand) {
+            if (!unclearBalancesCount && !unclearBetsCount && this.isNumber(parseFloat(pot.Pot)) && dealersCount === 1 && ) {     // all numbers are clear and just one dealer and 2+ active
+
+            } else {
+
+            }
+        }
 
         const frame = Object.assign(recFrame, {});
         console.log(`recFrame.Player0_balance: ${recFrame.Player0_balance}`);
     }
 
     getHandNumber() {
-        return Math.floor(Math.random()*10000000000000);
+        const newHandNumber = Math.floor(Math.random()*1000000000000000000000000);
+        return newHandNumber !== this.playSetup.handNumber ? newHandNumber : this.getHandNumber();
     }
 
     checkNewHand(recFrame) {
+        if (this.prevFrame === null) {
+            return true;
+        }
+
         // board
         const sumBoardCardsDiff = Array(5).fill().reduce((sum, card, i) => {
             return sum + ((this.prevFrame[`Card${i+1}_suit`].value !== 'None'
@@ -147,68 +182,17 @@ class Validator {
 
         return sumBoardCardsDiff > 1 || (isHeroCardsChanged && isDealerMoved);
     }
+
+    isNumber(value) {
+        return typeof +value === 'number' && !isNaN(value);
+    }
 }
 
 validatorCreator = (playSetup) => new Validator(playSetup);
 
 const testFrameCreator = new Validator(testRegions[0]);
 
-const config = {
-    'Spin&Go': {
-        heroChair: 2,   // смотрим в конфиге для вида покера Spin&Go стул хиро: spin&go = 2 (практически всегда это нижний игрок)
-        // stuff
-    },
-    // stuff
-};
-const this.prevFrame = {
-    Card1_suit: 'None',
-    Card1_value: 'None',
-    Player0_hole1_suit: 's',
-    Player0_hole1_value: '7',
-    Player0_isDealer: true,
-    // stuff
-};
-const recFrame = {
-    Card1_suit: 'None',
-    Card1_value: 'None',
-    Player0_hole1_suit: 's',
-    Player0_hole1_value: '7',
-    Player0_isDealer: true,
-    // stuff
-};
 
-// board
-const c1Diff = ((recFrame.Card1_suit !== this.prevFrame.Card1_suit || recFrame.Card1_value !== this.prevFrame.Card1_value) && recFrame.Card1_suit === 'None') ? 1 : 0;
-const c2Diff = ((recFrame.Card2_suit !== this.prevFrame.Card2_suit || recFrame.Card2_value !== this.prevFrame.Card2_value) && recFrame.Card1_suit === 'None') ? 1 : 0;
-const c3Diff = ((recFrame.Card3_suit !== this.prevFrame.Card3_suit || recFrame.Card3_value !== this.prevFrame.Card3_value) && recFrame.Card1_suit === 'None') ? 1 : 0;
-const c4Diff = ((recFrame.Card4_suit !== this.prevFrame.Card4_suit || recFrame.Card4_value !== this.prevFrame.Card4_value) && recFrame.Card1_suit === 'None') ? 1 : 0;
-const c5Diff = ((recFrame.Card5_suit !== this.prevFrame.Card5_suit || recFrame.Card5_value !== this.prevFrame.Card5_value) && recFrame.Card1_suit === 'None') ? 1 : 0;
-
-const sumBoardCardsDiff = c1Diff + c2Diff + c3Diff + c4Diff + c5Diff;
-
-// dealer
-const player0DealerDiff = recFrame.Player0_isDealer !== this.prevFrame.Player0_isDealer ? 1 : 0;
-const player1DealerDiff = recFrame.Player1_isDealer !== this.prevFrame.Player1_isDealer ? 1 : 0;
-const player2DealerDiff = recFrame.Player2_isDealer !== this.prevFrame.Player2_isDealer ? 1 : 0;
-// .........
-// etc up to player9
-
-const isDealerMoved = player0DealerDiff + player1DealerDiff + player2DealerDiff  === 2; // 2 - one disappeared and another one appeared
-
-// hero
-const isHeroCardsChanged = recFrame.Player2_hole1_suit !== this.prevFrame.Player2_hole1_suit  // one and more cards have changed
-    || recFrame.Player2_hole1_value !== this.prevFrame.Player2_hole1_value
-    || recFrame.Player2_hole2_suit !== this.prevFrame.Player2_hole2_suit
-    || recFrame.Player2_hole2_value !== this.prevFrame.Player2_hole2_value;
-
-// final test
-if (sumBoardCardsDiff > 1 || (isHeroCardsChanged && isDealerMoved)) {      // new hand!!!
-    // 1) сбрасываем кэш никнеймов, карт борда и игроков
-    // 2) определяем тяжелыми сетями никнеймы, а так же карты игроков которые распознаны как не 'None' легкими сетями(почти всегда это только хиро)
-    // 3) ждем когда легкие сети распознают конкретную масть и номинал карты и включаем распознавание тяжелыми сетями и записываем их в кэш!
-    //  3.1) если тяжелые сети определили карту как 'None', повторить распознавание в след фрейме если легкие сети распознали конкретную карту(страховка для пункта 3)
-    // 4) слать по сети, а так же логировать все карты и никнеймы ТОЛЬКО ИЗ КЭША, куда пишут ТОЛЬКО ТЯЖЕЛЫЕ СЕТИ
-}
 
 module.exports.validatorCreator = validatorCreator;
 
