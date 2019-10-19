@@ -1,11 +1,12 @@
 const moment = require('moment');
 
 const enumPoker = require('../enum');
+const enumCommon = require('../enum');
 const moves = require('./prompterMovesHandler');
 const validator = require('./frameCreator');
 
-const REJECT_HAND = 'reject_hand';
-const PROMPT = 'prompt';
+const REJECT_HAND = enumCommon.REJECT_HAND;
+const PROMPT = enumCommon.PROMPT;
 
 class PlayersHandler {
     constructor() {
@@ -114,7 +115,7 @@ class PlaySetup {
         this.needToPrompt = true;
         this.fantomRawActionsCount = 0;
         this.lastPromptMoveType = null; // используем для эвристики по поводу того, кто именно ставил, когда это не известно.
-        this.isNewHand = true;
+        this.isNewHand = true;          // сетим на фолс внутри мувс_хендлер
         this.gameTypesSettings = gameTypesSettings;
         this.validator = validator.validatorCreator(this);
 
@@ -687,12 +688,13 @@ class PlaySetup {
             }
         } else {        // !!терминальное состояние!! ждем борда или кнопок хиро или чайрТу, вложившего деньги, или распознаем шоудауны
             console.log('!!!terminal state');
-            if (playFrame.board.length === 5 && this.board.length === 3) {   // терминальное на ривере
+            if (this.board.length === 5) {   // терминальное на ривере
                 console.log('terminal river state');
                 // ждем и собираем шоудауны.. формируем историю руки с победами
             } else if ((this.board.length === 3 && playFrame.board.length === 5) || (this.board.length === 0 && playFrame.board.length > 3)) {
                 console.log('skipped one street between frames');
                 // если вырос пот - отменяем раздачу.. если нет - пушим за всех чеки и сетим борд
+                // в настоящий момент отменяем раздачу, так как очень сложно реализовать валидацию ставок через улицу
                 this.rejectHand = true;
                 return false;
                 // или игроки выставились. Ждем и собираем шоудауны.. формируем историю руки с победами.
@@ -1057,13 +1059,22 @@ class PlaySetup {
         return false;
     }
 
-    // use only with this.wasFoldBefore() === true;
-    getFoldBalance(chair) {
+    getLastValidMoveBalance(chair) {
         for (let i = this.rawActionList.length - 1; i >= 0; i--) {
-            if (this.rawActionList[i].position === this.initPlayers[chair].enumPosition && this.rawActionList[i].action === 5) {
-                return this.rawActionList[i].balance;
+            if (this.rawActionList[i].position === this.initPlayers[chair].enumPosition) {
+                return this.rawActionList[i].balance - this.rawActionList[i].invest;
             }
         }
+        return this.initPlayers[chair].initBalance;   // was't any move before
+    }
+
+    getLastValidMoveStreet(chair) {
+        for (let i = this.rawActionList.length - 1; i >= 0; i--) {
+            if (this.rawActionList[i].position === this.initPlayers[chair].enumPosition) {
+                return this.rawActionList[i].street;
+            }
+        }
+        return this.initPlayers[chair].initBalance;   // was't any move before
     }
 
     maxAmountAtCurrentStreet() {
@@ -1120,7 +1131,7 @@ class PlaySetup {
     // инициальный баланс на текущей улице(или указанной). Так же используется для валидации и замены глючных амаунтов или балансов
     // выдает то, что мы запишем в баланс первого мува на текущей улице в rawActions
     initPlayerBalance(enumPosition, street) {
-        const currentStreet = street || this.rawActionList[this.rawActionList.length - 1].street;
+        const currentStreet = street !== undefined ? street : this.rawActionList[this.rawActionList.length - 1].street;
         let initBalance;
         for (let i = this.rawActionList.length - 1; i >= 0; i--) {
             if (this.rawActionList[i].position === enumPosition) {
@@ -1404,7 +1415,7 @@ const prompterListener = (setup, request, gameTypesSettings) => {
         setup.playSetup.frameHandler(request.rawFrame, gameTypesSettings);
     }
 
-    request.client.emit('prompt', promptData);
+    request.client.emit(PROMPT, promptData);
 };
 
 

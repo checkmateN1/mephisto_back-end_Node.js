@@ -18,7 +18,14 @@ const enumPoker = Object.freeze({
     cardsSuits: ['c', 's', 'd', 'h'],
 });
 
+const enumCommon = Object.freeze({
+    INVALID_FRAME: 'INVALID_FRAME',
+    REJECT_HAND: 'REJECT_HAND',
+    PROMPT: 'prompt',
+});
+
 module.exports = enumPoker;
+module.exports = enumCommon;
 
 
 

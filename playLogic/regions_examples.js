@@ -24,23 +24,27 @@ str[20] = 'fgsvs';              // text
 str[21] = 'PotC3,0 BB';              // 3.0
 str[22] = 'Potz 7.2.BB';              // 7.2
 str[23] = 'Potz 0 BB';              // 0
+str[24] = 'All-in';                  // 0
 
 // const regPot = /(S|D|B|\d)+(?!\S){0,4}((\.|\,){0,3}\d{1,2})/;
 const regPot = /(S|D|B|\d)+(?!\S){0,4}((\.|\,){0,3}\d{1,2}){0,1}/;
+const regAllin = /all/i;
 
 console.time('find and replace time pot');
 str.forEach(str => {
-    const matchArr = str.match(regPot);
-    console.log(`input: ${str};    output: ${matchArr ? matchArr[0]
-            .replace(/S/, 5)
-            .replace(/D/, 0)
-            .replace(/B/, 8)
-            .replace(/(\.|\,)+(?=(\d)){0,1}/, '.')
-        : null}`);
+    if (regAllin.test(str)) {
+        console.log(`input: ${str};    output: 0`);
+    } else {
+        const matchArr = str.match(regPot);
+        console.log(`input: ${str};    output: ${matchArr ? matchArr[0]
+                .replace(/S/, 5)
+                .replace(/D/, 0)
+                .replace(/B/, 8)
+                .replace(/(\.|\,)+(?=(\d)){0,1}/, '.')
+            : null}`);
+    }
 });
 console.timeEnd('find and replace time pot');
-
-console.log(!isNaN('12.2'));
 
 
 
