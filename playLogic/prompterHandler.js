@@ -1068,6 +1068,15 @@ class PlaySetup {
         return this.initPlayers[chair].initBalance;   // was't any move before
     }
 
+    getLastValidMoveAmount(chair) {
+        for (let i = this.rawActionList.length - 1; i >= 0; i--) {
+            if (this.rawActionList[i].position === this.initPlayers[chair].enumPosition) {
+                return this.rawActionList[i].amount;
+            }
+        }
+        return 0;   // was't any move before
+    }
+
     getLastValidMoveStreet(chair) {
         for (let i = this.rawActionList.length - 1; i >= 0; i--) {
             if (this.rawActionList[i].position === this.initPlayers[chair].enumPosition) {
