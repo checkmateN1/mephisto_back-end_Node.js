@@ -156,6 +156,7 @@ class Validator {
             if (!unclearBalancesCount
                 && !unclearBetsCount
                 && isPotNumber
+                && pot.Pot > 0
                 && dealersCount === 1
                 && activeCount > 1) {     // good first frame
                 return Object.assign(recFrame, pot, playerBets, playerBalances);
@@ -182,20 +183,9 @@ class Validator {
                 return INVALID_FRAME;
             }
 
-            // проверяем верный ли пот
-            // 1) если сумма потерь всех балансов дает пот - верный пот и балансы! -> валидируем ставки
-            // 2) если не вышло: если нету смены улицы: потери рав балансов в начале улицы плюс ставки = текущий пот! если не вышло - пот не верный!
-                                 // проверяем что потеря балансов даст тот же пот, что и инит балансы + ставки, если да - сетим пот! Все остальное верно
-
-                                // если есть смена улицы и не терминальное состояние: определяем макс ставку на прошлой улице - должны совпасть как минимум 2 потерянных баланса на пред улице
-                                                    // если терминальное - у двоих или более должны совпасть потери - складываем потери балансов с потерями инит балансов + ставки
-
-            // альтернатива: raw баланс с начала улицы + ставка любого игрока должен равняться текущей общей потере баланса - если нет, или баланс или ставка не верна
-            // проверяем что из предположений соответствует реальности
-
             const balancesDiffArr = [];
             const bets = [];
-            const balancesDiff = Array(this.playSetup.initPlayers.length).fill().reduce((balancesDiff, player, i) => {
+            const balancesDiff = this.playSetup.initPlayers.reduce((balancesDiff, player, i) => {
                 if (this.playSetup.initPlayers[i] !== undefined) {
                     if (this.playSetup.wasFoldBefore(i)) {         // compare last move balance with init balance
                         balancesDiffArr[i] = this.playSetup.initPlayers[i].initBalance - this.playSetup.getLastValidMoveBalance(i);
@@ -288,7 +278,7 @@ class Validator {
             } else {        // pot or balances are wrong
                 if (!isNewStreet) {
                     const balancesDiffArrBets = [];
-                    const balancesDiffByBets = Array(this.playSetup.initPlayers.length).fill().reduce((balancesDiff, player, i) => {
+                    const balancesDiffByBets = this.playSetup.initPlayers.reduce((balancesDiff, player, i) => {
                         if (this.playSetup.initPlayers[i] !== undefined) {
                             if (this.playSetup.wasFoldBefore(i)) {         // compare last move balance with init balance
                                 balancesDiffArrBets[i] = this.playSetup.initPlayers[i].initBalance - this.playSetup.getLastValidMoveBalance(i);
@@ -325,59 +315,245 @@ class Validator {
                         // возвращаем ставки и уменьшаем пот до терминального, пытаемся вычислить кто из игроков сколько вложил в пот на улице
                         // и ищем подтвержения этому в совпавших балансе + ставке с амаутом вычисленным из прироста пота на улице
                         const currentMaxAmount = this.playSetup.maxAmountAtCurrentStreet();
-                        const possiblePlayers = [];
-                        this.playSetup.initPlayers.forEach((player, i) => {
-                            if (player !== undefined) {
-                                if (!this.playSetup.wasFoldBefore(i)) {
+                        const possibleMaxAmounts = {};
+                        let maxAmount;
+                        this.playSetup.initPlayers.reduce((isFound, player, i) => {
+                            if (!isFound && player !== undefined) {
+                                if (!this.playSetup.wasFoldBefore(i)
+                                || this.playSetup.getLastValidMoveStreet(i) === currentStreet) {
                                     const initBalance = this.playSetup.initPlayerBalance(this.playSetup.initPlayers[i].enumPosition);
-                                    possiblePlayers.push({ i, initBalance });
-
-                                    const newMax = initBalance - playerBalances[`Player${i}_balance`];
-                                    if (newMax > currentMaxAmount && !possibleMaxAmounts.includes(newMax)) {
-                                        possibleMaxAmounts.push(newMax);
+                                    const amount = initBalance - playerBalances[`Player${i}_balance`] - playerBets[`Player${i}_bet`];
+                                    if (!(amount in possibleMaxAmounts)) {
+                                        possibleMaxAmounts[amount] = initBalance - amount > 0;
+                                    } else {
+                                        if (!possibleMaxAmounts[amount] || initBalance - amount > 0) {
+                                            maxAmount = amount; // bingo!
+                                            return true;
+                                        }
                                     }
                                 }
                             }
-                        });
+                            return isFound;
+                        }, false);
 
-                        const isFoundValidBets = possibleMaxAmounts.reduce((isAlreadyFound, amount) => {
-                            if (!isAlreadyFound) {
-                                return possiblePlayers.reduce((isAlreadyFound, player) => {
-                                    if (!isAlreadyFound) {
-                                        if ((player.initBalance - playerBalances[`Player${player.i}_balance`]  === playerBets[`Player${player.i}_bet`] + amount)
-                                            && (playerBalances[`Player${player.i}_balance`] > 0 || playerBets[`Player${player.i}_bet`] > 0)) {
-                                            // found right amount at previous street. Setting players bets
-                                            balancesDiffArr.forEach((balance, i) => {
-                                                if (balance !== undefined) {
-                                                    if (this.playSetup.wasFoldBefore(i)) {
-                                                        playerBets[`Player${i}_bet`] = this.playSetup.getLastValidMoveStreet(i) === currentStreet ? this.playSetup.getLastValidMoveAmount(i) : 0;
-                                                    } else {
-                                                        playerBets[`Player${i}_bet`] = Math.max(player.initBalance - playerBalances[`Player${player.i}_balance`] - amount, 0);
-                                                    }
-                                                }
-                                            });
-                                            return true;
-                                        } else {
-                                            return false;
+                        if (maxAmount !== undefined) {
+                            // знаем макс амаунт и можем проверить пот или все балансы по ставкам + амаунт, а затем установить всем валидные балансы или пот
+                            // определяем кто сфолдил между фреймами и высчитываем для него возможные места фолда
+                            const foldChair = this.getFoldedChair(recFrame);
+
+                            if (foldChair !== undefined) {  // found one folded player
+                                // create an arr with possible maxAmounts
+                                const maxBalancesDiffWhenFolded = [];
+                                const foldedPlayerBetAtNewStreet = playerBets[`Player${foldChair}_bet`];
+                                if (!foldedPlayerBetAtNewStreet && this.playSetup.getLastValidMoveAmount(foldChair) < currentMaxAmount) {
+                                    maxBalancesDiffWhenFolded.push(currentMaxAmount);
+                                }
+                                if (!foldedPlayerBetAtNewStreet && maxAmount > currentMaxAmount) {
+                                    maxBalancesDiffWhenFolded.push(maxAmount);
+                                }
+
+                                // формируем и сортируем массив со ставками
+                                this.playSetup.initPlayers.forEach((player, i) => {
+                                    if (player !== undefined) {
+                                        if (!this.playSetup.wasFoldBefore(i) && i !== foldChair) {  // folded between frames
+                                            if (playerBets[`Player${i}_bet`] > foldedPlayerBetAtNewStreet) {
+                                                maxBalancesDiffWhenFolded.push(playerBets[`Player${i}_bet`] + maxAmount);
+                                            }
                                         }
+                                    }
+                                });
+
+                                let validBalanceDiffForFoldedPlayer;
+                                const balancesDiffArrBets = [];
+                                maxBalancesDiffWhenFolded.reduce((isFound, foldedBalanceDiff) => {
+                                    if (!isFound) {
+                                        const balancesDiffByBets = this.playSetup.initPlayers.reduce((balancesDiff, player, i) => {
+                                            if (this.playSetup.initPlayers[i] !== undefined) {
+                                                if (this.playSetup.wasFoldBefore(i)) {         // compare last move balance with init balance
+                                                    balancesDiffArrBets[i] = this.playSetup.initPlayers[i].initBalance - this.playSetup.getLastValidMoveBalance(i);
+                                                    return balancesDiff + balancesDiffArrBets[i];
+                                                } else if (i === foldChair) {
+
+                                                    balancesDiffArrBets[i] = this.playSetup.initPlayers[i].initBalance - this.playSetup.initPlayerBalance(this.playSetup.initPlayers[i].enumPosition) + foldedBalanceDiff;
+                                                    return balancesDiff + balancesDiffArrBets[i];
+                                                } else {
+                                                    balancesDiffArrBets[i] = this.playSetup.initPlayers[i].initBalance - this.playSetup.initPlayerBalance(this.playSetup.initPlayers[i].enumPosition) + maxAmount + playerBets[`Player${i}_bet`];
+                                                    return balancesDiff + balancesDiffArrBets[i];
+                                                }
+                                            } else {
+                                                return balancesDiff;
+                                            }
+                                        }, 0);
+
+                                        if (balancesDiffByBets === pot.Pot) {   // found call sizing for  + pot and bets are valid!
+                                            validBalanceDiffForFoldedPlayer = foldedBalanceDiff;
+                                            return true;
+                                        }
+                                        return false;
                                     } else {
                                         return true;
                                     }
                                 }, false);
-                            } else {
-                                return true;
-                            }
-                        }, false);
 
-                        if (!isFoundValidBets) {
-                            console.log('all bets are with mistake! But its ok with balances and pot. Invalid frame!');
-                            return INVALID_FRAME;
+                                if (validBalanceDiffForFoldedPlayer !== undefined) {
+                                    // беты и пот валидные, а так же максАмаунт и размер вложений того кто сфолдил
+                                    this.playSetup.initPlayers.forEach((player, i) => {
+                                        if (player !== undefined) {
+                                            playerBalances[`Player${i}_balance`] = this.playSetup.initPlayers[i].initBalance - balancesDiffArrBets[i];
+                                        }
+                                    });
+                                } else {
+                                    console.log(`был найден предположительный максАмаунт на предыдущей улице: ${maxAmount}, но либо пот либо ставки не верны`);
+                                    return INVALID_FRAME;
+                                }
+                            } else {
+                                // no one folded between frames and we have maxAmount
+                                const balancesDiffArrBets = [];
+                                const balancesDiffByBets = this.playSetup.initPlayers.reduce((balancesDiff, player, i) => {
+                                    if (this.playSetup.initPlayers[i] !== undefined) {
+                                        if (this.playSetup.wasFoldBefore(i)) {         // compare last move balance with init balance
+                                            balancesDiffArrBets[i] = this.playSetup.initPlayers[i].initBalance - this.playSetup.getLastValidMoveBalance(i);
+                                            return balancesDiff + balancesDiffArrBets[i];
+                                        } else {
+                                            balancesDiffArrBets[i] = this.playSetup.initPlayers[i].initBalance - this.playSetup.initPlayerBalance(this.playSetup.initPlayers[i].enumPosition) + maxAmount + playerBets[`Player${i}_bet`];
+                                            return balancesDiff + balancesDiffArrBets[i];
+                                        }
+                                    } else {
+                                        return balancesDiff;
+                                    }
+                                }, 0);
+
+                                if (balancesDiffByBets === pot.Pot) {
+                                    // заменяем все балансы используя ставки и balancesDiffArrBets;
+                                    this.playSetup.initPlayers.forEach((player, i) => {
+                                        if (this.playSetup.initPlayers[i] !== undefined) {
+                                            playerBalances[`Player${i}_balance`] = this.playSetup.initPlayers[i].initBalance - balancesDiffArrBets[i];
+                                        }
+                                    });
+                                } else if (balancesDiffByBets === balancesDiff) {
+                                    pot.Pot = balancesDiff;
+                                } else {
+                                    console.log(`был найден предположительный максАмаунт на предыдущей улице: ${maxAmount}, возможно 2 или более цифры не верны`);
+                                    return INVALID_FRAME;
+                                }
+                            }
+
+                        } else {
+                            // возможно балансы не верны, но возможно верны ставки - пытаемся определить амаунт из прироста пота за улицу
+                            const amountAVG = this.playSetup.initPlayers.reduce((pot, player, i) => {
+                                return pot - (this.playSetup.initPlayers[i] === undefined || this.playSetup.wasFoldBefore(i)) ? 0 : playerBets[`Player${i}_bet`];
+                            }, pot.Pot) - this.playSetup.getPotStartStreet();  // potDiff at last street
+
+                            // 2) не забываем про олынеров коротких
+                            // 3) проверяем сколько вложили те, кто уже сфолдил на этой улице
+
+                            const notActivePlayers = [];
+                            const amountAvgActive = this.playSetup.initPlayers.reduce((pot, player, i) => {
+                                if (this.playSetup.initPlayers[i] !== undefined) {
+                                    if (this.playSetup.wasFoldBefore(i)) {
+                                        const balDiff = this.playSetup.initPlayerBalance(this.playSetup.initPlayers[i].enumPosition) - this.playSetup.getLastValidMoveBalance(i);
+                                        notActivePlayers.push(i);
+                                        return pot - balDiff;
+                                    } else {
+                                        const endBalance = this.playSetup.getLastValidMoveBalance(i);
+                                        const balDiff = this.playSetup.initPlayerBalance(this.playSetup.initPlayers[i].enumPosition) - endBalance;
+                                        if (balDiff && endBalance === 0) {      // player went to allin at current street
+                                            notActivePlayers.push(i);
+                                            return pot - balDiff;
+                                        }
+                                    }
+                                }
+                                return pot;
+                            }, amountAVG);
+
+
+                            const foldChair = this.getFoldedChair(recFrame);
+                            if (foldChair !== undefined) {  // somebody folded between frames
+                                // 1) проверяем что фолдун не колил макс амаунт
+                                const foldOnCurrMaxAmountAmount = this.playSetup.getPrevAmountOnCurStreet(foldChair);
+
+                                if (foldOnCurrMaxAmountAmount < currentMaxAmount) {
+                                    // предполагаем, что он сфолдил на макс амаунт и больше никто не повышал
+                                    notActivePlayers.push(foldChair);
+                                    const amountAvgActiveWithoutFolder = amountAvgActive - foldOnCurrMaxAmountAmount;
+
+                                    const countActivePlayers = this.playSetup.initPlayers.reduce((count, player, i) => {
+                                        if (player !== undefined && !notActivePlayers.includes(i)) {
+                                            return count + 1;
+                                        }
+                                        return count;
+                                    }, 0);
+
+                                } else {    // сфолдил на повышение макс амаунта или на след улице
+
+                                }
+
+                            } else {
+                                // проверяем есть ли коротыш в олыне или несколько
+                                // это те, чей баланс в начале улицы не превышал amountAVG / ?
+                            }
+                            // console.log(`максАмаунт на предыдущей улице не был найден`);
+                            // return INVALID_FRAME;
+                        }
+
+                    } else {    // new street + terminal state and and wrong pot or balances
+                        // проверяем совпадает ли пот - все ставки с терминальным потом.
+
+                        const potByBets = this.playSetup.initPlayers.reduce((pot, player, i) => {
+                            if (player !== undefined) {
+                                return pot - this.playSetup.wasFoldBefore(i) ? 0 : playerBets[`Player${i}_bet`];
+                            }
+                            return pot;
+                        }, pot.Pot);
+
+                        const curRawPot = this.playSetup.getPot();
+
+                        if (curRawPot === potByBets) {    // верный пот и ставки
+                            this.playSetup.initPlayers.forEach((player, i) => {
+                                if (player !== undefined) {
+                                    if (this.playSetup.wasFoldBefore(i)) {
+                                        playerBalances[`Player${i}_balance`] = this.playSetup.getLastValidMoveBalance(i);
+                                    } else {
+                                        playerBalances[`Player${i}_balance`] = this.playSetup.getLastValidMoveBalance(i) - playerBets[`Player${i}_bet`];
+                                    }
+                                }
+                            });
+                        } else {    // беты или пот не верны
+                            // проверяем правильность балансов с бетами
+                            const potByBetsRawPot = this.playSetup.initPlayers.reduce((pot, player, i) => {
+                                if (player !== undefined) {
+                                    return pot + this.playSetup.wasFoldBefore(i) ? 0 : playerBets[`Player${i}_bet`];
+                                }
+                                return pot;
+                            }, curRawPot);
+                            if (balancesDiff === potByBetsRawPot) {     // верны балансы и ставки
+                                pot.Pot = balancesDiff;
+                            } else {
+                                console.log(`терминальное состояние. Пот и балансы не совпали, пот и ставки не совпали, беты и балансы не совпали`);
+                                return INVALID_FRAME;
+                            }
                         }
                     }
                 }
             }
         }
+        return Object.assign(recFrame, pot, playerBets, playerBalances);
+    }
 
+    getFoldedChair(recFrame) {
+        let foldChair;
+        this.playSetup.initPlayers.reduce((isFound, player, i) => {
+            if (!isFound) {
+                if (player !== undefined) {
+                    if (!this.playSetup.wasFoldBefore(i) && recFrame[`Player${i}_isActive`].value === 'n') {  // folded between frames
+                        foldChair = i;
+                        return true;
+                    }
+                }
+            }
+            return isFound;
+        }, false);
+        return foldChair;
     }
 
     isStreetChanged(recFrame) {

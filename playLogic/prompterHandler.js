@@ -1202,9 +1202,14 @@ class PlaySetup {
         return this.rawActionList.reduce((sum, current) => sum + current.invest, 0);
     }
 
+    getPotStartStreet() {
+        const lastStreet = this.rawActionList[this.rawActionList.length - 1].street;
+        return this.rawActionList.reduce((sum, current) => sum + current.street !== lastStreet ? current.invest : 0, 0);
+    }
+
     // return the last bet or raise amount
     wasBet(oldActionListLength) {
-        let currentStreet = this.rawActionList[oldActionListLength].street;
+        const currentStreet = this.rawActionList[oldActionListLength].street;
         for (let i = oldActionListLength; i >= 0; i--) {
             if (this.rawActionList[i].street === currentStreet) {
                 if (this.rawActionList[i].action < 3) {
