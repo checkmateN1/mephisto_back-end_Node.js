@@ -6,7 +6,7 @@ const testRegions = [{'id': 1, 'Player0_name': 'iblj J et', 'Player1_name': 'Wac
 const regPot = /(S|D|B|\d)+(?!\S){0,4}((\.|\,){0,3}\d{1,2}){0,1}/;
 const regBalance = /(S|D|B|\d)+(?!\S){0,4}((\.|\,){0,3}\d{1,2}){0,1}/;
 const regBеt = /(S|D|B|\d)+(?!\S){0,4}((\.|\,){0,3}\d{1,2}){0,1}/;
-const regAllin = /all/i;
+const regAllin = /(all|((4|A)(1|L|I)(1|L|I)-))/i;
 
 class Player {
     constructor(id, adaptation) {
@@ -448,17 +448,20 @@ class Validator {
                             // 3) проверяем сколько вложили те, кто уже сфолдил на этой улице
 
                             const notActivePlayers = [];
+                            const playerAmounts = [];       // !! amounts for all players
                             const amountAvgActive = this.playSetup.initPlayers.reduce((pot, player, i) => {
                                 if (this.playSetup.initPlayers[i] !== undefined) {
                                     if (this.playSetup.wasFoldBefore(i)) {
                                         const balDiff = this.playSetup.initPlayerBalance(this.playSetup.initPlayers[i].enumPosition) - this.playSetup.getLastValidMoveBalance(i);
                                         notActivePlayers.push(i);
+                                        playerAmounts[i] = balDiff;
                                         return pot - balDiff;
                                     } else {
                                         const endBalance = this.playSetup.getLastValidMoveBalance(i);
                                         const balDiff = this.playSetup.initPlayerBalance(this.playSetup.initPlayers[i].enumPosition) - endBalance;
                                         if (balDiff && endBalance === 0) {      // player went to allin at current street
                                             notActivePlayers.push(i);
+                                            playerAmounts[i] = balDiff;
                                             return pot - balDiff;
                                         }
                                     }
@@ -468,32 +471,54 @@ class Validator {
 
 
                             const foldChair = this.getFoldedChair(recFrame);
+                            let foldAmount;
                             if (foldChair !== undefined) {  // somebody folded between frames
                                 // 1) проверяем что фолдун не колил макс амаунт
                                 const foldOnCurrMaxAmountAmount = this.playSetup.getPrevAmountOnCurStreet(foldChair);
 
-                                if (foldOnCurrMaxAmountAmount < currentMaxAmount) {
-                                    // предполагаем, что он сфолдил на макс амаунт и больше никто не повышал
-                                    notActivePlayers.push(foldChair);
-                                    const amountAvgActiveWithoutFolder = amountAvgActive - foldOnCurrMaxAmountAmount;
-
-                                    const countActivePlayers = this.playSetup.initPlayers.reduce((count, player, i) => {
-                                        if (player !== undefined && !notActivePlayers.includes(i)) {
-                                            return count + 1;
-                                        }
-                                        return count;
-                                    }, 0);
-
-                                } else {    // сфолдил на повышение макс амаунта или на след улице
-
-                                }
-
-                            } else {
-                                // проверяем есть ли коротыш в олыне или несколько
-                                // это те, чей баланс в начале улицы не превышал amountAVG / ?
+                                // предполагаем, что он сфолдил на макс амаунт и больше никто не повышал
+                                notActivePlayers.push(foldChair);
+                                foldAmount = foldOnCurrMaxAmountAmount < currentMaxAmount ? foldOnCurrMaxAmountAmount : currentMaxAmount;
+                                playerAmounts[foldChair] = foldAmount;
                             }
-                            // console.log(`максАмаунт на предыдущей улице не был найден`);
-                            // return INVALID_FRAME;
+
+                            const amountAvgActiveWithoutFolder = amountAvgActive - foldAmount || 0;
+
+                            const activePlayers = [];
+                            const initBalances = [];
+                            this.playSetup.initPlayers.forEach((player, i) => {
+                                if (player !== undefined && !notActivePlayers.includes(i)) {
+                                    const initBalance = this.playSetup.initPlayerBalance(this.playSetup.initPlayers[i].enumPosition);
+                                    initBalances.push(initBalance);
+                                    activePlayers[i] = initBalance;
+                                }
+                            });
+
+                            const activePlayersTMP = activePlayers.slice();
+
+                            initBalances.sort((a, b) => a - b);
+                            const sortedActivePlayers = initBalances.map(balance => {
+                                const playerIndex = activePlayersTMP.indexOf(balance);
+                                activePlayersTMP[playerIndex] = undefined;
+                                return { playerIndex, balance };
+                            });
+
+                            const amountsActivePlayers = [];
+                            sortedActivePlayers.reduce((playersRestCount, player) => {
+                                const terminalAmount = (amountAvgActiveWithoutFolder - amountsActivePlayers.reduce((sum, cur) => sum + cur, 0))/playersRestCount;
+                                amountsActivePlayers.push(Math.min(terminalAmount, player.balance));
+                                return playersRestCount - 1;
+                            }, sortedActivePlayers.length);
+
+                            // проверяем есть ли в amountsActivePlayers минимум 2 самых больших макс амаунта
+                            let maxValidAmount;
+                            amountsActivePlayers.sort((a, b) => a - b);
+                            if (amountsActivePlayers.length > 2
+                                && amountsActivePlayers[amountsActivePlayers.length - 1] === amountsActivePlayers[amountsActivePlayers.length - 2]) {
+                                // проверяем что хотя бы у одного игрока совпал прирост амаунт + ставка с приростом его баланса относительно начала пред улицы
+
+                            }
+
                         }
 
                     } else {    // new street + terminal state and and wrong pot or balances

@@ -25,10 +25,15 @@ str[21] = 'PotC3,0 BB';              // 3.0
 str[22] = 'Potz 7.2.BB';              // 7.2
 str[23] = 'Potz 0 BB';              // 0
 str[24] = 'All-in';                  // 0
+str[25] = 'Pot 4,0 BB 4...';                  // 4.0
+str[26] = 'Pot: B,0 BB .,';                  // 8.0
+str[27] = '23 0 BB';                  // 23.0
+str[28] = '411-111';                  // All-in
+str[29] = 'A11-111';                  // All-in
 
 // const regPot = /(S|D|B|\d)+(?!\S){0,4}((\.|\,){0,3}\d{1,2})/;
 const regPot = /(S|D|B|\d)+(?!\S){0,4}((\.|\,){0,3}\d{1,2}){0,1}/;
-const regAllin = /all/i;
+const regAllin = /(all|((4|A)(1|L|I)(1|L|I)-))/i;
 
 console.time('find and replace time pot');
 str.forEach(str => {
