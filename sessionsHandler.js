@@ -25,10 +25,9 @@ class SimulationsQueue {
         this.tasksQueue = [];
     }
 
-    queueHandler = (sessionSetup, request) => {
+    queueHandler(sessionSetup, request) {
         this.tasksQueue.push({ engineID: sessionSetup.engineID, sessionSetup, request });
 
-        taskHandler();
         const taskHandler = () => {
             if (this.activeSimulations.length < this.maxActiveTasks) {
                 const task = this.tasksQueue.shift();
@@ -40,7 +39,8 @@ class SimulationsQueue {
                 this.activeSimulations = this.activeSimulations.filter(simulation => simulation.engineID !== task.engineID);
                 taskHandler();
             }
-        }
+        };
+        taskHandler();
     };
 }
 

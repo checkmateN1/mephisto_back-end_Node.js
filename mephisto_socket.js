@@ -26,6 +26,11 @@ const sequenceNumberByClient = {};
 //     client.emit('prompt', { prompt });
 // };
 
+// debug
+let dirPath = '';
+let curFile = '';
+let filesInDir = [];
+
 
 // event fired every time a new client connects:
 io.on('connection', client => {
@@ -55,6 +60,62 @@ io.on('connection', client => {
             client.on('getConfigSuccess', () => {
                 console.info(`Client [${token}] successfully received config`);
             });
+
+            /////////////// debug
+            client.on('getDebugImg', (req) => {
+                console.info('req');
+                console.info(req);
+                // trying to serve the image file from the server
+                if (req) {
+                    if (dirPath !== req.folder) {
+                        dirPath = req.folder;
+                        const files = fs.readdirSync(req.folder);
+                        filesInDir = files.filter(file => /jpg/.test(file));
+
+                        fs.readFile(req.folder + '\\' + req.file, function(err, buf){
+                            if (err) throw err; // Fail if the file can't be read.
+                            client.emit('image', { image: true, buffer: buf.toString('base64') });
+                            console.log('image file is initialized');
+                            curFile = req.file;
+                        });
+                    } else {
+                        const fileToSend = curFile ? filesInDir[filesInDir.indexOf(curFile) + req.step] : req.file;
+                        if (fileToSend !== undefined) {
+                            fs.readFile(req.folder + '\\' + fileToSend, function(err, buf){
+                                if (err) throw err; // Fail if the file can't be read.
+                                client.emit('image', { image: true, buffer: buf.toString('base64') });
+                                console.log('image file is initialized');
+                            });
+                            curFile = fileToSend;
+                        }
+                    }
+                }
+
+                const frameData = JSON.parse(data);
+
+                fs.appendFileSync('frames_log.txt',
+                    `got frame at ${moment().format('dddd, MMMM Do YYYY, h:mm:ss a')} \r\n
+                        ${data} \r\n \r\n \r\n`,
+                    function(error){
+                        if(error) throw error; // если возникла ошибка
+                    });
+
+                const prompterData = {
+                    request: {
+                        requestType: 'prompter',
+                    },
+                    data: frameData,
+                    client,
+                };
+
+                sessionsHandler.sessionsListener(token, frameData.id, prompterData);     // data.id == table id from recognition
+            });
+
+            client.on('clearDebug', () => {
+                curFile = '';
+            });
+
+            //////////////////////////////////////////
 
             // css
             client.on('getCSS', () => {
@@ -127,10 +188,10 @@ io.on('connection', client => {
     });
 });
 
-server.listen(27990, '192.168.1.20', function(){
-    console.log("Сервер ожидает подключения...");
-});
-
-// server.listen(27990, 'localhost', function(){
+// server.listen(27990, '192.168.1.20', function(){
 //     console.log("Сервер ожидает подключения...");
 // });
+
+server.listen(27990, 'localhost', function(){
+    console.log("Сервер ожидает подключения...");
+});

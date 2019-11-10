@@ -24,8 +24,8 @@ const enumCommon = Object.freeze({
     PROMPT: 'prompt',
 });
 
-module.exports = enumPoker;
-module.exports = enumCommon;
+module.exports.enumPoker = enumPoker;
+module.exports.enumCommon = enumCommon;
 
 
 

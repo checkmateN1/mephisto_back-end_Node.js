@@ -119,6 +119,9 @@ class PlaySetup {
         this.gameTypesSettings = gameTypesSettings;
         this.validator = validator.validatorCreator(this);
 
+        console.log('rawFrame test');
+        console.log(rawFrame);
+
         this.frameHandler(rawFrame);
     }
 
@@ -1477,12 +1480,12 @@ const frame4 = new PlayFrame(12345, 225, playPlayers4, [], false, 2, 4);     // 
 const frame5 = new PlayFrame(12345, 225, playPlayers4, [], false, 2, 5);    // the same frame with 4
 const frame6 = new PlayFrame(12345, 325, playPlayers5, ['Ac', 'Ad', 'As'], false, 2, 6);  // new street, checkmate bet 100
 
-const testSetup = new PlaySetup(frame1);
-testSetup.frameHandler(frame2);
-testSetup.frameHandler(frame3);
+// const testSetup = new PlaySetup(frame1);
+// testSetup.frameHandler(frame2);
+// testSetup.frameHandler(frame3);
 // testSetup.frameHandler(frame4);
 // testSetup.frameHandler(frame5);
-testSetup.frameHandler(frame6);
+// testSetup.frameHandler(frame6);
 
 module.exports.prompterListener = prompterListener;
 
