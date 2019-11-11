@@ -134,9 +134,6 @@ class Validator {
             return new PlayFrame(newHandNumer, validFrame.Pot, playPlayers, board, isButtons, this.heroChair, newHandNumer);
         }
 
-        // после валидации при создании фрейма - смотрим кто сфолдил в rawActions и заполняем им валидный баланс из последнего баланса а ставки 0!
-
-
         //test
         // return recFrame;
     };

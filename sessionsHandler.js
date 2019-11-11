@@ -25,22 +25,24 @@ class SimulationsQueue {
         this.tasksQueue = [];
     }
 
+    taskHandler() {
+        if (this.activeSimulations.length < this.maxActiveTasks) {
+            const task = this.tasksQueue.shift();
+            if (task) {
+                this.activeSimulations.push(task);
+            }
+
+            const result = middleware.getAllHandsStrategy(task.sessionSetup, task.request);   // request need for client and stuff
+            // handle result
+
+            this.activeSimulations = this.activeSimulations.filter(simulation => simulation.engineID !== task.engineID);
+            this.taskHandler();
+        }
+    };
+
     queueHandler(sessionSetup, request) {
         this.tasksQueue.push({ engineID: sessionSetup.engineID, sessionSetup, request });
-
-        const taskHandler = () => {
-            if (this.activeSimulations.length < this.maxActiveTasks) {
-                const task = this.tasksQueue.shift();
-                task ? this.activeSimulations.push(task) : '';
-
-                const result = middleware.getAllHandsStrategy(sessionSetup, request);   // request need for client and stuff
-                // handle result
-
-                this.activeSimulations = this.activeSimulations.filter(simulation => simulation.engineID !== task.engineID);
-                taskHandler();
-            }
-        };
-        taskHandler();
+        this.taskHandler();
     };
 }
 

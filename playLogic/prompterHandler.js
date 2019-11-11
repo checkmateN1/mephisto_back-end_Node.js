@@ -101,7 +101,7 @@ class ActionString {
 }
 
 class PlaySetup {
-    constructor(rawFrame, gameTypesSettings) {            // frame from recognition -> validator.dll -> playFrame
+    constructor(gameTypesSettings) {            // frame from recognition -> validator.dll -> playFrame
         this.initPlayers = [];      // all players who was active in start. Index === recPosition, some indexes == undefined!
         this.playersWasActive = [];   // all players who was active in start without empty chairs or waiting players
         this.positionEnumKeyMap = {};
@@ -118,11 +118,6 @@ class PlaySetup {
         this.isNewHand = true;          // сетим на фолс внутри мувс_хендлер
         this.gameTypesSettings = gameTypesSettings;
         this.validator = validator.validatorCreator(this);
-
-        console.log('rawFrame test');
-        console.log(rawFrame);
-
-        this.frameHandler(rawFrame);
     }
 
     frameHandler(rawFrame, gameTypesSettings) {
@@ -1435,9 +1430,9 @@ const prompterListener = (setup, request, gameTypesSettings) => {
     };
 
     // check on valid recognition frame
-
     if (setup.playSetup === undefined) {
-        setup.playSetup = new PlaySetup(request.rawFrame, gameTypesSettings);
+        setup.playSetup = new PlaySetup(gameTypesSettings);
+        setup.playSetup.frameHandler(request.rawFrame, gameTypesSettings);
     } else {
         setup.playSetup.frameHandler(request.rawFrame, gameTypesSettings);
     }

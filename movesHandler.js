@@ -116,9 +116,9 @@ const movesHandler = (request, bbSize, setup) => {
             isCashSteelUseful = false;
             PokerEngine.PushBoard3Move(
                 setup.engineID,
-                enumPoker.cardsName.indexOf(request.board.c1),
-                enumPoker.cardsName.indexOf(request.board.c2),
-                enumPoker.cardsName.indexOf(request.board.c3)
+                enumPoker.enumPoker.cardsName.indexOf(request.board.c1),
+                enumPoker.enumPoker.cardsName.indexOf(request.board.c2),
+                enumPoker.enumPoker.cardsName.indexOf(request.board.c3)
             );
             setup.movesCash.c1 = request.board.c1;
             setup.movesCash.c2 = request.board.c2;
@@ -167,7 +167,7 @@ const movesHandler = (request, bbSize, setup) => {
                 popMoves(setup.movesCash.preflop.length + setup.movesCash.flop.length + 1);
             }
             isCashSteelUseful = false;
-            PokerEngine.PushBoard1Move(setup.engineID, enumPoker.cardsName.indexOf(request.board.c4));
+            PokerEngine.PushBoard1Move(setup.engineID, enumPoker.enumPoker.cardsName.indexOf(request.board.c4));
             setup.movesCash.c4 = request.board.c4;
         }
     }
@@ -212,7 +212,7 @@ const movesHandler = (request, bbSize, setup) => {
                 popMoves(setup.movesCash.preflop.length + setup.movesCash.flop.length + setup.movesCash.turn.length + 2);
             }
             isCashSteelUseful = false;
-            PokerEngine.PushBoard1Move(setup.engineID, enumPoker.cardsName.indexOf(request.board.c4));
+            PokerEngine.PushBoard1Move(setup.engineID, enumPoker.enumPoker.cardsName.indexOf(request.board.c4));
             setup.movesCash.c4 = request.board.c4;
         }
     }
