@@ -836,10 +836,19 @@ class PlaySetup {
     }
 
     setBoard(playFrame) {
-        if (this.rawActionList[this.rawActionList.length - 1].street < playFrame.board.length) {
-            if (playFrame.board.filter(card => card !== undefined).length === playFrame.board.length) {
-                this.board = playFrame.board;
-                return true;
+        const curStreet = this.rawActionList[this.rawActionList.length - 1].street;
+        if (curStreet < this.getStreetNumber(playFrame.board.length)) {
+            if (curStreet === 0) {
+                const isValidFlop = playFrame.board.filter(card => card !== undefined).length === playFrame.board.length;
+                if (isValidFlop) {
+                    this.board = playFrame.board;
+                    return true;
+                }
+            } else {
+                if (playFrame.board[playFrame.board.length - 1] !== undefined) {
+                    this.board.push(playFrame.board[playFrame.board.length - 1]);
+                    return true;
+                }
             }
         }
         return false;
@@ -1163,8 +1172,9 @@ class PlaySetup {
         return this.initPlayers[this.positionEnumKeyMap[enumPosition]].initBalance;   // was't any move before
     }
 
-    getStreetNumber() {
-        switch (this.board.length) {
+    getStreetNumber(length) {
+        const blength = length === undefined ? this.board.length : length;
+        switch (blength) {
             case 0:
                 return 0;
             case 3:

@@ -15,14 +15,6 @@ class Player {
     }
 }
 
-class InitPlayer {
-    constructor(player, initBalance, enumPosition) {
-        this.player = player;
-        this.initBalance = initBalance;
-        this.enumPosition = enumPosition;
-    }
-}
-
 class PlayPlayer {
     constructor(nickname, recognitionPosition, curBalance, amount, isActive, isDealer, cards) {
         this.nickname = nickname;
@@ -87,11 +79,66 @@ class Validator {
 
         if (validFrame === INVALID_FRAME) {
             return INVALID_FRAME;
+        } else {
+            // создаем фрейм
+            const playPlayers = [];
+
+            Array(this.playersCount).fill().forEach((pl, i) => {
+                const nickname = validFrame[`Player${i}_name`];
+                const balance = validFrame[`Player${i}_balance`];
+                const bet = validFrame[`Player${i}_bet`];
+                const isActive = validFrame[`Player${i}_isActive`].value === 'a';
+                const isDealer = validFrame[`Player${i}_isDealer`].value === 'a';
+                const cards = {
+                    hole1Value: validFrame[`Player${i}_hole1_value`].value,
+                    hole2Value: validFrame[`Player${i}_hole2_value`].value,
+                    hole1Suit: validFrame[`Player${i}_hole1_suit`].value,
+                    hole2Suit: validFrame[`Player${i}_hole2_suit`].value,
+                };
+                playPlayers[i] = new PlayPlayer(nickname, i, balance, bet, isActive, isDealer, cards);
+            });
+
+            const newHandNumer = isNewHand ? this.getHandNumber() : this.playSetup.handNumber;
+            const board = [];  // если не распознана масть или номинал - присваиваем undefined элементу массива(карте)
+                               // так же удаляем все undefined c правого конца
+
+            Array(5).fill().forEach((card, i) => {
+                const isValid = enumPoker.enumPoker.cardsSuits.includes(validFrame[`Card${i+1}_suit`].value)
+                    && enumPoker.enumPoker.cardsValues.includes(validFrame[`Card${i+1}_value`].value);
+
+                board[i] = isValid ? {
+                    value: validFrame[`Card${i+1}_value`].value,
+                    suit: validFrame[`Card${i+1}_suit`].value,
+                } : undefined;
+            });
+
+            let cutCount = 0;
+            board.reduceRight((isFoundValid, card) => {
+                if (!isFoundValid) {
+                    if (card) {
+                        return true;
+                    } else {
+                        cutCount++;
+                    }
+                }
+                return isFoundValid;
+            }, false);
+
+            while (cutCount) {
+                board.pop();
+                cutCount--;
+            }
+
+            const isButtons = validFrame.isFold.value;
+
+            return new PlayFrame(newHandNumer, validFrame.Pot, playPlayers, board, isButtons, this.heroChair, newHandNumer);
         }
 
         // после валидации при создании фрейма - смотрим кто сфолдил в rawActions и заполняем им валидный баланс из последнего баланса а ставки 0!
-        const newHandNumer = this.getHandNumber();
-        return recFrame;
+
+
+        //test
+        // return recFrame;
     };
 
     validateFrame(recFrame, isNewHand) {
