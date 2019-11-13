@@ -64,8 +64,9 @@ const movesHandler = (request, bbSize, setup) => {
     }
 
     const popMoves = (nMove) => {
-        while(PokerEngine.GetLastMoveId(setup.engineID) >= nMove) {
+        while(setup.movesInEngine >= nMove) {
             PokerEngine.PopMove(setup.engineID);
+            setup.movesInEngine--;
         }
     };
 
@@ -97,12 +98,13 @@ const movesHandler = (request, bbSize, setup) => {
             isCashSteelUseful = false;
             PokerEngine.PushHintMove(setup.engineID, curInvest, position, action);
             setup.movesCash.preflop.push(pushHintMoveData);
+            setup.movesInEngine++;
         }
         playersInvestPreflop[position] = parseInt(Math.round(+request.actions.preflop[i].amount * 100));
     }
 
 
-    //////////////////////////////////////// PUSH FLOP
+    //////////////////////////////////////// PUSH FLOP BOARD
     if (!request.actions.flop) {
         return [setup.engineID, movesInvestArr];
     } else {
@@ -123,6 +125,7 @@ const movesHandler = (request, bbSize, setup) => {
             setup.movesCash.c1 = request.board.c1;
             setup.movesCash.c2 = request.board.c2;
             setup.movesCash.c3 = request.board.c3;
+            setup.movesInEngine++;
         }
     }
 
@@ -153,6 +156,7 @@ const movesHandler = (request, bbSize, setup) => {
             isCashSteelUseful = false;
             PokerEngine.PushHintMove(setup.engineID, curInvest, position, action);
             setup.movesCash.flop.push(pushHintMoveData);
+            setup.movesInEngine++;
         }
         playersInvestFlop[position] = parseInt(Math.round(+request.actions.flop[i].amount * 100));
     }
@@ -169,6 +173,7 @@ const movesHandler = (request, bbSize, setup) => {
             isCashSteelUseful = false;
             PokerEngine.PushBoard1Move(setup.engineID, enumPoker.enumPoker.cardsName.indexOf(request.board.c4));
             setup.movesCash.c4 = request.board.c4;
+            setup.movesInEngine++;
         }
     }
 
@@ -197,6 +202,7 @@ const movesHandler = (request, bbSize, setup) => {
             isCashSteelUseful = false;
             PokerEngine.PushHintMove(setup.engineID, curInvest, position, action);
             setup.movesCash.turn.push(pushHintMoveData);
+            setup.movesInEngine++;
         }
         playersInvestTurn[request.actions.turn[i].position] = parseInt(Math.round(+request.actions.turn[i].amount * 100));
     }
@@ -212,8 +218,8 @@ const movesHandler = (request, bbSize, setup) => {
                 popMoves(setup.movesCash.preflop.length + setup.movesCash.flop.length + setup.movesCash.turn.length + 2);
             }
             isCashSteelUseful = false;
-            PokerEngine.PushBoard1Move(setup.engineID, enumPoker.enumPoker.cardsName.indexOf(request.board.c4));
-            setup.movesCash.c4 = request.board.c4;
+            PokerEngine.PushBoard1Move(setup.engineID, enumPoker.enumPoker.cardsName.indexOf(request.board.c5));
+            setup.movesCash.c5 = request.board.c5;
         }
     }
 
@@ -241,6 +247,7 @@ const movesHandler = (request, bbSize, setup) => {
             isCashSteelUseful = false;
             PokerEngine.PushHintMove(setup.engineID, curInvest, position, action);
             setup.movesCash.river.push(pushHintMoveData);
+            setup.movesInEngine++;
         }
         playersInvestRiver[request.actions.river[i].position] = parseInt(Math.round(+request.actions.river[i].amount * 100));
     }

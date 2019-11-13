@@ -62,6 +62,7 @@ module.exports = PokerEngine;
 // id int,
 
 // POKERENGINE_API bool SetPlayer(int nIDSetup, int nStack, int nPos, float arrAdapt[ADAPT_SIZE]);
+// POKERENGINE_API int SetPlayer(int nIDSetup, int nStack, int nPos, float arrAdapt[ADAPT_SIZE], float* arrInputHill);   !!!! NEW
 //
 // POKERENGINE_API void GetHandsDict(SHiLoCards* dict);
 // POKERENGINE_API int InitSetup();

@@ -157,7 +157,7 @@ const multiplyStrategy = (request, arrayAllMovesStrategy, investArr) => {
     return allHandsStrategy;
 };
 
-const getAllHandsStrategy = (nIDSetup, nIDMove, request, investArr) => {
+const getAllHandsStrategy = (nIDSetup, nIDMove, request, investArr, sizings) => {
     let allHandsStrategy = {
         allHands: []
     };
@@ -175,7 +175,7 @@ const getAllHandsStrategy = (nIDSetup, nIDMove, request, investArr) => {
 
     let arrStrategies = [];
     for (let i = 0; i < allHandsCount; i++) {
-        arrStrategies.push(Buffer.alloc(sStrategy.size * 3));
+        arrStrategies.push(Buffer.alloc(sStrategy.size * sizings.length));
     }
 
     let handweightBuf= Buffer.alloc(handweight.size * allHandsCount);
@@ -184,6 +184,18 @@ const getAllHandsStrategy = (nIDSetup, nIDMove, request, investArr) => {
         let el = handweight.get(handweightBuf, i * handweight.size);
         el.strategy = arrStrategies[i];
     }
+
+    ////////////////////////    set hill in dll
+    const bufHill = Buffer.alloc(allHandsCount * float.size);
+
+    Array(allHandsCount).fill().forEach((cur, i) => {
+        bufHill.writeFloatBE(19.555, i * 4);        // 4 === float.size
+    });
+
+    console.log(bufHill);
+    console.log(float.size);
+
+    /////////////////////////
 
     PokerEngine.GetHill(nIDSetup, nIDMove, handweightBuf);
     for (let i = 0; i < allHandsCount; i++) {
@@ -194,8 +206,8 @@ const getAllHandsStrategy = (nIDSetup, nIDMove, request, investArr) => {
             preflopWeight: 1,
             moves: {},
         };
-        let data3 = ref.reinterpret(el.strategy, sStrategy.size * 3, 0);
-        for (let j = 0; j < 3; j++) {
+        let data3 = ref.reinterpret(el.strategy, sStrategy.size * sizings.length, 0);
+        for (let j = 0; j < sizings.length; j++) {
             let ss = sStrategy.get(data3, j * sStrategy.size);
             allHandsStrategy.allHands[i].moves[ss.invest] = {strategy: ss.probab};
         }

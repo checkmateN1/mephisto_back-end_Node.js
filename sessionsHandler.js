@@ -32,7 +32,7 @@ class SimulationsQueue {
                 this.activeSimulations.push(task);
             }
 
-            const result = middleware.getAllHandsStrategy(task.sessionSetup, task.request);   // request need for client and stuff
+            const result = middleware.getAllHandsStrategy(task.sessionSetup, task.request, [-1,0,1]);   // request need for client and stuff
             // handle result
 
             this.activeSimulations = this.activeSimulations.filter(simulation => simulation.engineID !== task.engineID);
@@ -75,11 +75,7 @@ class Session {
 }
 
 const initCash = Object.freeze({
-    players: [{
-        nickname: '',
-        stack: -1,
-        position: -1,
-    }],
+    players: [],
     preflop: [{
         curInvest: null,
         position: null,
@@ -101,7 +97,7 @@ class SessionSetup {
         this.engineID = engineID; // PokerEngine session number
         this.timeout = setupTimeout;
         this.movesCash = initCash;
-        // this.playSetup
+        this.movesInEngine = 0;
     }
 
     resetCash() {
@@ -119,7 +115,7 @@ class SessionSetup {
 
             const handlerResponse = moves.movesHandler(request, bbSize, this);
 
-            return middleware.getAllHandsStrategy(this.engineID, (act_num + street), request, handlerResponse[1]);
+            return middleware.getAllHandsStrategy(this.engineID, (act_num + street), request, handlerResponse[1], [-1,0,1,2,3,4,5,6]);
         }
         // last move hero simulation for prompter
         if (requestType === 'prompter') {
