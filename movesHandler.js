@@ -1,4 +1,5 @@
 const PokerEngine = require('./pokerEngine');
+const middleware = require('./engineMiddleware_work');
 const enumPoker = require('./enum');
 
 const _ = require('lodash');
@@ -38,6 +39,7 @@ const movesHandler = (request, bbSize, setup) => {
         PokerEngine.ReleaseSetup(setup.engineID);
         setup.engineID = PokerEngine.InitSetup(bbSize);
         setup.resetCash();
+        setup.hillsCash = [];
         isCashSteelUseful = false;
 
         //////////////////////////////////////// SETTING PLAYERS
@@ -64,6 +66,8 @@ const movesHandler = (request, bbSize, setup) => {
     }
 
     const popMoves = (nMove) => {
+        setup.hillsCash.length = nMove;
+
         while(setup.movesInEngine >= nMove) {
             PokerEngine.PopMove(setup.engineID);
             setup.movesInEngine--;
@@ -71,6 +75,35 @@ const movesHandler = (request, bbSize, setup) => {
     };
 
     const movesInvestArr = [];
+    const getHill = (nIdMove, position, curInvest, sizings) => {
+        const strategy = middleware.getAllHandsStrategy(setup, nIdMove, request, movesInvestArr, sizings);
+        // console.log(hill);
+
+        // ищем есть ли в setup.hillsCash совпадение по позициям и если да - берем горб из объекта с самым высоким индексом
+        const index = setup.hillsCash.reduceRight((index, cur, i) => {
+            if (index === -1) {
+                if (cur.position === position) {
+                    return i;
+                }
+            }
+            return index;
+        }, -1);
+
+        return strategy.allHands.map((hand, i) => {
+            // const weight = index !== -1 ? setup.hillsCash[index].hill[i] * hand.moves[curInvest].strategy : 1;
+            const weight = ((index !== -1 && index > 1) ? setup.hillsCash[index].hill[i].weight : 1) * hand.moves[1].strategy;  // 1 between curInvest
+            return { hand: hand.hand, weight };
+        });
+
+        // hill = {
+        //     allHands: [{
+        //         hand: 'AhAd',
+        //         weight: 1,
+        //         preflopWeight: 1,
+        //         moves: {},
+        //     }]
+        // };
+    };
 
     //////////////////////////////////////// PREFLOP MOVES
     const playersInvestPreflop = {};
@@ -96,12 +129,27 @@ const movesHandler = (request, bbSize, setup) => {
                 popMoves(i);
             }
             isCashSteelUseful = false;
-            PokerEngine.PushHintMove(setup.engineID, curInvest, position, action);
+            const nIdMove = PokerEngine.PushHintMove(setup.engineID, curInvest, position, action);
             setup.movesCash.preflop.push(pushHintMoveData);
             setup.movesInEngine++;
+
+            console.log(`nIdMove: ${nIdMove}, curInvest: ${curInvest}, position: ${position}, action: ${action}`);
+
+            let hill = [];
+            if (i > 1) {
+                hill = getHill(nIdMove, position, curInvest, [-1,0,1]);
+            }
+
+            setup.hillsCash[nIdMove] = { position, hill };
         }
         playersInvestPreflop[position] = parseInt(Math.round(+request.actions.preflop[i].amount * 100));
     }
+
+    console.log('setup.hillsCash');
+    console.log(setup.hillsCash[2].hill[0].hand);
+    console.log(setup.hillsCash[2].hill[0].weight);
+    console.log(setup.hillsCash[2].hill[155].hand);
+    console.log(setup.hillsCash[2].hill[155].weight);
 
 
     //////////////////////////////////////// PUSH FLOP BOARD
@@ -154,9 +202,13 @@ const movesHandler = (request, bbSize, setup) => {
                 popMoves(setup.movesCash.preflop.length + 1 + i);
             }
             isCashSteelUseful = false;
-            PokerEngine.PushHintMove(setup.engineID, curInvest, position, action);
+            const nIdMove = PokerEngine.PushHintMove(setup.engineID, curInvest, position, action);
             setup.movesCash.flop.push(pushHintMoveData);
             setup.movesInEngine++;
+
+            const hill = getHill(nIdMove, position, curInvest, [-1,0,1]);
+
+            setup.hillsCash[nIdMove] = { position, hill };
         }
         playersInvestFlop[position] = parseInt(Math.round(+request.actions.flop[i].amount * 100));
     }
@@ -200,9 +252,12 @@ const movesHandler = (request, bbSize, setup) => {
                 popMoves(setup.movesCash.preflop.length + setup.movesCash.flop.length + 2 + i);
             }
             isCashSteelUseful = false;
-            PokerEngine.PushHintMove(setup.engineID, curInvest, position, action);
+            const nIdMove = PokerEngine.PushHintMove(setup.engineID, curInvest, position, action);
             setup.movesCash.turn.push(pushHintMoveData);
             setup.movesInEngine++;
+
+            const hill = getHill(nIdMove, position, curInvest, [-1,0,1]);
+            setup.hillsCash[nIdMove] = { position, hill };
         }
         playersInvestTurn[request.actions.turn[i].position] = parseInt(Math.round(+request.actions.turn[i].amount * 100));
     }
@@ -245,9 +300,12 @@ const movesHandler = (request, bbSize, setup) => {
                 popMoves(setup.movesCash.preflop.length + setup.movesCash.flop.length + setup.movesCash.turn.length + 3 + i);
             }
             isCashSteelUseful = false;
-            PokerEngine.PushHintMove(setup.engineID, curInvest, position, action);
+            const nIdMove = PokerEngine.PushHintMove(setup.engineID, curInvest, position, action);
             setup.movesCash.river.push(pushHintMoveData);
             setup.movesInEngine++;
+
+            const hill = getHill(nIdMove, position, curInvest, [-1,0,1]);
+            setup.hillsCash[nIdMove] = { position, hill };
         }
         playersInvestRiver[request.actions.river[i].position] = parseInt(Math.round(+request.actions.river[i].amount * 100));
     }

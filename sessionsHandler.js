@@ -98,6 +98,8 @@ class SessionSetup {
         this.timeout = setupTimeout;
         this.movesCash = initCash;
         this.movesInEngine = 0;
+        this.playersHills = [];     // index === player position
+        this.hillsCash = [];     // index === nIdMove.. board nIdMove === undefined. Value = { position, hill }
     }
 
     resetCash() {
@@ -115,7 +117,8 @@ class SessionSetup {
 
             const handlerResponse = moves.movesHandler(request, bbSize, this);
 
-            return middleware.getAllHandsStrategy(this.engineID, (act_num + street), request, handlerResponse[1], [-1,0,1,2,3,4,5,6]);
+            // return middleware.getAllHandsStrategy(this.engineID, (act_num + street), request, handlerResponse[1], [-1,0,1,2,3,4,5,6]);
+            return middleware.getAllHandsStrategy(this, (act_num + street), request, handlerResponse[1], [-1,0,1]);
         }
         // last move hero simulation for prompter
         if (requestType === 'prompter') {

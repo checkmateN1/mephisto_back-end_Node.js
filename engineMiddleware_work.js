@@ -157,7 +157,7 @@ const multiplyStrategy = (request, arrayAllMovesStrategy, investArr) => {
     return allHandsStrategy;
 };
 
-const getAllHandsStrategy = (nIDSetup, nIDMove, request, investArr, sizings) => {
+const getAllHandsStrategy = (setup, nIDMove, request, investArr, sizings) => {
     let allHandsStrategy = {
         allHands: []
     };
@@ -197,7 +197,10 @@ const getAllHandsStrategy = (nIDSetup, nIDMove, request, investArr, sizings) => 
 
     /////////////////////////
 
-    PokerEngine.GetHill(nIDSetup, nIDMove, handweightBuf);
+    // нужен массив с nIDMove для игрока чей горб хотим смотреть, где индекс будет nIDMove, а содержимое будет горб в данном муве.
+    // чистим этот массив
+
+    PokerEngine.GetHill(setup.engineID, nIDMove, handweightBuf);
     for (let i = 0; i < allHandsCount; i++) {
         let el = handweight.get(handweightBuf, i * handweight.size);
         allHandsStrategy.allHands[i] = {
@@ -219,8 +222,8 @@ const getAllHandsStrategy = (nIDSetup, nIDMove, request, investArr, sizings) => 
     for (let i = 0; i < allHandsCount; i++) {
         allHandsStrategy.allHands[i].weight = (allHandsStrategy.allHands[i].weight / maxInputWeight);
     }
-    allHandsStrategy.allHands = allHandsStrategy.allHands.filter(el => el.weight >= 0);
-    // return allHandsStrategy;
+    // allHandsStrategy.allHands = allHandsStrategy.allHands.filter(el => el.weight >= 0);         // delete disconts hands
+    return allHandsStrategy;
 
     // new dll array of all moves strategy emulation
     // console.log(request);
