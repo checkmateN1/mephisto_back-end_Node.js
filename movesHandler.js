@@ -8,9 +8,8 @@ const _ = require('lodash');
 const adapt_size = 10;
 
 // simulator only!
-const movesHandler = (request, bbSize, setup, initCash) => {
-
-    let isCashSteelUseful = !_.isEqual(initCash, setup.movesCash);
+const movesHandler = (request, bbSize, setup) => {
+    let isCashSteelUseful = !_.isEqual(setup.initCash, setup.movesCash);
 
     const isInitPlayersEqual = () => {
         if (request.players.length !== setup.movesCash.players.length) {
@@ -70,19 +69,20 @@ const movesHandler = (request, bbSize, setup, initCash) => {
 
 
         console.log(`popMoves... nMove: ${nMove}, setup.movesInEngine: ${setup.movesInEngine}`);
-        while(setup.movesInEngine >= nMove && setup.movesInEngine > 0) {
+        while(setup.movesInEngine > nMove && setup.movesInEngine > 0) {
             PokerEngine.PopMove(setup.engineID);
             setup.movesInEngine--;
         }
     };
 
     const getHill = (nIdMove, position, curInvest, sizings) => {
+        console.log('start getHill!');
         const strategy = middleware.getAllHandsStrategy(setup, nIdMove, request, sizings);
 
         // ищем есть ли в setup.hillsCash совпадение по позициям и если да - берем горб из объекта с самым высоким индексом
         const index = setup.hillsCash.reduceRight((index, cur, i) => {
             if (index === -1) {
-                if (cur.position === position) {
+                if (cur.position === position && nIdMove > i) {
                     return i;
                 }
             }

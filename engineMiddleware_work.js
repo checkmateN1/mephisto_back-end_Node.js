@@ -196,12 +196,6 @@ const getAllHandsStrategy = (setup, nIDMove, request, sizings, isSimulator) => {
 
     // нужен массив с nIDMove для игрока чей горб хотим смотреть, где индекс будет nIDMove, а содержимое будет горб в данном муве.
     // чистим этот массив
-
-    console.log('test cash before call PokerEngine.GetHill');
-    console.log('nIDMove');
-    console.log(nIDMove);
-    console.log('setup.engineID');
-    console.log(setup.engineID);
     PokerEngine.GetHill(setup.engineID, nIDMove, handweightBuf);
     console.log('test cash after! call PokerEngine.GetHill');
     for (let i = 0; i < allHandsCount; i++) {
@@ -230,7 +224,7 @@ const getAllHandsStrategy = (setup, nIDMove, request, sizings, isSimulator) => {
         // cash hill index
         const index = setup.hillsCash.reduceRight((index, cur, i) => {
             if (index === -1) {
-                if (cur.position === request.request.position && nIDMove !== i) {
+                if (cur.position === request.request.position && nIDMove > i) {
                     return i;
                 }
             }

@@ -12,6 +12,8 @@ var IntArray = ArrayType(int);
 var FloatArray = ArrayType(float);
 var DoubleArray = ArrayType(double);
 
+const _ = require('lodash');
+
 
 const PokerEngine = require('./pokerEngine');
 const prompterHandler = require('./playLogic/prompterHandler');
@@ -74,32 +76,31 @@ class Session {
     }
 }
 
-const initCash = Object.freeze({
-    players: [],
-    preflop: [],
-    flop: [],
-    turn: [],
-    river: [],
-    c1: null,
-    c2: null,
-    c3: null,
-    c4: null,
-    c5: null,
-});
-
 // one specific table/simulator inside Session
 class SessionSetup {
     constructor(engineID) {
         this.engineID = engineID; // PokerEngine session number
         this.timeout = setupTimeout;
-        this.movesCash = initCash;
         this.movesInEngine = 0;
         this.playersHills = [];     // index === player position
         this.hillsCash = [];     // index === nIdMove.. board nIdMove === undefined. Value = { position, hill }
+        this.initCash = Object.freeze({
+            players: [],
+            preflop: [],
+            flop: [],
+            turn: [],
+            river: [],
+            c1: null,
+            c2: null,
+            c3: null,
+            c4: null,
+            c5: null,
+        });
+        this.movesCash = _.cloneDeep(this.initCash);
     }
 
     resetCash() {
-        this.movesCash = initCash;
+        this.movesCash = _.cloneDeep(this.initCash);
     }
 
     requestHandling(request) {
@@ -111,7 +112,7 @@ class SessionSetup {
             const { act_num, street } = request.request;
             const bbSize = parseInt(Math.max(parseFloat(request.actions.preflop[0].amount), parseFloat(request.actions.preflop[1].amount)) * 100);
 
-            moves.movesHandler(request, bbSize, this, initCash);
+            moves.movesHandler(request, bbSize, this);
 
             return middleware.getAllHandsStrategy(this, (act_num + street), request, [-1,0,1], true);
         }
@@ -141,6 +142,8 @@ const sessionsListener = (token, setupID, request) => {
             sessions[token].setups[setupID].timeout = setupTimeout;            // reset timer to destroy setup
             return sessions[token].setups[setupID].requestHandling(request);
         }
+        console.log('sessions[token].setups');
+        console.log(sessions[token].setups);
 
         sessions[token].setups[setupID] = new SessionSetup(-1);
         return sessions[token].setups[setupID].requestHandling(request);
