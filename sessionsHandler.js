@@ -76,14 +76,10 @@ class Session {
 
 const initCash = Object.freeze({
     players: [],
-    preflop: [{
-        curInvest: null,
-        position: null,
-        action: null,
-    }],
-    flop: [],           // preflop similarly
-    turn: [],           // preflop similarly
-    river: [],          // preflop similarly
+    preflop: [],
+    flop: [],
+    turn: [],
+    river: [],
     c1: null,
     c2: null,
     c3: null,
@@ -115,10 +111,9 @@ class SessionSetup {
             const { act_num, street } = request.request;
             const bbSize = parseInt(Math.max(parseFloat(request.actions.preflop[0].amount), parseFloat(request.actions.preflop[1].amount)) * 100);
 
-            const handlerResponse = moves.movesHandler(request, bbSize, this);
+            moves.movesHandler(request, bbSize, this, initCash);
 
-            // return middleware.getAllHandsStrategy(this.engineID, (act_num + street), request, handlerResponse[1], [-1,0,1,2,3,4,5,6]);
-            return middleware.getAllHandsStrategy(this, (act_num + street), request, handlerResponse[1], [-1,0,1]);
+            return middleware.getAllHandsStrategy(this, (act_num + street), request, [-1,0,1], true);
         }
         // last move hero simulation for prompter
         if (requestType === 'prompter') {

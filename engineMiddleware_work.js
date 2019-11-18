@@ -157,7 +157,7 @@ const multiplyStrategy = (request, arrayAllMovesStrategy, investArr) => {
     return allHandsStrategy;
 };
 
-const getAllHandsStrategy = (setup, nIDMove, request, investArr, sizings) => {
+const getAllHandsStrategy = (setup, nIDMove, request, sizings, isSimulator) => {
     let allHandsStrategy = {
         allHands: []
     };
@@ -192,15 +192,18 @@ const getAllHandsStrategy = (setup, nIDMove, request, investArr, sizings) => {
         bufHill.writeFloatBE(19.555, i * 4);        // 4 === float.size
     });
 
-    console.log(bufHill);
-    console.log(float.size);
-
     /////////////////////////
 
     // нужен массив с nIDMove для игрока чей горб хотим смотреть, где индекс будет nIDMove, а содержимое будет горб в данном муве.
     // чистим этот массив
 
+    console.log('test cash before call PokerEngine.GetHill');
+    console.log('nIDMove');
+    console.log(nIDMove);
+    console.log('setup.engineID');
+    console.log(setup.engineID);
     PokerEngine.GetHill(setup.engineID, nIDMove, handweightBuf);
+    console.log('test cash after! call PokerEngine.GetHill');
     for (let i = 0; i < allHandsCount; i++) {
         let el = handweight.get(handweightBuf, i * handweight.size);
         allHandsStrategy.allHands[i] = {
@@ -223,17 +226,48 @@ const getAllHandsStrategy = (setup, nIDMove, request, investArr, sizings) => {
         allHandsStrategy.allHands[i].weight = (allHandsStrategy.allHands[i].weight / maxInputWeight);
     }
     // allHandsStrategy.allHands = allHandsStrategy.allHands.filter(el => el.weight >= 0);         // delete disconts hands
-    return allHandsStrategy;
+    if (isSimulator) {
+        // cash hill index
+        const index = setup.hillsCash.reduceRight((index, cur, i) => {
+            if (index === -1) {
+                if (cur.position === request.request.position && nIDMove !== i) {
+                    return i;
+                }
+            }
+            return index;
+        }, -1);
 
-    // new dll array of all moves strategy emulation
-    // console.log(request);
-    let ArrayAllMovesStrategy = [];
+        // normalize
+        let maxWeight = 0;
+        allHandsStrategy.allHands = allHandsStrategy.allHands.map((hand, i) => {
+            let weight;
+            if (hand.weight < 0) {
+                weight = -1;
+            } else {
+                weight = (index !== -1 && index > 1) ? setup.hillsCash[index].hill[i].weight : 1;
+            }
+            if (weight > maxWeight) {
+                maxWeight = weight;
+            }
+            return Object.assign(hand, { weight });
+        });
+        allHandsStrategy.allHands = allHandsStrategy.allHands.map((hand, i) => {
+            return Object.assign(hand, { weight: hand.weight/maxWeight});
+        }).filter(el => el.weight >= 0);
 
-    for (let i = 0; i <= request.request.act_num; i++) {
-        ArrayAllMovesStrategy.push(allHandsStrategy.allHands);
+        return allHandsStrategy;
+    } else {
+        return allHandsStrategy;
     }
 
-    return multiplyStrategy(request, ArrayAllMovesStrategy, investArr);
+    // // new dll array of all moves strategy emulation
+    // let ArrayAllMovesStrategy = [];
+    //
+    // for (let i = 0; i <= request.request.act_num; i++) {
+    //     ArrayAllMovesStrategy.push(allHandsStrategy.allHands);
+    // }
+    //
+    // return multiplyStrategy(request, ArrayAllMovesStrategy, investArr);
 };
 
 module.exports.getAllHandsStrategy = getAllHandsStrategy;
