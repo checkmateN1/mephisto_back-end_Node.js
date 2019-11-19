@@ -137,15 +137,17 @@ const sessionsListener = (token, setupID, request) => {
     const { requestType } = request.request;
 
     if (token in sessions) {
+        console.log('token in sessions!');
         sessions[token].timeout = sessionTimeout;                              // reset timer to destroy session
         if (setupID in sessions[token].setups) {
+            console.log('setupID in sessions[token].setups');
             sessions[token].setups[setupID].timeout = setupTimeout;            // reset timer to destroy setup
             return sessions[token].setups[setupID].requestHandling(request);
         }
-        console.log('sessions[token].setups');
-        console.log(sessions[token].setups);
 
         sessions[token].setups[setupID] = new SessionSetup(-1);
+        console.log('sessions[token].setups[setupID].movesCash');
+        console.log(sessions[token].setups[setupID].movesCash);
         return sessions[token].setups[setupID].requestHandling(request);
     }
 

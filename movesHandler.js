@@ -77,6 +77,7 @@ const movesHandler = (request, bbSize, setup) => {
 
     const getHill = (nIdMove, position, curInvest, sizings) => {
         console.log('start getHill!');
+        console.log(`nIdMove: ${nIdMove}, sizings.length: ${sizings.length}`);
         const strategy = middleware.getAllHandsStrategy(setup, nIdMove, request, sizings);
 
         // ищем есть ли в setup.hillsCash совпадение по позициям и если да - берем горб из объекта с самым высоким индексом
@@ -89,11 +90,17 @@ const movesHandler = (request, bbSize, setup) => {
             return index;
         }, -1);
 
+        if (nIdMove === 5) {
+            console.log('strategy in get hill nIdMove 5');
+            console.log(strategy.allHands);
+        }
         return strategy.allHands.map((hand, i) => {
             let weight;
             if (hand.weight < 0) {
                 weight = -1;
             } else {
+                console.log(`setup.engineID: ${setup.engineID}, nIdMove: ${nIdMove}`);
+                console.log(hand);
                 weight = ((index !== -1 && index > 1) ? setup.hillsCash[index].hill[i].weight : 1) * hand.moves[1].strategy;  // 1 between curInvest
             }
             return { hand: hand.hand, weight };
