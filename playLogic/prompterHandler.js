@@ -5,8 +5,8 @@ const enumCommon = require('../enum');
 const moves = require('./prompterMovesHandler');
 const validator = require('./frameCreator');
 
-const REJECT_HAND = enumCommon.REJECT_HAND;
-const PROMPT = enumCommon.PROMPT;
+const REJECT_HAND = enumCommon.enumCommon.REJECT_HAND;
+const PROMPT = enumCommon.enumCommon.PROMPT;
 
 class PlayersHandler {
     constructor() {
@@ -1423,7 +1423,12 @@ const prompterListener = (setup, request, gameTypesSettings) => {
         </div>
     </div>`;
 
-    const id = request.data.id;
+    const {
+        data,
+        client,
+    } = request;
+    const { id } = data;
+
     const promptData = {
         prompt,
         id,
@@ -1432,10 +1437,8 @@ const prompterListener = (setup, request, gameTypesSettings) => {
     // check on valid recognition frame
     if (setup.playSetup === undefined) {
         setup.playSetup = new PlaySetup(gameTypesSettings);
-        setup.playSetup.frameHandler(request.rawFrame, gameTypesSettings);
-    } else {
-        setup.playSetup.frameHandler(request.rawFrame, gameTypesSettings);
     }
+    setup.playSetup.frameHandler(data, gameTypesSettings);
 
     request.client.emit(PROMPT, promptData);
 };

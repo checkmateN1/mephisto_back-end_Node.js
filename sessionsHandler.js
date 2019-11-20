@@ -53,24 +53,31 @@ const simulationsQueue = new SimulationsQueue();
 // all users sessions.. 1 token = 1 session
 const sessions = {};
 
-const sessionTimeout = 120;
-const setupTimeout = 70;
-const timeoutStep = 5000;
+const sessionTimeout = 200;
+const setupTimeout = 100;
+const timeoutStep = 500;
 
 // one specific user with many SessionSetups
 // setupID = one recognition table or simulator
 class Session {
-    constructor(setupID) {
+    constructor(setupID, token) {
         this.setups = {};
         this.timeout = sessionTimeout;
-        this.setups[setupID] = new SessionSetup(-1);
-        this.setups[setupID].timerToDestroy = setInterval(() => {
-            this.setups[setupID].timeout--;
-            if (this.setups[setupID].timeout < 0) {
-                clearInterval(this.setups[setupID].timerToDestroy);
-                PokerEngine.ReleaseSetup(this.setups[setupID].engineID);
-                console.log(`setup ${setupID} over and will be remove`);
-                delete this.setups[setupID];
+        this.setups[setupID] = new SessionSetup(setupID, token);
+
+        this.intervalToDestroy = setInterval(() => {
+            this.timeout--;
+            if (this.timeout < 0) {
+                // удаляем все интервалы у сетапов сессии
+                Object.keys(this.setups).forEach(setupID => {
+                    clearInterval(this.setups[setupID].intervalToDestroy);
+                    if (this.setups[setupID].engineID !== -1) {
+                        PokerEngine.ReleaseSetup(this.setups[setupID].engineID);
+                    }
+                });
+                console.log(`session ${token} over and will be remove`);
+                clearInterval(this.intervalToDestroy);
+                delete sessions[token];
             }
         }, timeoutStep);
     }
@@ -78,8 +85,10 @@ class Session {
 
 // one specific table/simulator inside Session
 class SessionSetup {
-    constructor(engineID) {
-        this.engineID = engineID; // PokerEngine session number
+    constructor(setupID, token) {
+        this.setupID = setupID;
+        this.token = token;
+        this.engineID = -1; // PokerEngine session number
         this.timeout = setupTimeout;
         this.movesInEngine = 0;
         this.playersHills = [];     // index === player position
@@ -97,6 +106,18 @@ class SessionSetup {
             c5: null,
         });
         this.movesCash = _.cloneDeep(this.initCash);
+
+        this.intervalToDestroy = setInterval(() => {
+            this.timeout--;
+            if (this.timeout < 0) {
+                clearInterval(this.intervalToDestroy);
+                if (this.engineID !== -1) {
+                    PokerEngine.ReleaseSetup(this.engineID);
+                }
+                console.log(`setup ${this.setupID} over and will be remove`);
+                delete sessions[token].setups[this.setupID];
+            }
+        }, timeoutStep);
     }
 
     resetCash() {
@@ -145,22 +166,15 @@ const sessionsListener = (token, setupID, request) => {
             return sessions[token].setups[setupID].requestHandling(request);
         }
 
-        sessions[token].setups[setupID] = new SessionSetup(-1);
+        sessions[token].setups[setupID] = new SessionSetup(setupID, token);
         console.log('sessions[token].setups[setupID].movesCash');
         console.log(sessions[token].setups[setupID].movesCash);
+
         return sessions[token].setups[setupID].requestHandling(request);
     }
 
-    sessions[token] = new Session(setupID);
+    sessions[token] = new Session(setupID, token);
 
-    sessions[token].timerToDestroy = setInterval(() => {
-        sessions[token].timeout--;
-        if (sessions[token].timeout < 0) {
-            clearInterval(sessions[token].timerToDestroy);
-            console.log(`session ${token} over and will be remove`);
-            delete sessions[token];
-        }
-    }, timeoutStep);
     return sessions[token].setups[setupID].requestHandling(request);
 };
 

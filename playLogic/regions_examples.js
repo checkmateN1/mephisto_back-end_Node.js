@@ -31,25 +31,50 @@ str[27] = '23 0 BB';                  // 23.0
 str[28] = '411-111';                  // All-in
 str[29] = 'A11-111';                  // All-in
 
+// balances
+const balances = [];
+balances[0] = '7.,.2 BB';          // 7.2
+balances[1] = '500';               // 500
+balances[2] = '-20,5 BB';          // 20.5
+balances[3] = '2 8,0 BB';          // 28.0
+balances[4] = '24,0 BB';          // valid test 24.0
+balances[5] = '38 4 BB';          // 38.4
+
+
 // const regPot = /(S|D|B|\d)+(?!\S){0,4}((\.|\,){0,3}\d{1,2})/;
 const regPot = /(S|D|B|\d)+(?!\S){0,4}((\.|\,){0,3}\d{1,2}){0,1}/;
 const regAllin = /(all|((4|A)(1|L|I)(1|L|I)-))/i;
+const regBalance = /(S|D|B|\d)+\s{0,1}\d{0,2}(\.|\,){0,3}\d{0,1}/;
+// const regBalance = /\d+\S{0,1}\d/;
 
-console.time('find and replace time pot');
-str.forEach(str => {
-    if (regAllin.test(str)) {
-        console.log(`input: ${str};    output: 0`);
+// pot
+// str.forEach(str => {
+//     if (regAllin.test(str)) {
+//         console.log(`input: ${str};    output: 0`);
+//     } else {
+//         const matchArr = str.match(regPot);
+//         console.log(`input: ${str};    output: ${matchArr ? matchArr[0]
+//                 .replace(/S/, 5)
+//                 .replace(/D/, 0)
+//                 .replace(/B/, 8)
+//                 .replace(/(\.|\,)+(?=(\d)){0,1}/, '.')
+//             : null}`);
+//     }
+// });
+
+// balances
+console.log('balances');
+balances.forEach(str => {
+    if (!regBalance.test(str)) {
+        console.log(`input: ${str};    output: 0 or fail`);
     } else {
-        const matchArr = str.match(regPot);
+        const matchArr = str.match(regBalance);
         console.log(`input: ${str};    output: ${matchArr ? matchArr[0]
-                .replace(/S/, 5)
-                .replace(/D/, 0)
-                .replace(/B/, 8)
-                .replace(/(\.|\,)+(?=(\d)){0,1}/, '.')
+                .replace(/(\s{1,2})*(?=(\d{0,2}(?=(\.|\,))))/, '')
+                .replace(/(\.|\,|\s)+(?=(\d)){0,1}/, '.')
             : null}`);
     }
 });
-console.timeEnd('find and replace time pot');
 
 
 
