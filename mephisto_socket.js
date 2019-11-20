@@ -66,12 +66,13 @@ io.on('connection', client => {
                 console.info('req');
                 console.info(req);
                 // trying to serve the image file from the server
+                let fileToSend = '';
                 if (req) {
                     if (dirPath !== req.folder) {
                         dirPath = req.folder;
                         const files = fs.readdirSync(req.folder);
                         filesInDir = files.filter(file => /jpg/.test(file));
-
+                        fileToSend = req.file;
                         fs.readFile(req.folder + '\\' + req.file, function(err, buf){
                             if (err) throw err; // Fail if the file can't be read.
                             client.emit('image', { image: true, buffer: buf.toString('base64') });
@@ -79,7 +80,7 @@ io.on('connection', client => {
                             curFile = req.file;
                         });
                     } else {
-                        const fileToSend = curFile ? filesInDir[filesInDir.indexOf(curFile) + req.step] : req.file;
+                        fileToSend = curFile ? filesInDir[filesInDir.indexOf(curFile) + req.step] : req.file;
                         if (fileToSend !== undefined) {
                             fs.readFile(req.folder + '\\' + fileToSend, function(err, buf){
                                 if (err) throw err; // Fail if the file can't be read.
@@ -89,26 +90,23 @@ io.on('connection', client => {
                             curFile = fileToSend;
                         }
                     }
-                }
 
-                const frameData = JSON.parse(data);
+                    const txtFile = fileToSend.replace('.jpg', '.txt').replace('table', 'json');
+                    fs.readFile(req.folder + '\\' + txtFile, 'utf8', (err, data) => {
+                        if (err) throw err;
+                        const frameData = JSON.parse(data);
 
-                fs.appendFileSync('frames_log.txt',
-                    `got frame at ${moment().format('dddd, MMMM Do YYYY, h:mm:ss a')} \r\n
-                        ${data} \r\n \r\n \r\n`,
-                    function(error){
-                        if(error) throw error; // если возникла ошибка
+                        const prompterData = {
+                            request: {
+                                requestType: 'prompter',
+                            },
+                            data: frameData,
+                            client,
+                        };
+
+                        sessionsHandler.sessionsListener(token, frameData.id, prompterData);     // data.id == table id from recognition
                     });
-
-                const prompterData = {
-                    request: {
-                        requestType: 'prompter',
-                    },
-                    data: frameData,
-                    client,
-                };
-
-                sessionsHandler.sessionsListener(token, frameData.id, prompterData);     // data.id == table id from recognition
+                }
             });
 
             client.on('clearDebug', () => {
