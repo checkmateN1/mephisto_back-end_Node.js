@@ -7,6 +7,7 @@ const validator = require('./frameCreator');
 
 const REJECT_HAND = enumCommon.enumCommon.REJECT_HAND;
 const PROMPT = enumCommon.enumCommon.PROMPT;
+const INVALID_FRAME = enumCommon.enumCommon.INVALID_FRAME;
 
 class PlayersHandler {
     constructor() {
@@ -56,10 +57,12 @@ class Player {
 }
 
 class InitPlayer {
-    constructor(player, initBalance, enumPosition) {
+    constructor(player, initBalance, enumPosition, isDealer, cards) {
         this.player = player;
         this.initBalance = initBalance;
         this.enumPosition = enumPosition;
+        this.isDealer = isDealer;
+        this.cards = cards;
     }
 }
 
@@ -101,7 +104,8 @@ class ActionString {
 }
 
 class PlaySetup {
-    constructor(gameTypesSettings) {            // frame from recognition -> validator.dll -> playFrame
+    constructor(gameTypesSettings, client) {            // frame from recognition -> validator.dll -> playFrame
+        this.client = client;
         this.initPlayers = [];      // all players who was active in start. Index === recPosition, some indexes == undefined!
         this.playersWasActive = [];   // all players who was active in start without empty chairs or waiting players
         this.positionEnumKeyMap = {};
@@ -123,7 +127,10 @@ class PlaySetup {
     frameHandler(rawFrame, gameTypesSettings) {
         this.gameTypesSettings = gameTypesSettings;
         const playFrame = this.needToPrompt ? this.validator.createFrame(rawFrame) : rawFrame;
-
+        if (playFrame === INVALID_FRAME) {
+            console.log('INVALID FRAME from validator');
+            return REJECT_HAND;
+        }
         if (this.rejectHand && playFrame.handNumber === this.handNumber) {
             return REJECT_HAND;
         }
@@ -162,7 +169,7 @@ class PlaySetup {
     getMovesFromFrame(playFrame) {
         // first frame
         if (this.rawActionList.length === 0) {        // first frame
-            const BBAmount = playFrame.playPlayers[this.positionEnumKeyMap[enumPoker.positions.indexOf('BB')]].betAmount;
+            const BBAmount = playFrame.playPlayers[this.positionEnumKeyMap[enumPoker.enumPoker.positions.indexOf('BB')]].betAmount;
 
             if (this.bbSize.length && BBAmount > this.bbSize[this.bbSize.length - 1] * 2.5) {   // wrong BB recognition or reraise
                 this.rejectHand = true;
@@ -175,51 +182,51 @@ class PlaySetup {
             this.isNewHand = true; // сетим на фолс ВНУТРИ мувсХендлер!(callback)
 
             const SBSize = Math.floor(BBAmount / 2);
-            const BTNAmount = playFrame.playPlayers[this.positionEnumKeyMap[enumPoker.positions.indexOf('BTN')]].betAmount;
+            const BTNAmount = playFrame.playPlayers[this.positionEnumKeyMap[enumPoker.enumPoker.positions.indexOf('BTN')]].betAmount;
 
             // posts
             // constructor(street, player, balance, action, pot, amount, position, invest)
             if (this.playersWasActive.length === 2) {        // ha
                 this.rawActionList.push(new ActionString(
                     0,
-                    this.initPlayers[this.positionEnumKeyMap[enumPoker.positions.indexOf('BTN')]].player,
-                    this.initPlayers[this.positionEnumKeyMap[enumPoker.positions.indexOf('BTN')]].initBalance,
+                    this.initPlayers[this.positionEnumKeyMap[enumPoker.enumPoker.positions.indexOf('BTN')]].player,
+                    this.initPlayers[this.positionEnumKeyMap[enumPoker.enumPoker.positions.indexOf('BTN')]].initBalance,
                     0,
                     0,
                     BTNAmount >= BBAmount ? SBSize : BTNAmount,
-                    enumPoker.positions.indexOf('BTN'),
+                    enumPoker.enumPoker.positions.indexOf('BTN'),
                     BTNAmount >= BBAmount ? SBSize : BTNAmount));       // post SB
 
                 this.rawActionList.push(new ActionString(
                     0,
-                    this.initPlayers[this.positionEnumKeyMap[enumPoker.positions.indexOf('BB')]].player,
-                    this.initPlayers[this.positionEnumKeyMap[enumPoker.positions.indexOf('BB')]].initBalance,
+                    this.initPlayers[this.positionEnumKeyMap[enumPoker.enumPoker.positions.indexOf('BB')]].player,
+                    this.initPlayers[this.positionEnumKeyMap[enumPoker.enumPoker.positions.indexOf('BB')]].initBalance,
                     0,
                     BTNAmount >= BBAmount ? SBSize : BTNAmount,
                     BBAmount,
-                    enumPoker.positions.indexOf('BB'),
+                    enumPoker.enumPoker.positions.indexOf('BB'),
                     BBAmount));      // post BB
             } else {
-                const SBAmount = playFrame.playPlayers[this.positionEnumKeyMap[enumPoker.positions.indexOf('SB')]].betAmount;
+                const SBAmount = playFrame.playPlayers[this.positionEnumKeyMap[enumPoker.enumPoker.positions.indexOf('SB')]].betAmount;
 
                 this.rawActionList.push(new ActionString(
                     0,
-                    this.initPlayers[this.positionEnumKeyMap[enumPoker.positions.indexOf('SB')]].player,
-                    this.initPlayers[this.positionEnumKeyMap[enumPoker.positions.indexOf('SB')]].initBalance,
+                    this.initPlayers[this.positionEnumKeyMap[enumPoker.enumPoker.positions.indexOf('SB')]].player,
+                    this.initPlayers[this.positionEnumKeyMap[enumPoker.enumPoker.positions.indexOf('SB')]].initBalance,
                     0,
                     0,
                     SBAmount >= BBAmount ? SBSize : SBAmount,
-                    enumPoker.positions.indexOf('SB'),
+                    enumPoker.enumPoker.positions.indexOf('SB'),
                     SBAmount >= BBAmount ? SBSize : SBAmount));   // post SB
 
                 this.rawActionList.push(new ActionString(
                     0,
-                    this.initPlayers[this.positionEnumKeyMap[enumPoker.positions.indexOf('BB')]].player,
-                    this.initPlayers[this.positionEnumKeyMap[enumPoker.positions.indexOf('BB')]].initBalance,
+                    this.initPlayers[this.positionEnumKeyMap[enumPoker.enumPoker.positions.indexOf('BB')]].player,
+                    this.initPlayers[this.positionEnumKeyMap[enumPoker.enumPoker.positions.indexOf('BB')]].initBalance,
                     0,
                     SBAmount >= BBAmount ? SBSize : SBAmount,
                     BBAmount,
-                    enumPoker.positions.indexOf('BB'),
+                    enumPoker.enumPoker.positions.indexOf('BB'),
                     BBAmount));      // post BB
             }
         }
@@ -269,7 +276,7 @@ class PlaySetup {
                                         curStreet,
                                         this.initPlayers[chair].player,
                                         playFrame.playPlayers[chair].curBalance + (isCallFold ? prevBetAmount : playFrame.playPlayers[chair].betAmount) - prevAmount,
-                                        enumPoker.actionsType.indexOf(isCallFold ? 'call' : 'fold'),
+                                        enumPoker.enumPoker.actionsType.indexOf(isCallFold ? 'call' : 'fold'),
                                         this.rawActionList[this.rawActionList.length - 1].pot + this.rawActionList[this.rawActionList.length - 1].invest,
                                         playFrame.playPlayers[chair].betAmount,
                                         this.initPlayers[chair].enumPosition,
@@ -292,7 +299,7 @@ class PlaySetup {
                                             curStreet,
                                             this.initPlayers[chair].player,
                                             playFrame.playPlayers[chair].curBalance + (isDeferredRaise ? prevBetAmount : playFrame.playPlayers[chair].betAmount) - prevAmount,
-                                            enumPoker.actionsType.indexOf(isDeferredRaise ? 'call' : 'raise'),
+                                            enumPoker.enumPoker.actionsType.indexOf(isDeferredRaise ? 'call' : 'raise'),
                                             this.rawActionList[this.rawActionList.length - 1].pot + this.rawActionList[this.rawActionList.length - 1].invest,
                                             isDeferredRaise ? prevBetAmount : playFrame.playPlayers[chair].betAmount,
                                             this.initPlayers[chair].enumPosition,
@@ -306,7 +313,7 @@ class PlaySetup {
                                             curStreet,
                                             this.initPlayers[chair].player,
                                             playFrame.playPlayers[chair].curBalance + playFrame.playPlayers[chair].betAmount - prevAmount,
-                                            enumPoker.actionsType.indexOf('call'),
+                                            enumPoker.enumPoker.actionsType.indexOf('call'),
                                             this.rawActionList[this.rawActionList.length - 1].pot + this.rawActionList[this.rawActionList.length - 1].invest,
                                             playFrame.playPlayers[chair].betAmount,
                                             this.initPlayers[chair].enumPosition,
@@ -318,7 +325,7 @@ class PlaySetup {
                                         curStreet,
                                         this.initPlayers[chair].player,
                                         playFrame.playPlayers[chair].curBalance + playFrame.playPlayers[chair].betAmount,
-                                        enumPoker.actionsType.indexOf(playFrame.playPlayers[chair].betAmount && !isDeferredRaise ? 'bet' : 'check'),
+                                        enumPoker.enumPoker.actionsType.indexOf(playFrame.playPlayers[chair].betAmount && !isDeferredRaise ? 'bet' : 'check'),
                                         this.rawActionList[this.rawActionList.length - 1].pot + this.rawActionList[this.rawActionList.length - 1].invest,
                                         isDeferredRaise ? 0 : playFrame.playPlayers[chair].betAmount,
                                         this.initPlayers[chair].enumPosition,
@@ -401,7 +408,7 @@ class PlaySetup {
                                                     curStreet,
                                                     this.initPlayers[chair].player,
                                                     this.rawActionList[i].balance - this.rawActionList[i].invest,
-                                                    enumPoker.actionsType.indexOf(maxAmount ? 'raise' : 'bet'),
+                                                    enumPoker.enumPoker.actionsType.indexOf(maxAmount ? 'raise' : 'bet'),
                                                     this.rawActionList[this.rawActionList.length - 1].pot + this.rawActionList[this.rawActionList.length - 1].invest,
                                                     heroMaxAmount,
                                                     this.initPlayers[chair].enumPosition,
@@ -427,7 +434,7 @@ class PlaySetup {
                                                         currentStreet,
                                                         this.initPlayers[chair].player,
                                                         this.rawActionList[i].balance - this.rawActionList[i].invest,
-                                                        enumPoker.actionsType.indexOf('fold'),
+                                                        enumPoker.enumPoker.actionsType.indexOf('fold'),
                                                         this.rawActionList[this.rawActionList.length - 1].pot + this.rawActionList[this.rawActionList.length - 1].invest,
                                                         0,
                                                         this.initPlayers[chair].enumPosition,
@@ -445,7 +452,7 @@ class PlaySetup {
                                                     curStreet,
                                                     this.initPlayers[chair].player,
                                                     smartRestBalance,
-                                                    enumPoker.actionsType.indexOf(maxAmount ? 'call' : 'check'),
+                                                    enumPoker.enumPoker.actionsType.indexOf(maxAmount ? 'call' : 'check'),
                                                     this.rawActionList[this.rawActionList.length - 1].pot + this.rawActionList[this.rawActionList.length - 1].invest,
                                                     this.rawActionList[i].amount + callAmount,
                                                     this.initPlayers[chair].enumPosition,
@@ -466,7 +473,7 @@ class PlaySetup {
                                                 curStreet,
                                                 this.initPlayers[chair].player,
                                                 this.initPlayerBalance(this.initPlayers[playFrame.heroRecPosition].enumPosition),
-                                                enumPoker.actionsType.indexOf(maxAmount ? 'raise' : 'bet'),
+                                                enumPoker.enumPoker.actionsType.indexOf(maxAmount ? 'raise' : 'bet'),
                                                 this.rawActionList[this.rawActionList.length - 1].pot + this.rawActionList[this.rawActionList.length - 1].invest,
                                                 heroMaxAmount,
                                                 this.initPlayers[chair].enumPosition,
@@ -488,7 +495,7 @@ class PlaySetup {
                                                     curStreet,
                                                     this.initPlayers[chair].player,
                                                     balance,
-                                                    enumPoker.actionsType.indexOf(maxAmount ? 'call' : 'check'),
+                                                    enumPoker.enumPoker.actionsType.indexOf(maxAmount ? 'call' : 'check'),
                                                     this.rawActionList[this.rawActionList.length - 1].pot + this.rawActionList[this.rawActionList.length - 1].invest,
                                                     callAmount,
                                                     this.initPlayers[chair].enumPosition,
@@ -501,7 +508,7 @@ class PlaySetup {
                                                     curStreet,
                                                     this.initPlayers[chair].player,
                                                     balance,
-                                                    enumPoker.actionsType.indexOf('fold'),
+                                                    enumPoker.enumPoker.actionsType.indexOf('fold'),
                                                     this.rawActionList[this.rawActionList.length - 1].pot + this.rawActionList[this.rawActionList.length - 1].invest,
                                                     0,
                                                     this.initPlayers[chair].enumPosition,
@@ -555,7 +562,7 @@ class PlaySetup {
                                                 curStreet,
                                                 this.initPlayers[chair].player,
                                                 nextRawActionBalance,
-                                                enumPoker.actionsType.indexOf('raise'),
+                                                enumPoker.enumPoker.actionsType.indexOf('raise'),
                                                 this.rawActionList[this.rawActionList.length - 1].pot + this.rawActionList[this.rawActionList.length - 1].invest,
                                                 maxAmount + balanceDiff,
                                                 this.initPlayers[chair].enumPosition,
@@ -581,7 +588,7 @@ class PlaySetup {
                                                 curStreet,
                                                 this.initPlayers[chair].player,
                                                 nextRawActionBalance,
-                                                enumPoker.actionsType.indexOf('call'),
+                                                enumPoker.enumPoker.actionsType.indexOf('call'),
                                                 this.rawActionList[this.rawActionList.length - 1].pot + this.rawActionList[this.rawActionList.length - 1].invest,
                                                 callAmount,
                                                 this.initPlayers[chair].enumPosition,
@@ -595,7 +602,7 @@ class PlaySetup {
                                                 curStreet,
                                                 this.initPlayers[chair].player,
                                                 nextRawActionBalance,
-                                                enumPoker.actionsType.indexOf('fold'),
+                                                enumPoker.enumPoker.actionsType.indexOf('fold'),
                                                 this.rawActionList[this.rawActionList.length - 1].pot + this.rawActionList[this.rawActionList.length - 1].invest,
                                                 prevAmount,
                                                 this.initPlayers[chair].enumPosition,
@@ -627,7 +634,7 @@ class PlaySetup {
                                                         curStreet,
                                                         this.initPlayers[chair].player,
                                                         nextRawActionBalance,
-                                                        enumPoker.actionsType.indexOf('raise'),
+                                                        enumPoker.enumPoker.actionsType.indexOf('raise'),
                                                         this.rawActionList[this.rawActionList.length - 1].pot + this.rawActionList[this.rawActionList.length - 1].invest,
                                                         maxAmount + balanceDiff,
                                                         this.initPlayers[chair].enumPosition,
@@ -642,7 +649,7 @@ class PlaySetup {
                                                         curStreet,
                                                         this.initPlayers[chair].player,
                                                         nextRawActionBalance,
-                                                        enumPoker.actionsType.indexOf('call'),
+                                                        enumPoker.enumPoker.actionsType.indexOf('call'),
                                                         this.rawActionList[this.rawActionList.length - 1].pot + this.rawActionList[this.rawActionList.length - 1].invest,
                                                         callAmount,
                                                         this.initPlayers[chair].enumPosition,
@@ -654,7 +661,7 @@ class PlaySetup {
                                                     curStreet,
                                                     this.initPlayers[chair].player,
                                                     nextRawActionBalance,
-                                                    enumPoker.actionsType.indexOf('fold'),
+                                                    enumPoker.enumPoker.actionsType.indexOf('fold'),
                                                     this.rawActionList[this.rawActionList.length - 1].pot + this.rawActionList[this.rawActionList.length - 1].invest,
                                                     prevAmount,
                                                     this.initPlayers[chair].enumPosition,
@@ -725,7 +732,7 @@ class PlaySetup {
                                 curStreet,
                                 this.initPlayers[firstChair].player,
                                 playFrame.playPlayers[firstChair].curBalance + playFrame.playPlayers[firstChair].betAmount,
-                                enumPoker.actionsType.indexOf(playFrame.playPlayers[firstChair].betAmount ? 'bet' : 'check'),
+                                enumPoker.enumPoker.actionsType.indexOf(playFrame.playPlayers[firstChair].betAmount ? 'bet' : 'check'),
                                 this.rawActionList[this.rawActionList.length - 1].pot + this.rawActionList[this.rawActionList.length - 1].invest,
                                 playFrame.playPlayers[firstChair].betAmount,
                                 this.initPlayers[firstChair].enumPosition,
@@ -754,7 +761,7 @@ class PlaySetup {
                                                 curStreet,
                                                 this.initPlayers[chair].player,
                                                 playFrame.playPlayers[chair].curBalance + (isCallFold ? prevBetAmount : playFrame.playPlayers[chair].betAmount) - prevAmount,
-                                                enumPoker.actionsType.indexOf(isCallFold ? (prevBetAmount ? 'call' : 'check') : 'fold'),
+                                                enumPoker.enumPoker.actionsType.indexOf(isCallFold ? (prevBetAmount ? 'call' : 'check') : 'fold'),
                                                 this.rawActionList[this.rawActionList.length - 1].pot + this.rawActionList[this.rawActionList.length - 1].invest,
                                                 playFrame.playPlayers[chair].betAmount,
                                                 this.initPlayers[chair].enumPosition,
@@ -773,7 +780,7 @@ class PlaySetup {
                                                     curStreet,
                                                     this.initPlayers[chair].player,
                                                     playFrame.playPlayers[chair].curBalance + (isDeferredRaise ? prevBetAmount : playFrame.playPlayers[chair].betAmount) - prevAmount,
-                                                    enumPoker.actionsType.indexOf(isDeferredRaise ? 'call' : 'raise'),
+                                                    enumPoker.enumPoker.actionsType.indexOf(isDeferredRaise ? 'call' : 'raise'),
                                                     this.rawActionList[this.rawActionList.length - 1].pot + this.rawActionList[this.rawActionList.length - 1].invest,
                                                     isDeferredRaise ? prevBetAmount : playFrame.playPlayers[chair].betAmount,
                                                     this.initPlayers[chair].enumPosition,
@@ -784,7 +791,7 @@ class PlaySetup {
                                                     curStreet,
                                                     this.initPlayers[chair].player,
                                                     playFrame.playPlayers[chair].curBalance + playFrame.playPlayers[chair].betAmount - prevAmount,
-                                                    enumPoker.actionsType.indexOf('call'),
+                                                    enumPoker.enumPoker.actionsType.indexOf('call'),
                                                     this.rawActionList[this.rawActionList.length - 1].pot + this.rawActionList[this.rawActionList.length - 1].invest,
                                                     playFrame.playPlayers[chair].betAmount,
                                                     this.initPlayers[chair].enumPosition,
@@ -796,7 +803,7 @@ class PlaySetup {
                                                 curStreet,
                                                 this.initPlayers[chair].player,
                                                 playFrame.playPlayers[chair].curBalance + playFrame.playPlayers[chair].betAmount,
-                                                enumPoker.actionsType.indexOf(playFrame.playPlayers[chair].betAmount && !isDeferredRaise ? 'bet' : 'check'),
+                                                enumPoker.enumPoker.actionsType.indexOf(playFrame.playPlayers[chair].betAmount && !isDeferredRaise ? 'bet' : 'check'),
                                                 this.rawActionList[this.rawActionList.length - 1].pot + this.rawActionList[this.rawActionList.length - 1].invest,
                                                 isDeferredRaise ? 0 : playFrame.playPlayers[chair].betAmount,
                                                 this.initPlayers[chair].enumPosition,
@@ -818,9 +825,93 @@ class PlaySetup {
                 }
             }
         }
+    }
 
-        console.log(this.rawActionList);
-        console.log(this.board);
+    createHtmlPrompt(prompt) {
+        if (!this.rawActionList.length) {
+            return `<div class="main-container spins party-poker">A new hand has not yet begun</div>`
+        }
+        const promptInfo = {};
+        if (prompt && prompt.length) {
+
+        }
+
+        const agroChair = this.getRecAgroChairWithMaxAmount();
+
+        let heroCards;
+
+        const players = this.initPlayers.map((player, i) => {
+            if (player.cards) {
+                heroCards = player.cards;
+            }
+
+            return {
+                nickname: player.player,
+                balance: this.getLastValidMoveBalance(i),
+                bet: this.getLastValidMoveAmount(i),
+                isDealer: player.isDealer,
+                agroClass: i === agroChair ? 'bet-raise' : 'check-call',
+            };
+        });
+
+        const pot = this.getPot();
+
+        const shape =
+            `<div class="main-container spins party-poker">
+        <div class="player player0">
+            <div class="nickname green">${players[0].nickname}} <span class="balance">/ ${players[0].balance}bb</span></div>
+            ${players[0].isDealer ? '<div class="dealer"><span>D</span></div>' : ''}
+            ${players[0].bet ? `<div class="amount ${players[0].agroClass}"> ${players[0].bet}bb</div>` : ''}
+        </div>
+        <div class="player player1">
+            <div class="nickname red">${players[1].nickname} <span class="balance">/ ${players[1].balance}bb</span></div>
+            ${players[1].isDealer ? '<div class="dealer"><span>D</span></div>' : ''}
+            ${players[1].bet ? `<div class="amount ${players[1].agroClass}"> ${players[1].bet}bb</div>` : ''}
+        </div>
+        <div class="player player2">
+            <div class="nickname">${players[2].nickname} <span class="balance">/ ${players[2].balance}bb</span></div>
+            ${players[2].isDealer ? '<div class="dealer"><span>D</span></div>' : ''}
+            ${players[2].bet ? `<div class="amount ${players[2].agroClass}"> ${players[2].bet}bb</div>` : ''}
+        </div>
+        <div class="board">
+            <div class="pot">Pot: ${pot}bb</div>
+            <div class="card ${this.board[0] ? enumPoker.enumPoker.cardsSuitsName[enumPoker.enumPoker.cardsSuits.indexOf(this.board[0].suit)] : ''}">
+                <div class="value">${this.board[0] ? this.board[0][value].toUpperCase() : ''}</div>
+                <div class="suit">${this.board[0] ? enumPoker.enumPoker.cardsSuitsCode[enumPoker.enumPoker.cardsSuits.indexOf(this.board[0].suit)] : ''}</div>
+            </div>
+            <div class="card ${this.board[1] ? enumPoker.enumPoker.cardsSuitsName[enumPoker.enumPoker.cardsSuits.indexOf(this.board[1].suit)] : ''}">
+                <div class="value">${this.board[1] ? this.board[1][value].toUpperCase() : ''}</div>
+                <div class="suit">${this.board[1] ? enumPoker.enumPoker.cardsSuitsCode[enumPoker.enumPoker.cardsSuits.indexOf(this.board[1].suit)] : ''}</div>
+            </div>
+            <div class="card ${this.board[2] ? enumPoker.enumPoker.cardsSuitsName[enumPoker.enumPoker.cardsSuits.indexOf(this.board[2].suit)] : ''}">
+                <div class="value">${this.board[2] ? this.board[2][value].toUpperCase() : ''}</div>
+                <div class="suit">${this.board[2] ? enumPoker.enumPoker.cardsSuitsCode[enumPoker.enumPoker.cardsSuits.indexOf(this.board[2].suit)] : ''}</div>
+            </div>
+            <div class="card ${this.board[3] ? enumPoker.enumPoker.cardsSuitsName[enumPoker.enumPoker.cardsSuits.indexOf(this.board[3].suit)] : ''}">
+                <div class="value">${this.board[3] ? this.board[3][value].toUpperCase() : ''}</div>
+                <div class="suit">${this.board[3] ? enumPoker.enumPoker.cardsSuitsCode[enumPoker.enumPoker.cardsSuits.indexOf(this.board[3].suit)] : ''}</div>
+            </div>
+            <div class="card ${this.board[4] ? enumPoker.enumPoker.cardsSuitsName[enumPoker.enumPoker.cardsSuits.indexOf(this.board[4].suit)] : ''}">
+                <div class="value">${this.board[4] ? this.board[4][value].toUpperCase() : ''}</div>
+                <div class="suit">${this.board[4] ? enumPoker.enumPoker.cardsSuitsCode[enumPoker.enumPoker.cardsSuits.indexOf(this.board[4].suit)] : ''}</div>
+            </div>
+        </div>
+        <div class="hero-hand">
+            <div class="card ${this.board[0] ? enumPoker.enumPoker.cardsSuitsName[enumPoker.enumPoker.cardsSuits.indexOf(this.board[0].suit)] : ''}">
+                <div class="value">${heroCards['hole1Value'].toUpperCase()}</div>
+                <div class="suit">${enumPoker.enumPoker.cardsSuitsCode[enumPoker.enumPoker.cardsSuits.indexOf(heroCards['hole1Suit'])]}</div>
+            </div>
+            <div class="card ${this.board[0] ? enumPoker.enumPoker.cardsSuitsName[enumPoker.enumPoker.cardsSuits.indexOf(this.board[0].suit)] : ''}">
+                <div class="value">${heroCards['hole2Value'].toUpperCase()}</div>
+                <div class="suit">${enumPoker.enumPoker.cardsSuitsCode[enumPoker.enumPoker.cardsSuits.indexOf(heroCards['hole2Suit'])]}</div>
+            </div>
+        </div>
+        <div class="prompt">
+        </div>
+    </div>`;
+
+        return shape;
+
     }
 
     restoreRawAction(count) {
@@ -896,7 +987,7 @@ class PlaySetup {
                                         currentStreet,
                                         this.initPlayers[chair].player,
                                         this.rawActionList[i].balance - this.rawActionList[i].invest,
-                                        enumPoker.actionsType.indexOf(maxAmount ? 'fold' : 'check'),
+                                        enumPoker.enumPoker.actionsType.indexOf(maxAmount ? 'fold' : 'check'),
                                         this.rawActionList[this.rawActionList.length - 1].pot + this.rawActionList[this.rawActionList.length - 1].invest,
                                         0,
                                         this.initPlayers[chair].enumPosition,
@@ -914,7 +1005,7 @@ class PlaySetup {
                                     currentStreet,
                                     this.initPlayers[chair].player,
                                     smartRestBalance,
-                                    enumPoker.actionsType.indexOf(maxAmount ? 'call' : 'check'),
+                                    enumPoker.enumPoker.actionsType.indexOf(maxAmount ? 'call' : 'check'),
                                     this.rawActionList[this.rawActionList.length - 1].pot + this.rawActionList[this.rawActionList.length - 1].invest,
                                     this.rawActionList[i].amount + callAmount,
                                     this.initPlayers[chair].enumPosition,
@@ -934,7 +1025,7 @@ class PlaySetup {
                                     currentStreet,
                                     this.initPlayers[chair].player,
                                     balance,
-                                    enumPoker.actionsType.indexOf(maxAmount ? 'call' : 'check'),
+                                    enumPoker.enumPoker.actionsType.indexOf(maxAmount ? 'call' : 'check'),
                                     this.rawActionList[this.rawActionList.length - 1].pot + this.rawActionList[this.rawActionList.length - 1].invest,
                                     callAmount,
                                     this.initPlayers[chair].enumPosition,
@@ -948,7 +1039,7 @@ class PlaySetup {
                                     currentStreet,
                                     this.initPlayers[chair].player,
                                     balance,
-                                    enumPoker.actionsType.indexOf('fold'),
+                                    enumPoker.enumPoker.actionsType.indexOf('fold'),
                                     this.rawActionList[this.rawActionList.length - 1].pot + this.rawActionList[this.rawActionList.length - 1].invest,
                                     0,
                                     this.initPlayers[chair].enumPosition,
@@ -1014,10 +1105,6 @@ class PlaySetup {
         }
 
         return {chairTo, movedCount};
-    }
-
-    isSomeOfTextMoves(balanceRecognition) {
-        return !!enumPoker.actionsType.filter(moveType => moveType === balanceRecognition.toLowerCase()).length;
     }
 
     getMovesCount(street) {
@@ -1230,6 +1317,8 @@ class PlaySetup {
     }
 
     setInitPlayers(firstPlayFrame) {
+        console.log('firstPlayFrame in setInitPlayers');
+        console.log(firstPlayFrame);
         this.playersWasActive = firstPlayFrame.playPlayers.filter(player => (player.isActive || (!player.isActive && player.curBalance > 1)));
 
         const p0Dealer = ['BTN', 'SB', 'BB'];
@@ -1247,7 +1336,9 @@ class PlaySetup {
                 this.initPlayers[player.recognitionPosition] = new InitPlayer(
                     player.nickname,
                     player.curBalance + player.betAmount,
-                    enumPoker.positions.indexOf(player.isDealer ? 'BTN' : 'BB'));
+                    enumPoker.enumPoker.positions.indexOf(player.isDealer ? 'BTN' : 'BB'),
+                    player.isDealer,
+                    player.cards);
             });
         } else if (this.playersWasActive.length === 3) {     // spins or other 3 max
             console.log('3 players!');
@@ -1262,7 +1353,9 @@ class PlaySetup {
                 this.initPlayers[player.recognitionPosition] = new InitPlayer(
                     player.nickname,
                     player.curBalance + player.betAmount,
-                    enumPoker.positions.indexOf(pXDealer[player.recognitionPosition]));
+                    enumPoker.enumPoker.positions.indexOf(pXDealer[player.recognitionPosition]),
+                    player.isDealer,
+                    player.cards);
             });
         }
         console.log('setInitPlayers: this.initPlayers');
@@ -1429,19 +1522,25 @@ const prompterListener = (setup, request, gameTypesSettings) => {
     } = request;
     const { id } = data;
 
-    const promptData = {
-        prompt,
-        id,
-    };
-
     // check on valid recognition frame
     if (setup.playSetup === undefined) {
-        setup.playSetup = new PlaySetup(gameTypesSettings);
+        setup.playSetup = new PlaySetup(gameTypesSettings, client);
     }
-    setup.playSetup.frameHandler(data, gameTypesSettings);
+    const result = setup.playSetup.frameHandler(data, gameTypesSettings);
 
-    request.client.emit(PROMPT, promptData);
+    if (result === REJECT_HAND) {
+        console.log(REJECT_HAND + ' prompterListener');
+    } else if (result === PROMPT) {
+        const promptData = {
+            prompt: setup.playSetup.createHtmlPrompt(),
+            id,
+        };
+        client.emit(PROMPT, promptData);
+    }
+    // client.emit(PROMPT, promptData);
 };
+
+
 
 
 

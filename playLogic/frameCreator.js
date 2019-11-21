@@ -50,9 +50,11 @@ class Validator {
     }
 
     createFrame(recFrame) {
+        console.log('enter createFrame in validator');
+        console.log(recFrame);
         this.playersCount = enumPoker.enumPoker.gameTypesSettings[this.playSetup.gameTypesSettings || 'Spin&Go'].playersCount;
         this.heroChair = enumPoker.enumPoker.gameTypesSettings[this.playSetup.gameTypesSettings || 'Spin&Go'].heroChair;
-        const dealers = Array(this.playersCount).fill().reduce((count, pl, i) => recFrame[`Player${i}_isDealer`].value === 'a' ? count + 1 : count, 0);
+        const dealers = Array(this.playersCount).fill().reduce((count, pl, i) => recFrame[`Player${i}_isDealer`].value === 'y' ? count + 1 : count, 0);
 
         if (enumPoker.enumPoker.cardsSuits.includes(recFrame[`Player${this.heroChair}_hole1_suit`].value)
             && enumPoker.enumPoker.cardsSuits.includes(recFrame[`Player${this.heroChair}_hole2_suit`].value)
@@ -84,17 +86,27 @@ class Validator {
             const playPlayers = [];
 
             Array(this.playersCount).fill().forEach((pl, i) => {
+                const hole1Value = validFrame[`Player${i}_hole1_value`].value;
+                const hole2Value = validFrame[`Player${i}_hole2_value`].value;
+                const hole1Suit = validFrame[`Player${i}_hole1_suit`].value;
+                const hole2Suit = validFrame[`Player${i}_hole2_suit`].value;
+
+                const isGoodCards = enumPoker.enumPoker.cardsValues.includes(hole1Value)
+                    && enumPoker.enumPoker.cardsValues.includes(hole2Value)
+                    && enumPoker.enumPoker.cardsSuits.includes(hole1Suit)
+                    && enumPoker.enumPoker.cardsSuits.includes(hole2Suit);
+
                 const nickname = validFrame[`Player${i}_name`];
                 const balance = validFrame[`Player${i}_balance`];
                 const bet = validFrame[`Player${i}_bet`];
                 const isActive = validFrame[`Player${i}_isActive`].value === 'a';
                 const isDealer = validFrame[`Player${i}_isDealer`].value === 'a';
-                const cards = {
-                    hole1Value: validFrame[`Player${i}_hole1_value`].value,
-                    hole2Value: validFrame[`Player${i}_hole2_value`].value,
-                    hole1Suit: validFrame[`Player${i}_hole1_suit`].value,
-                    hole2Suit: validFrame[`Player${i}_hole2_suit`].value,
-                };
+                const cards = isGoodCards ? {
+                    hole1Value,
+                    hole2Value,
+                    hole1Suit,
+                    hole2Suit,
+                } : null;
                 playPlayers[i] = new PlayPlayer(nickname, i, balance, bet, isActive, isDealer, cards);
             });
 
@@ -167,9 +179,6 @@ class Validator {
                 const player_bet = `Player${i}_bet`;
                 const matchBet = recFrame[player_bet].match(regBеt);
                 playerBets[player_bet] = matchBet ? +matchBet[0]
-                        .replace(/S/, 5)
-                        .replace(/D/, 0)
-                        .replace(/B/, 8)
                         .replace(/(\.|\,)+(?=(\d)){0,1}/, '.')
                     : 0;
 

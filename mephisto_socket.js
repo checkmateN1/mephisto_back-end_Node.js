@@ -27,7 +27,7 @@ const sequenceNumberByClient = {};
 // };
 
 // debug
-let dirPath = '';
+let dirPath = 'fake path';
 let curFile = '';
 let filesInDir = [];
 
@@ -86,12 +86,19 @@ io.on('connection', client => {
                                 if (err) throw err; // Fail if the file can't be read.
                                 client.emit('image', { image: true, buffer: buf.toString('base64') });
                                 console.log('image file is initialized');
+                                client.emit('fileName', { fileToSend });
                             });
                             curFile = fileToSend;
                         }
                     }
 
+                    console.log('fileToSend');
+                    console.log(fileToSend);
+
                     const txtFile = fileToSend.replace('.jpg', '.txt').replace('table', 'json');
+
+                    console.log('txtFile');
+                    console.log(txtFile);
                     fs.readFile(req.folder + '\\' + txtFile, 'utf8', (err, data) => {
                         if (err) throw err;
                         const frameData = JSON.parse(data);

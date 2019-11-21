@@ -16,6 +16,8 @@ const enumPoker = Object.freeze({
     },
     cardsValues: [2, 3, 4, 5, 6, 7, 8, 9, 10, 'j', 'q', 'k', 'a'],
     cardsSuits: ['c', 's', 'd', 'h'],
+    cardsSuitsName: ['clubs', 'spades', 'diamonds', 'hearts'],
+    cardsSuitsCode: ['&#9827', '&#9824', '&#9830', '&#9829'],
 });
 
 const enumCommon = Object.freeze({
