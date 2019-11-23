@@ -55,7 +55,7 @@ const sessions = {};
 
 const sessionTimeout = 200;
 const setupTimeout = 100;
-const timeoutStep = 500;
+const timeoutStep = 50000;
 
 // one specific user with many SessionSetups
 // setupID = one recognition table or simulator

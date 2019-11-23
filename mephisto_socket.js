@@ -108,6 +108,7 @@ io.on('connection', client => {
                                 requestType: 'prompter',
                             },
                             data: frameData,
+                            txtFile,
                             client,
                         };
 

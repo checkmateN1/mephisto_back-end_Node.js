@@ -122,9 +122,12 @@ class PlaySetup {
         this.isNewHand = true;          // сетим на фолс внутри мувс_хендлер
         this.gameTypesSettings = gameTypesSettings;
         this.validator = validator.validatorCreator(this);
+        // debug info
+        this.txtFile = '';
     }
 
     frameHandler(rawFrame, gameTypesSettings) {
+        console.log(`start frameHandler/// this.txtFile: ${this.txtFile}`);
         this.gameTypesSettings = gameTypesSettings;
         const playFrame = this.needToPrompt ? this.validator.createFrame(rawFrame) : rawFrame;
         if (playFrame === INVALID_FRAME) {
@@ -135,6 +138,7 @@ class PlaySetup {
             return REJECT_HAND;
         }
         if (playFrame.handNumber !== this.handNumber) {         // new hand
+            console.log(`frameHandler/// new hand!  playFrame.handNumber: ${playFrame.handNumber}, this.handNumber: ${this.handNumber}`);
             this.handNumber = playFrame.handNumber;
             this.initPlayers = [];
             this.positionEnumKeyMap = {};
@@ -161,14 +165,17 @@ class PlaySetup {
         this.prevPlayFrame = playFrame;
         this.prevPlayFrameTime = moment().format('h:mm:ss');
 
+        console.log(`this.needToPrompt: ${this.needToPrompt}, playFrame.isButtons: ${playFrame.isButtons}, this.rejectHand: ${this.rejectHand}`);
         if (this.needToPrompt && playFrame.isButtons) {
             return PROMPT;
         }
     };
 
     getMovesFromFrame(playFrame) {
+        console.log(`getMovesFromFrame at start/// this.rawActionList.length: ${this.rawActionList.length}`);
         // first frame
         if (this.rawActionList.length === 0) {        // first frame
+            console.log(`getMovesFromFrame/// first frame!`);
             const BBAmount = playFrame.playPlayers[this.positionEnumKeyMap[enumPoker.enumPoker.positions.indexOf('BB')]].betAmount;
 
             if (this.bbSize.length && BBAmount > this.bbSize[this.bbSize.length - 1] * 2.5) {   // wrong BB recognition or reraise
@@ -181,12 +188,13 @@ class PlaySetup {
 
             this.isNewHand = true; // сетим на фолс ВНУТРИ мувсХендлер!(callback)
 
-            const SBSize = Math.floor(BBAmount / 2);
+            const SBSize = +(BBAmount / 2).toFixed(1);
             const BTNAmount = playFrame.playPlayers[this.positionEnumKeyMap[enumPoker.enumPoker.positions.indexOf('BTN')]].betAmount;
 
             // posts
             // constructor(street, player, balance, action, pot, amount, position, invest)
             if (this.playersWasActive.length === 2) {        // ha
+                console.log(`getMovesFromFrame 2 players was active:  BBAmount: ${BBAmount}, SBAmount: ${BTNAmount >= BBAmount ? SBSize : BTNAmount}`);
                 this.rawActionList.push(new ActionString(
                     0,
                     this.initPlayers[this.positionEnumKeyMap[enumPoker.enumPoker.positions.indexOf('BTN')]].player,
@@ -208,7 +216,7 @@ class PlaySetup {
                     BBAmount));      // post BB
             } else {
                 const SBAmount = playFrame.playPlayers[this.positionEnumKeyMap[enumPoker.enumPoker.positions.indexOf('SB')]].betAmount;
-
+                console.log(`getMovesFromFrame 3+ players was active:  BBAmount: ${BBAmount}, SBAmount: ${SBAmount}`);
                 this.rawActionList.push(new ActionString(
                     0,
                     this.initPlayers[this.positionEnumKeyMap[enumPoker.enumPoker.positions.indexOf('SB')]].player,
@@ -825,6 +833,8 @@ class PlaySetup {
                 }
             }
         }
+        console.log('this.rawActionList at the end of getMovesFromFrame');
+        console.log(this.rawActionList);
     }
 
     createHtmlPrompt(prompt) {
@@ -856,6 +866,14 @@ class PlaySetup {
 
         const pot = this.getPot();
 
+        const result = {
+            players,
+            pot,
+            heroCards,
+            enumPoker,
+            board: this.board,
+        };
+
         const shape =
             `<div class="main-container spins party-poker">
         <div class="player player0">
@@ -876,32 +894,32 @@ class PlaySetup {
         <div class="board">
             <div class="pot">Pot: ${pot}bb</div>
             <div class="card ${this.board[0] ? enumPoker.enumPoker.cardsSuitsName[enumPoker.enumPoker.cardsSuits.indexOf(this.board[0].suit)] : ''}">
-                <div class="value">${this.board[0] ? this.board[0][value].toUpperCase() : ''}</div>
+                <div class="value">${this.board[0] ? this.board[0]['value'].toUpperCase() : ''}</div>
                 <div class="suit">${this.board[0] ? enumPoker.enumPoker.cardsSuitsCode[enumPoker.enumPoker.cardsSuits.indexOf(this.board[0].suit)] : ''}</div>
             </div>
             <div class="card ${this.board[1] ? enumPoker.enumPoker.cardsSuitsName[enumPoker.enumPoker.cardsSuits.indexOf(this.board[1].suit)] : ''}">
-                <div class="value">${this.board[1] ? this.board[1][value].toUpperCase() : ''}</div>
+                <div class="value">${this.board[1] ? this.board[1]['value'].toUpperCase() : ''}</div>
                 <div class="suit">${this.board[1] ? enumPoker.enumPoker.cardsSuitsCode[enumPoker.enumPoker.cardsSuits.indexOf(this.board[1].suit)] : ''}</div>
             </div>
             <div class="card ${this.board[2] ? enumPoker.enumPoker.cardsSuitsName[enumPoker.enumPoker.cardsSuits.indexOf(this.board[2].suit)] : ''}">
-                <div class="value">${this.board[2] ? this.board[2][value].toUpperCase() : ''}</div>
+                <div class="value">${this.board[2] ? this.board[2]['value'].toUpperCase() : ''}</div>
                 <div class="suit">${this.board[2] ? enumPoker.enumPoker.cardsSuitsCode[enumPoker.enumPoker.cardsSuits.indexOf(this.board[2].suit)] : ''}</div>
             </div>
             <div class="card ${this.board[3] ? enumPoker.enumPoker.cardsSuitsName[enumPoker.enumPoker.cardsSuits.indexOf(this.board[3].suit)] : ''}">
-                <div class="value">${this.board[3] ? this.board[3][value].toUpperCase() : ''}</div>
+                <div class="value">${this.board[3] ? this.board[3]['value'].toUpperCase() : ''}</div>
                 <div class="suit">${this.board[3] ? enumPoker.enumPoker.cardsSuitsCode[enumPoker.enumPoker.cardsSuits.indexOf(this.board[3].suit)] : ''}</div>
             </div>
             <div class="card ${this.board[4] ? enumPoker.enumPoker.cardsSuitsName[enumPoker.enumPoker.cardsSuits.indexOf(this.board[4].suit)] : ''}">
-                <div class="value">${this.board[4] ? this.board[4][value].toUpperCase() : ''}</div>
+                <div class="value">${this.board[4] ? this.board[4]['value'].toUpperCase() : ''}</div>
                 <div class="suit">${this.board[4] ? enumPoker.enumPoker.cardsSuitsCode[enumPoker.enumPoker.cardsSuits.indexOf(this.board[4].suit)] : ''}</div>
             </div>
         </div>
         <div class="hero-hand">
-            <div class="card ${this.board[0] ? enumPoker.enumPoker.cardsSuitsName[enumPoker.enumPoker.cardsSuits.indexOf(this.board[0].suit)] : ''}">
+            <div class="card ${enumPoker.enumPoker.cardsSuitsName[enumPoker.enumPoker.cardsSuits.indexOf(heroCards['hole1Suit'])]}">
                 <div class="value">${heroCards['hole1Value'].toUpperCase()}</div>
                 <div class="suit">${enumPoker.enumPoker.cardsSuitsCode[enumPoker.enumPoker.cardsSuits.indexOf(heroCards['hole1Suit'])]}</div>
             </div>
-            <div class="card ${this.board[0] ? enumPoker.enumPoker.cardsSuitsName[enumPoker.enumPoker.cardsSuits.indexOf(this.board[0].suit)] : ''}">
+            <div class="card ${enumPoker.enumPoker.cardsSuitsName[enumPoker.enumPoker.cardsSuits.indexOf(heroCards['hole2Suit'])]}">
                 <div class="value">${heroCards['hole2Value'].toUpperCase()}</div>
                 <div class="suit">${enumPoker.enumPoker.cardsSuitsCode[enumPoker.enumPoker.cardsSuits.indexOf(heroCards['hole2Suit'])]}</div>
             </div>
@@ -910,8 +928,7 @@ class PlaySetup {
         </div>
     </div>`;
 
-        return shape;
-
+        return result;
     }
 
     restoreRawAction(count) {
@@ -1319,7 +1336,7 @@ class PlaySetup {
     setInitPlayers(firstPlayFrame) {
         console.log('firstPlayFrame in setInitPlayers');
         console.log(firstPlayFrame);
-        this.playersWasActive = firstPlayFrame.playPlayers.filter(player => (player.isActive || (!player.isActive && player.curBalance > 1)));
+        this.playersWasActive = firstPlayFrame.playPlayers.filter(player => (player.isActive || (!player.isActive && (player.curBalance > 0 || player.isDealer || player.betAmount > 0))));
 
         const p0Dealer = ['BTN', 'SB', 'BB'];
         const p1Dealer = ['BB', 'BTN', 'SB'];
@@ -1329,7 +1346,7 @@ class PlaySetup {
         console.log('this.playersWasActive');
         console.log(this.playersWasActive);
 
-        if (this.playersWasActive === 2) {    // ha
+        if (this.playersWasActive.length === 2) {    // ha
             console.log('2 players!');
 
             this.playersWasActive.forEach(player => {
@@ -1518,6 +1535,7 @@ const prompterListener = (setup, request, gameTypesSettings) => {
 
     const {
         data,
+        txtFile,
         client,
     } = request;
     const { id } = data;
@@ -1526,16 +1544,21 @@ const prompterListener = (setup, request, gameTypesSettings) => {
     if (setup.playSetup === undefined) {
         setup.playSetup = new PlaySetup(gameTypesSettings, client);
     }
+    setup.playSetup.txtFile = txtFile;
     const result = setup.playSetup.frameHandler(data, gameTypesSettings);
 
     if (result === REJECT_HAND) {
         console.log(REJECT_HAND + ' prompterListener');
     } else if (result === PROMPT) {
+        console.log('шлем подсказку на клиент');
         const promptData = {
             prompt: setup.playSetup.createHtmlPrompt(),
             id,
         };
-        client.emit(PROMPT, promptData);
+        setTimeout(() => {
+            console.log('send prompt inside timeout');
+            client.emit(PROMPT, promptData);
+        }, 0);
     }
     // client.emit(PROMPT, promptData);
 };
