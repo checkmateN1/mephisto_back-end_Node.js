@@ -30,6 +30,9 @@ str[26] = 'Pot: B,0 BB .,';                  // 8.0
 str[27] = '23 0 BB';                  // 23.0
 str[28] = '411-111';                  // All-in
 str[29] = 'A11-111';                  // All-in
+str[30] = 'Pot: 24 BB 171';           // 24
+str[31] = 'POot: 4BB -...';           // 4
+str[32] = 'Potz 2 BB';           // 2!
 
 // balances
 const balances = [];
@@ -39,6 +42,7 @@ balances[2] = '-20,5 BB';          // 20.5
 balances[3] = '2 8,0 BB';          // 28.0
 balances[4] = '24,0 BB';          // valid test 24.0
 balances[5] = '38 4 BB';          // 38.4
+balances[6] = '4 8 BB';          // 48
 
 
 // bets
@@ -53,9 +57,9 @@ bets[6] = '0.5,BB';           // 0.5
 
 
 // const regPot = /(S|D|B|\d)+(?!\S){0,4}((\.|\,){0,3}\d{1,2})/;
-const regPot = /(S|D|B|\d)+(?!\S){0,4}((\.|\,){0,3}\d{1,2}){0,1}/;
+const regPot = /(S|D|\d)+(?!\s\d)((\.|\,){0,3}\d{1,2}){0,1}/;
 const regAllin = /(all|((4|A)(1|L|I)(1|L|I)-))/i;
-const regBalance = /(S|D|B|\d)+\s{0,1}\d{0,2}(\.|\,){0,3}\d{0,1}/;
+const regBalance = /(S|D|\d)+\s{0,1}\d{0,2}(\.|\,){0,3}\d{0,1}/;
 const regBet = /(S|D|B|\d)+(?!\S){0,4}((\.|\,){0,3}\d{1,2}){0,1}/;
 // const regBalance = /\d+\S{0,1}\d/;
 
@@ -68,38 +72,37 @@ const regBet = /(S|D|B|\d)+(?!\S){0,4}((\.|\,){0,3}\d{1,2}){0,1}/;
 //         console.log(`input: ${str};    output: ${matchArr ? matchArr[0]
 //                 .replace(/S/, 5)
 //                 .replace(/D/, 0)
-//                 .replace(/B/, 8)
 //                 .replace(/(\.|\,)+(?=(\d)){0,1}/, '.')
 //             : null}`);
 //     }
 // });
 
 // // balances
-// console.log('balances');
-// balances.forEach(str => {
-//     if (!regBalance.test(str)) {
-//         console.log(`input: ${str};    output: 0 or fail`);
-//     } else {
-//         const matchArr = str.match(regBalance);
-//         console.log(`input: ${str};    output: ${matchArr ? matchArr[0]
-//                 .replace(/(\s{1,2})*(?=(\d{0,2}(?=(\.|\,))))/, '')
-//                 .replace(/(\.|\,|\s)+(?=(\d)){0,1}/, '.')
-//             : null}`);
-//     }
-// });
-
-// bets
-console.log('bets');
-bets.forEach(str => {
-    if (!regBet.test(str)) {
+balances.forEach(str => {
+    if (!regBalance.test(str)) {
         console.log(`input: ${str};    output: 0 or fail`);
     } else {
-        const matchArr = str.match(regBet);
+        const matchArr = str.match(regBalance);
         console.log(`input: ${str};    output: ${matchArr ? matchArr[0]
+                .replace(/(\s{1,2})*(?=(\d{0,2}(?=(\.|\,))))/, '')
+                .replace(/\s(?=\d)/, '')
                 .replace(/(\.|\,)+(?=(\d)){0,1}/, '.')
             : null}`);
     }
 });
+
+// bets
+// console.log('bets');
+// bets.forEach(str => {
+//     if (!regBet.test(str)) {
+//         console.log(`input: ${str};    output: 0 or fail`);
+//     } else {
+//         const matchArr = str.match(regBet);
+//         console.log(`input: ${str};    output: ${matchArr ? matchArr[0]
+//                 .replace(/(\.|\,)+(?=(\d)){0,1}/, '.')
+//             : null}`);
+//     }
+// });
 
 
 

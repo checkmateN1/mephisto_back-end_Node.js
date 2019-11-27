@@ -112,7 +112,9 @@ io.on('connection', client => {
                             client,
                         };
 
-                        sessionsHandler.sessionsListener(token, frameData.id, prompterData);     // data.id == table id from recognition
+                        setTimeout(() => {
+                            sessionsHandler.sessionsListener(token, frameData.id, prompterData);     // data.id == table id from recognition
+                        }, 100);
                     });
                 }
             });

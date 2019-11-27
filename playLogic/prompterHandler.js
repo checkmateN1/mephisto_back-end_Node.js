@@ -166,7 +166,8 @@ class PlaySetup {
         this.prevPlayFrameTime = moment().format('h:mm:ss');
 
         console.log(`this.needToPrompt: ${this.needToPrompt}, playFrame.isButtons: ${playFrame.isButtons}, this.rejectHand: ${this.rejectHand}`);
-        if (this.needToPrompt && playFrame.isButtons) {
+        // if (this.needToPrompt && playFrame.isButtons) {
+        if (this.needToPrompt) {
             return PROMPT;
         }
     };
@@ -237,6 +238,8 @@ class PlaySetup {
                     enumPoker.enumPoker.positions.indexOf('BB'),
                     BBAmount));      // post BB
             }
+            console.log(`getMovesFromFrame/// first frame /// after posts// rawActionsList`);
+            console.log(this.rawActionList);
         }
 
 
@@ -257,7 +260,7 @@ class PlaySetup {
 
                 console.log('no changing street');
                 const chairTo = this.getChairTo(playFrame, lastRecPosition);
-                console.log(`chairTo: ${chairTo}`);
+                console.log(`chairTo: ${chairTo ? chairTo.chairTo : undefined}`);
 
                 if (chairTo.chairTo !== undefined) {        // есть игрок с измененным состоянием + нету перехода улицы!
                     // запускаем цикл от последнего игрока в rawActionList до chairTo игрока и пытаемся вычислить какой тип мува и сколько вложил каждый игрок
@@ -298,10 +301,6 @@ class PlaySetup {
 
                                 if (prevBetAmount) {    // was bet or raise
                                     if (prevBetAmount < playFrame.playPlayers[chair].betAmount) {       // raise or call-raise?
-
-                                        if (playFrame.testNumber === 2) {
-                                            console.log(1);
-                                        }
 
                                         this.rawActionList.push(new ActionString(
                                             curStreet,
@@ -344,6 +343,7 @@ class PlaySetup {
                     });
 
                     if (wasDeferredMove) {      // был отложенный мув, который прошел через круг
+                        console.log(`prompterHandler /// wasDeferredMove: ${wasDeferredMove}`);
                         this.fantomRawActionsCount = 0;
                         this.needToPrompt = false;
                         this.frameHandler(playFrame);        // запускаем еще раз фрейм, так как не все действия были добавлены при первом проходе
@@ -724,9 +724,11 @@ class PlaySetup {
                     && this.rawActionList[this.rawActionList.length - 1].street < curStreet)) {
                     // запускаем Поиск чайрТу и пушим мувы по стандартной схеме
                     const firstChair = this.positionEnumKeyMap[this.getFirstEnumPositionToMove(false)];
-                    const chairTo = this.getChairTo(playFrame, this.getRecPositionBefore(this.initPlayers.length, firstChair), true);
+                    console.log(`seted board ok, terminal state and firstChair to move at new street is: ${firstChair}`);
+                    // const chairTo = this.getChairTo(playFrame, this.getRecPositionBefore(this.initPlayers.length, firstChair), true, firstChair);
+                    const chairTo = this.getChairTo(playFrame, firstChair, true);
 
-                    console.log(`new street and terminal state. Try to get chairTo: ${chairTo}`);
+                    console.log(`new street and terminal state. Try to get chairTo: ${chairTo ? chairTo.chairTo : ''}, movesCount: ${chairTo ? chairTo.movedCount : ''}`);
 
                     if (chairTo.chairTo !== undefined) {        // есть игрок с измененным состоянием + нету перехода улицы!
                         // запускаем цикл от последнего игрока в rawActionList до chairTo игрока и пытаемся вычислить какой тип мува и сколько вложил каждый игрок
@@ -845,7 +847,7 @@ class PlaySetup {
         if (prompt && prompt.length) {
 
         }
-
+        const currentStreet = this.rawActionList[this.rawActionList.length - 1].street;
         const agroChair = this.getRecAgroChairWithMaxAmount();
 
         let heroCards;
@@ -858,7 +860,7 @@ class PlaySetup {
             return {
                 nickname: player.player,
                 balance: this.getLastValidMoveBalance(i),
-                bet: this.getLastValidMoveAmount(i),
+                bet: this.isTerminalStreetState() ? 0 : this.getLastValidMoveAmount(i),
                 isDealer: player.isDealer,
                 agroClass: i === agroChair ? 'bet-raise' : 'check-call',
             };
@@ -874,59 +876,61 @@ class PlaySetup {
             board: this.board,
         };
 
-        const shape =
-            `<div class="main-container spins party-poker">
-        <div class="player player0">
-            <div class="nickname green">${players[0].nickname}} <span class="balance">/ ${players[0].balance}bb</span></div>
-            ${players[0].isDealer ? '<div class="dealer"><span>D</span></div>' : ''}
-            ${players[0].bet ? `<div class="amount ${players[0].agroClass}"> ${players[0].bet}bb</div>` : ''}
-        </div>
-        <div class="player player1">
-            <div class="nickname red">${players[1].nickname} <span class="balance">/ ${players[1].balance}bb</span></div>
-            ${players[1].isDealer ? '<div class="dealer"><span>D</span></div>' : ''}
-            ${players[1].bet ? `<div class="amount ${players[1].agroClass}"> ${players[1].bet}bb</div>` : ''}
-        </div>
-        <div class="player player2">
-            <div class="nickname">${players[2].nickname} <span class="balance">/ ${players[2].balance}bb</span></div>
-            ${players[2].isDealer ? '<div class="dealer"><span>D</span></div>' : ''}
-            ${players[2].bet ? `<div class="amount ${players[2].agroClass}"> ${players[2].bet}bb</div>` : ''}
-        </div>
-        <div class="board">
-            <div class="pot">Pot: ${pot}bb</div>
-            <div class="card ${this.board[0] ? enumPoker.enumPoker.cardsSuitsName[enumPoker.enumPoker.cardsSuits.indexOf(this.board[0].suit)] : ''}">
-                <div class="value">${this.board[0] ? this.board[0]['value'].toUpperCase() : ''}</div>
-                <div class="suit">${this.board[0] ? enumPoker.enumPoker.cardsSuitsCode[enumPoker.enumPoker.cardsSuits.indexOf(this.board[0].suit)] : ''}</div>
-            </div>
-            <div class="card ${this.board[1] ? enumPoker.enumPoker.cardsSuitsName[enumPoker.enumPoker.cardsSuits.indexOf(this.board[1].suit)] : ''}">
-                <div class="value">${this.board[1] ? this.board[1]['value'].toUpperCase() : ''}</div>
-                <div class="suit">${this.board[1] ? enumPoker.enumPoker.cardsSuitsCode[enumPoker.enumPoker.cardsSuits.indexOf(this.board[1].suit)] : ''}</div>
-            </div>
-            <div class="card ${this.board[2] ? enumPoker.enumPoker.cardsSuitsName[enumPoker.enumPoker.cardsSuits.indexOf(this.board[2].suit)] : ''}">
-                <div class="value">${this.board[2] ? this.board[2]['value'].toUpperCase() : ''}</div>
-                <div class="suit">${this.board[2] ? enumPoker.enumPoker.cardsSuitsCode[enumPoker.enumPoker.cardsSuits.indexOf(this.board[2].suit)] : ''}</div>
-            </div>
-            <div class="card ${this.board[3] ? enumPoker.enumPoker.cardsSuitsName[enumPoker.enumPoker.cardsSuits.indexOf(this.board[3].suit)] : ''}">
-                <div class="value">${this.board[3] ? this.board[3]['value'].toUpperCase() : ''}</div>
-                <div class="suit">${this.board[3] ? enumPoker.enumPoker.cardsSuitsCode[enumPoker.enumPoker.cardsSuits.indexOf(this.board[3].suit)] : ''}</div>
-            </div>
-            <div class="card ${this.board[4] ? enumPoker.enumPoker.cardsSuitsName[enumPoker.enumPoker.cardsSuits.indexOf(this.board[4].suit)] : ''}">
-                <div class="value">${this.board[4] ? this.board[4]['value'].toUpperCase() : ''}</div>
-                <div class="suit">${this.board[4] ? enumPoker.enumPoker.cardsSuitsCode[enumPoker.enumPoker.cardsSuits.indexOf(this.board[4].suit)] : ''}</div>
-            </div>
-        </div>
-        <div class="hero-hand">
-            <div class="card ${enumPoker.enumPoker.cardsSuitsName[enumPoker.enumPoker.cardsSuits.indexOf(heroCards['hole1Suit'])]}">
-                <div class="value">${heroCards['hole1Value'].toUpperCase()}</div>
-                <div class="suit">${enumPoker.enumPoker.cardsSuitsCode[enumPoker.enumPoker.cardsSuits.indexOf(heroCards['hole1Suit'])]}</div>
-            </div>
-            <div class="card ${enumPoker.enumPoker.cardsSuitsName[enumPoker.enumPoker.cardsSuits.indexOf(heroCards['hole2Suit'])]}">
-                <div class="value">${heroCards['hole2Value'].toUpperCase()}</div>
-                <div class="suit">${enumPoker.enumPoker.cardsSuitsCode[enumPoker.enumPoker.cardsSuits.indexOf(heroCards['hole2Suit'])]}</div>
-            </div>
-        </div>
-        <div class="prompt">
-        </div>
-    </div>`;
+        /// добавить заглушки на плееров когда их нету по аналогии с плеер1
+
+    //     const shape =
+    //         `<div class="main-container spins party-poker">
+    //     <div class="player player0">
+    //         <div class="nickname green">${players[0].nickname}} <span class="balance">/ ${players[0].balance}bb</span></div>
+    //         ${players[0].isDealer ? '<div class="dealer"><span>D</span></div>' : ''}
+    //         ${players[0].bet ? `<div class="amount ${players[0].agroClass}"> ${players[0].bet}bb</div>` : ''}
+    //     </div>
+    //     <div class="player player1">
+    //         <div class="nickname red">${players[1] ? players[1].nickname : ''} <span class="balance">/ ${players[1]? players[1].balance : 0}bb</span></div>
+    //         ${players[1] && players[1].isDealer ? '<div class="dealer"><span>D</span></div>' : ''}
+    //         ${players[1] && players[1].bet ? `<div class="amount ${players[1] ? players[1].agroClass : ''}"> ${players[1] ? players[1].bet : 0}bb</div>` : ''}
+    //     </div>
+    //     <div class="player player2">
+    //         <div class="nickname">${players[2].nickname} <span class="balance">/ ${players[2].balance}bb</span></div>
+    //         ${players[2].isDealer ? '<div class="dealer"><span>D</span></div>' : ''}
+    //         ${players[2].bet ? `<div class="amount ${players[2].agroClass}"> ${players[2].bet}bb</div>` : ''}
+    //     </div>
+    //     <div class="board">
+    //         <div class="pot">Pot: ${pot}bb</div>
+    //         <div class="card ${this.board[0] ? enumPoker.enumPoker.cardsSuitsName[enumPoker.enumPoker.cardsSuits.indexOf(this.board[0].suit)] : ''}">
+    //             <div class="value">${this.board[0] ? this.board[0]['value'].toUpperCase() : ''}</div>
+    //             <div class="suit">${this.board[0] ? enumPoker.enumPoker.cardsSuitsCode[enumPoker.enumPoker.cardsSuits.indexOf(this.board[0].suit)] : ''}</div>
+    //         </div>
+    //         <div class="card ${this.board[1] ? enumPoker.enumPoker.cardsSuitsName[enumPoker.enumPoker.cardsSuits.indexOf(this.board[1].suit)] : ''}">
+    //             <div class="value">${this.board[1] ? this.board[1]['value'].toUpperCase() : ''}</div>
+    //             <div class="suit">${this.board[1] ? enumPoker.enumPoker.cardsSuitsCode[enumPoker.enumPoker.cardsSuits.indexOf(this.board[1].suit)] : ''}</div>
+    //         </div>
+    //         <div class="card ${this.board[2] ? enumPoker.enumPoker.cardsSuitsName[enumPoker.enumPoker.cardsSuits.indexOf(this.board[2].suit)] : ''}">
+    //             <div class="value">${this.board[2] ? this.board[2]['value'].toUpperCase() : ''}</div>
+    //             <div class="suit">${this.board[2] ? enumPoker.enumPoker.cardsSuitsCode[enumPoker.enumPoker.cardsSuits.indexOf(this.board[2].suit)] : ''}</div>
+    //         </div>
+    //         <div class="card ${this.board[3] ? enumPoker.enumPoker.cardsSuitsName[enumPoker.enumPoker.cardsSuits.indexOf(this.board[3].suit)] : ''}">
+    //             <div class="value">${this.board[3] ? this.board[3]['value'].toUpperCase() : ''}</div>
+    //             <div class="suit">${this.board[3] ? enumPoker.enumPoker.cardsSuitsCode[enumPoker.enumPoker.cardsSuits.indexOf(this.board[3].suit)] : ''}</div>
+    //         </div>
+    //         <div class="card ${this.board[4] ? enumPoker.enumPoker.cardsSuitsName[enumPoker.enumPoker.cardsSuits.indexOf(this.board[4].suit)] : ''}">
+    //             <div class="value">${this.board[4] ? this.board[4]['value'].toUpperCase() : ''}</div>
+    //             <div class="suit">${this.board[4] ? enumPoker.enumPoker.cardsSuitsCode[enumPoker.enumPoker.cardsSuits.indexOf(this.board[4].suit)] : ''}</div>
+    //         </div>
+    //     </div>
+    //     <div class="hero-hand">
+    //         <div class="card ${enumPoker.enumPoker.cardsSuitsName[enumPoker.enumPoker.cardsSuits.indexOf(heroCards['hole1Suit'])]}">
+    //             <div class="value">${heroCards['hole1Value'].toUpperCase()}</div>
+    //             <div class="suit">${enumPoker.enumPoker.cardsSuitsCode[enumPoker.enumPoker.cardsSuits.indexOf(heroCards['hole1Suit'])]}</div>
+    //         </div>
+    //         <div class="card ${enumPoker.enumPoker.cardsSuitsName[enumPoker.enumPoker.cardsSuits.indexOf(heroCards['hole2Suit'])]}">
+    //             <div class="value">${heroCards['hole2Value'].toUpperCase()}</div>
+    //             <div class="suit">${enumPoker.enumPoker.cardsSuitsCode[enumPoker.enumPoker.cardsSuits.indexOf(heroCards['hole2Suit'])]}</div>
+    //         </div>
+    //     </div>
+    //     <div class="prompt">
+    //     </div>
+    // </div>`;
 
         return result;
     }
@@ -1083,6 +1087,8 @@ class PlaySetup {
             if (chairTo === undefined) {
                 count--;
             }
+
+            console.log(`inside getChairTo/// movedCount// lastRecPosition: ${lastRecPosition}, chair: ${chair}`);
             // played
             if (chairTo === undefined && this.initPlayers[chair] !== undefined) {
                 if (!playFrame.playPlayers[chair].isActive) {
@@ -1114,11 +1120,28 @@ class PlaySetup {
             return count;
         }, this.initPlayers.length + 1);
 
+        // if (chairTo === undefined) {
+        //     console.log(`inside getChairTo/// this.prevPlayFrame:`);
+        //     console.log(this.prevPlayFrame);
+        //     console.log('inside getChairTo/// playFrame');
+        //     console.log(playFrame);
+        //     console.log(`this prevPlayFrame.isButtons ${this.prevPlayFrame ? this.prevPlayFrame.isButtons : false}, !playFrame.isButtons : ${!playFrame.isButtons}`);
+        // }
+        // если видели кнопки на предыдущем фрейме а на текущем их нету..
+        if (chairTo === undefined && this.prevPlayFrame && this.prevPlayFrame.isButtons && !playFrame.isButtons) {     // hero's turn
+            console.log('nobody invested, but was buttons at previous frame and no buttons at the moment. Setting chairTo to heroRecPosition');
+            chairTo = playFrame.heroRecPosition;     // spin&go chair 2
+            movedCount = 1;
+        }
+
         // если видим кнопки - игрок перед хиро походил
-        if (chairTo === undefined && playFrame.isButtons) {     // hero's turn
-            console.log('see buttons and nobody invested - setting chairTo as player before hero');
-            chairTo = this.getRecPositionBefore(this.initPlayers.length, playFrame.heroRecPosition);     // spin&go chair 2
-            movedCount = this.movesOrder(this.initPlayers.length, lastRecPosition, chairTo).length;
+        if (chairTo === undefined && playFrame.isButtons && lastRecPosition !== playFrame.heroRecPosition) {     // hero's turn
+            const positionBefore = this.getRecPositionBefore(this.initPlayers.length, playFrame.heroRecPosition);
+            if (positionBefore !== lastRecPosition) {
+                console.log('see buttons and nobody invested and hero did not start first - setting chairTo as player before hero');
+                chairTo = this.getRecPositionBefore(this.initPlayers.length, playFrame.heroRecPosition);     // spin&go chair 2
+                movedCount = this.movesOrder(this.initPlayers.length, lastRecPosition, chairTo).length;
+            }
         }
 
         return {chairTo, movedCount};
@@ -1256,7 +1279,7 @@ class PlaySetup {
         for (let i = this.rawActionList.length - 1; i >= 0; i--) {
             if (this.rawActionList[i].position === enumPosition) {
                 if (currentStreet === this.rawActionList[i].street) {
-                    initBalance = this.rawActionList[i].balance - this.rawActionList[i].invest;
+                    initBalance = this.rawActionList[i].balance;
                 } else if (initBalance !== undefined) {
                     return initBalance;
                 } else {
@@ -1289,14 +1312,15 @@ class PlaySetup {
 
     isTerminalStreetState() {
         const currentAmount = this.maxAmountAtCurrentStreet();
-        const nPlayers = this.whoIsInGame().slice();
-
-        if (nPlayers.length <= 1 && this.rawActionList[this.rawActionList.length - 1].action >= 3 && this.whoIsInGame() === this.rawActionList[this.rawActionList.length - 1].position) {
-            return true;
-        }
+        const nPlayers = this.whoIsInGame();    //добавляем всех у кого УМНЫЙ баланc больше нуля и кто не делал фолд. массив с позициями
 
         const currentStreet = this.rawActionList[this.rawActionList.length - 1].street;
         if (this.rawActionList[this.rawActionList.length - 1].action < 3) {return false;}
+
+        // BB moves ones exception
+        if (currentStreet === 0 && this.rawActionList.filter(action => action.position === this.rawActionList[1].position).length === 1) {
+            return false;
+        }
 
         for (let i = this.rawActionList.length - 1; i >= 0; i--) {
             if (nPlayers.indexOf(this.rawActionList[i].position) >= 0) { // если среди играющих есть такой игрок
@@ -1334,9 +1358,8 @@ class PlaySetup {
     }
 
     setInitPlayers(firstPlayFrame) {
-        console.log('firstPlayFrame in setInitPlayers');
-        console.log(firstPlayFrame);
-        this.playersWasActive = firstPlayFrame.playPlayers.filter(player => (player.isActive || (!player.isActive && (player.curBalance > 0 || player.isDealer || player.betAmount > 0))));
+        console.log('setInitPlayers');
+        this.playersWasActive = firstPlayFrame.playPlayers.filter(player => (player.isActive || (!player.isActive && (player.isDealer || player.betAmount > 0))));
 
         const p0Dealer = ['BTN', 'SB', 'BB'];
         const p1Dealer = ['BB', 'BTN', 'SB'];
@@ -1346,7 +1369,8 @@ class PlaySetup {
         console.log('this.playersWasActive');
         console.log(this.playersWasActive);
 
-        if (this.playersWasActive.length === 2) {    // ha
+        if (this.playersWasActive.length === 2) {    // ha'
+
             console.log('2 players!');
 
             this.playersWasActive.forEach(player => {
@@ -1419,6 +1443,10 @@ class PlaySetup {
         return (chairFrom + numChairs - 1)%numChairs;
     }
 
+    getRecPositionAfter(numChairs, chairFrom) {
+        return (chairFrom + numChairs + 1)%numChairs;
+    }
+
     getReversListOrder(numChairs, chairFrom) {
         const arr = [];
         for(let i = numChairs; i > 0; i--) {
@@ -1432,106 +1460,6 @@ class PlaySetup {
 // 2) в setup записываем setup.playSetup = new PlaySetup(если его там не было), и дальше всегда работаем с ним при поступлении реквестов.
 const prompterListener = (setup, request, gameTypesSettings) => {
     console.log('enter prompter listener');
-    const prompt =
-        `<div class="main-container spins party-poker">
-        <div class="player player0">
-            <div class="nickname green">Joe <span class="balance">/ 23bb</span></div>
-            <div>
-                <span class="stat green">VPIP: 54, </span><span class="stat">PFR: 19, </span><span class="stat">3Bet: 13</span>
-            </div>
-            <div>
-                <span class="stat">CBet: 45, </span><span class="stat green">Raise%: 9, </span><span class="stat">Call%: 55</span>
-            </div>
-            <div class="dealer"><span>D</span></div>
-            <div class="amount bet-raise">bet: 5bb</div>
-        </div>
-        <div class="player player1">
-            <div class="nickname red">checkmate <span class="balance">/ 16bb</span></div>
-            <div>
-                <span class="stat red">VPIP: 17, </span><span class="stat">PFR: 16, </span><span class="stat">3Bet: 20</span>
-            </div>
-            <div>
-                <span class="stat">CBet: 65, </span><span class="stat red">Raise%: 25, </span><span class="stat">Call%: 42</span>
-            </div>
-            <div class="amount check-call">check</div>
-        </div>
-        <div class="player player2">
-            <div class="nickname">See my luck <span class="balance">/ 27bb</span></div>
-            <div>
-                <span class="stat">VPIP: 30, </span><span class="stat">PFR: 23, </span><span class="stat">3Bet: 15</span>
-            </div>
-            <div>
-                <span class="stat">CBet: 55, </span><span class="stat">Raise%: 12, </span><span class="stat">Call%: 40</span>
-            </div>
-        </div>
-        <div class="board">
-            <div class="pot">Pot: 10bb</div>
-            <div class="card spades">
-                <div class="value">A</div>
-                <div class="suit">&#9824</div>
-            </div>
-            <div class="card clubs">
-                <div class="value">8</div>
-                <div class="suit">&#9827</div>
-            </div>
-            <div class="card hearts">
-                <div class="value">T</div>
-                <div class="suit">&#9829</div>
-            </div>
-            <div class="card diamonds">
-                <div class="value">Q</div>
-                <div class="suit">&#9830</div>
-            </div>
-            <div class="card diamonds">
-                <div class="value">2</div>
-                <div class="suit">&#9830</div>
-            </div>
-        </div>
-        <div class="hero-hand">
-            <div class="card diamonds">
-                <div class="value">T</div>
-                <div class="suit">&#9830</div>
-            </div>
-            <div class="card spades">
-                <div class="value">T</div>
-                <div class="suit">&#9824</div>
-            </div>
-        </div>
-        <div class="prompt">
-            <div class="bet-raise red">
-                Raise: 25bb
-            </div>
-            <div class="diagram">
-                <div class="fold" style="width: 10%"></div>
-                <div class="check-call" style="width: 35%"></div>
-                <div class="bet-raise" style="width: 55%"></div>
-            </div>
-            <div class="sizings">
-                <table>
-                    <tr style="opacity: 0.25">
-                        <td class="check-call">Call</td>
-                        <td class="ev">EV: 5bb</td>
-                    </tr>
-                    <tr style="opacity: 0.3">
-                        <td class="bet-raise">Raise: 1pot</td>
-                        <td class="ev">EV: 10bb</td>
-                    </tr>
-                    <tr style="opacity: 0.5">
-                        <td class="bet-raise">Raise: 1.6pot</td>
-                        <td class="ev">EV: 13bb</td>
-                    </tr>
-                    <tr>
-                        <td class="bet-raise">Raise: 2.5pot</td>
-                        <td class="ev">EV: 15bb</td>
-                    </tr>
-                    <tr style="opacity: 0.7">
-                        <td class="bet-raise">All-in</td>
-                        <td class="ev">EV: 14bb</td>
-                    </tr>
-                </table>
-            </div>
-        </div>
-    </div>`;
 
     const {
         data,
@@ -1546,6 +1474,7 @@ const prompterListener = (setup, request, gameTypesSettings) => {
     }
     setup.playSetup.txtFile = txtFile;
     const result = setup.playSetup.frameHandler(data, gameTypesSettings);
+
 
     if (result === REJECT_HAND) {
         console.log(REJECT_HAND + ' prompterListener');
