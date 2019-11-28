@@ -394,23 +394,31 @@ class PlaySetup {
                         // определяем размер повышения хиро относительно maxAmount
                         // if (!isNaN(playFrame.playPlayers[playFrame.heroRecPosition].curBalance)) {      // видим баланс
                         // проверяем - максимальный ли амаунт был именно у хиро, тоесть сойдется ли пот
+                        console.log(`was raise at previous street and time between frames was: ${ms}`);
 
-                        const heroStartBalance = this.initPlayerBalance(this.positionEnumKeyMap[playFrame.heroRecPosition]);
+                        const heroStartBalance = this.initPlayerBalance(this.initPlayers[playFrame.heroRecPosition].enumPosition);
                         const heroAmount = playFrame.playPlayers[playFrame.heroRecPosition].curBalance - playFrame.playPlayers[playFrame.heroRecPosition].betAmount;
 
-                        const heroMaxAmount = heroAmount - heroStartBalance;
+                        const heroMaxAmount = heroStartBalance - heroAmount;
+                        console.log(`heroStartBalance: ${heroStartBalance}, heroAmount: ${heroAmount}, heroMaxAmount: ${heroMaxAmount}`);
                         let passHero = false;
                         let potIfAllCallFoldHero;
 
                         // доколиваем/фолдим за остальных игроков так, чтоб сошелся пот
                         this.movesOrder(this.initPlayers.length, this.getLastRawActionsChair(), this.getRecPositionBefore(this.initPlayers.length, chairWithMaxAmount)).reduce((pot, chair) => {
+                            console.log(`test inside movesOrder /// chair: ${chair}`);
                             if (!passHero && this.initPlayers[chair] !== undefined) {
-                                for (let i = this.rawActionList.length - 1; i >= -1; i--) {
-                                    if (i > -1 && currentStreet === this.rawActionList[i].street) {
+                                for (let i = this.rawActionList.length - 1; i >= 0; i--) {
+                                    console.log(`test inside movesOrder /// for! chair: ${chair}, i: ${i}`);
+                                    if (i >= 0 && currentStreet === this.rawActionList[i].street) {
+                                        console.log(`test inside cur street in movesOrder/// chair: ${chair}, this.initPlayers[chair].enumPosition: ${this.initPlayers[chair].enumPosition}, this.rawActionList[i].position: ${this.rawActionList[i].position}`);
                                         if (this.initPlayers[chair].enumPosition === this.rawActionList[i].position) {
+                                            console.log(`test inside cur street and the same position in movesOrder`);
                                             ///////////////////////////////////////////////////////////////// hero
                                             if (playFrame.heroRecPosition === chair) {
                                                 // бетим/рейзим, записываем в сырые действия ход хиро и запускаем новый цикл колл/фолда вокруг хиро
+                                                console.log(`this.rawActionList before hero push move and potIfAllCallFoldHeroRaise`);
+                                                console.log(this.rawActionList);
 
                                                 this.rawActionList.push(new ActionString(
                                                     curStreet,
@@ -424,6 +432,8 @@ class PlaySetup {
 
                                                 this.fantomRawActionsCount++;
                                                 potIfAllCallFoldHeroRaise = this.getCallFoldPot(playFrame, playFrame.heroRecPosition, heroMaxAmount);
+                                                console.log(`this.rawActionList after potIfAllCallFoldHeroRaise`);
+                                                console.log(this.rawActionList);
                                                 passHero = true;
                                                 return pot;
                                             }
@@ -496,6 +506,7 @@ class PlaySetup {
 
                                         if (!passHero && !this.wasFoldBefore(chair)) {
                                             const balance = this.initPlayerBalance(this.initPlayers[chair].enumPosition);
+                                            console.log(balance);
                                             if (playFrame.playPlayers[chair].curBalance < balance) {
                                                 const callAmount = Math.min(balance, maxAmount);
 
@@ -529,7 +540,6 @@ class PlaySetup {
                                         }
                                         return pot;
                                     }
-                                    return pot;
                                 }
                                 return pot;
                             } else {
@@ -537,7 +547,8 @@ class PlaySetup {
                             }
                         }, this.rawActionList[this.rawActionList.length - 1].pot + this.rawActionList[this.rawActionList.length - 1].invest);
 
-
+                        console.log(`potIfAllCallFoldHeroRaise: ${potIfAllCallFoldHeroRaise}`);
+                        console.log(potIfAllCallFoldHeroRaise);
                         ////////////////////////////////////////////////////////////////////////////////////////////
                         // получили potIfAllCallFoldHeroRaise!!
                         if (potIfAllCallFoldHeroRaise === potTerminal) {
@@ -936,7 +947,7 @@ class PlaySetup {
     }
 
     restoreRawAction(count) {
-        while(this.fantomRawActionsCount - count || 0) {
+        while(this.fantomRawActionsCount - (count || 0)) {
             this.rawActionList.pop();
             this.fantomRawActionsCount--
         }
@@ -1083,7 +1094,7 @@ class PlaySetup {
     getChairTo(playFrame, lastRecPosition, isTerminalState) {
         let chairTo;
 
-        let movedCount = this.getReversListOrder(this.initPlayers.length, lastRecPosition).reduce((count, chair) => {
+        let movedCount = this.getReversListOrder(this.initPlayers.length, this.getRecPositionBefore(this.initPlayers.length, lastRecPosition)).reduce((count, chair) => {
             if (chairTo === undefined) {
                 count--;
             }
@@ -1120,15 +1131,8 @@ class PlaySetup {
             return count;
         }, this.initPlayers.length + 1);
 
-        // if (chairTo === undefined) {
-        //     console.log(`inside getChairTo/// this.prevPlayFrame:`);
-        //     console.log(this.prevPlayFrame);
-        //     console.log('inside getChairTo/// playFrame');
-        //     console.log(playFrame);
-        //     console.log(`this prevPlayFrame.isButtons ${this.prevPlayFrame ? this.prevPlayFrame.isButtons : false}, !playFrame.isButtons : ${!playFrame.isButtons}`);
-        // }
         // если видели кнопки на предыдущем фрейме а на текущем их нету..
-        if (chairTo === undefined && this.prevPlayFrame && this.prevPlayFrame.isButtons && !playFrame.isButtons) {     // hero's turn
+        if (chairTo === undefined && this.prevPlayFrame && this.prevPlayFrame.isButtons && !playFrame.isButtons && this.prevPlayFrame.board.length === playFrame.board.length) {     // hero's turn
             console.log('nobody invested, but was buttons at previous frame and no buttons at the moment. Setting chairTo to heroRecPosition');
             chairTo = playFrame.heroRecPosition;     // spin&go chair 2
             movedCount = 1;
@@ -1291,6 +1295,11 @@ class PlaySetup {
         if (initBalance !== undefined) {
             return initBalance;
         }
+
+        console.log('enumPosition');
+        console.log(enumPosition);
+        console.log('this.initPlayers');
+        console.log(this.initPlayers);
         return this.initPlayers[this.positionEnumKeyMap[enumPosition]].initBalance;   // was't any move before
     }
 
@@ -1340,7 +1349,7 @@ class PlaySetup {
 
     getPotStartStreet() {
         const lastStreet = this.rawActionList[this.rawActionList.length - 1].street;
-        return this.rawActionList.reduce((sum, current) => sum + current.street !== lastStreet ? current.invest : 0, 0);
+        return this.rawActionList.reduce((sum, current) => sum + (current.street !== lastStreet ? current.invest : 0), 0);
     }
 
     // return the last bet or raise amount

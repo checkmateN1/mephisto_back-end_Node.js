@@ -54,13 +54,15 @@ bets[3] = '23,2';           // 23.2
 bets[4] = '5.,1BB';           // 5.1
 bets[5] = '3,5 BB l';           // 3.5
 bets[6] = '0.5,BB';           // 0.5
+bets[7] = '1BB';           // 1
+bets[8] = '1 BB';           // 1
 
 
 // const regPot = /(S|D|B|\d)+(?!\S){0,4}((\.|\,){0,3}\d{1,2})/;
 const regPot = /(S|D|\d)+(?!\s\d)((\.|\,){0,3}\d{1,2}){0,1}/;
 const regAllin = /(all|((4|A)(1|L|I)(1|L|I)-))/i;
 const regBalance = /(S|D|\d)+\s{0,1}\d{0,2}(\.|\,){0,3}\d{0,1}/;
-const regBet = /(S|D|B|\d)+(?!\S){0,4}((\.|\,){0,3}\d{1,2}){0,1}/;
+const regBet = /\d+(?!([A-Z])){0,4}((\.|\,){0,3}\d{1,2}){0,1}/;
 // const regBalance = /\d+\S{0,1}\d/;
 
 // pot
@@ -78,31 +80,31 @@ const regBet = /(S|D|B|\d)+(?!\S){0,4}((\.|\,){0,3}\d{1,2}){0,1}/;
 // });
 
 // // balances
-balances.forEach(str => {
-    if (!regBalance.test(str)) {
-        console.log(`input: ${str};    output: 0 or fail`);
-    } else {
-        const matchArr = str.match(regBalance);
-        console.log(`input: ${str};    output: ${matchArr ? matchArr[0]
-                .replace(/(\s{1,2})*(?=(\d{0,2}(?=(\.|\,))))/, '')
-                .replace(/\s(?=\d)/, '')
-                .replace(/(\.|\,)+(?=(\d)){0,1}/, '.')
-            : null}`);
-    }
-});
-
-// bets
-// console.log('bets');
-// bets.forEach(str => {
-//     if (!regBet.test(str)) {
+// balances.forEach(str => {
+//     if (!regBalance.test(str)) {
 //         console.log(`input: ${str};    output: 0 or fail`);
 //     } else {
-//         const matchArr = str.match(regBet);
+//         const matchArr = str.match(regBalance);
 //         console.log(`input: ${str};    output: ${matchArr ? matchArr[0]
+//                 .replace(/(\s{1,2})*(?=(\d{0,2}(?=(\.|\,))))/, '')
+//                 .replace(/\s(?=\d)/, '')
 //                 .replace(/(\.|\,)+(?=(\d)){0,1}/, '.')
 //             : null}`);
 //     }
 // });
+
+// bets
+console.log('bets');
+bets.forEach(str => {
+    if (!regBet.test(str)) {
+        console.log(`input: ${str};    output: 0 or fail`);
+    } else {
+        const matchArr = str.match(regBet);
+        console.log(`input: ${str};    output: ${matchArr ? matchArr[0]
+                .replace(/(\.|\,)+(?=(\d)){0,1}/, '.')
+            : null}`);
+    }
+});
 
 
 
