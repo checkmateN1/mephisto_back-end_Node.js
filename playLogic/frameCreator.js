@@ -4,7 +4,7 @@ const enumCommon = require('../enum');
 const INVALID_FRAME = enumCommon.enumCommon.INVALID_FRAME;
 const testRegions = [{'id': 1, 'Player0_name': 'iblj J et', 'Player1_name': 'Wacuum008', 'Player2_name': 'SoLucky', 'Player0_balance': '23,5 BB', 'Player1_balance': '23,5 BB', 'Player2_balance': '25,0 BB', 'Player0_isActive': {'value': 'a', 'prob': 1.0}, 'Player1_isActive': {'value': 'a', 'prob': 1.0}, 'Player2_isActive': {'value': 'n', 'prob': 1.0}, 'Player0_bet': '2.0 BD', 'Player1_bet': '1,0 BB', 'Player2_bet': '', 'Pot': 'Pot 3,0 BB', 'Player0_isDealer': {'value': 'n', 'prob': 1.0}, 'Player1_isDealer': {'value': 'n', 'prob': 1.0}, 'Player2_isDealer': {'value': 'a', 'prob': 1.0}, 'Card1_value': {'value': 'None', 'prob': 1.0}, 'Card2_value': {'value': 'None', 'prob': 1.0}, 'Card3_value': {'value': 'None', 'prob': 1.0}, 'Card4_value': {'value': 'None', 'prob': 1.0}, 'Card5_value': {'value': 'None', 'prob': 1.0}, 'Player0_hole1_value': {'value': 'None', 'prob': 1.0}, 'Player0_hole2_value': {'value': 'None', 'prob': 1.0}, 'Player1_hole1_value': {'value': 'None', 'prob': 0.9956691265106201}, 'Player1_hole2_value': {'value': 'None', 'prob': 1.0}, 'Player2_hole1_value': {'value': 'None', 'prob': 1.0}, 'Player2_hole2_value': {'value': 'None', 'prob': 1.0}, 'Card1_suit': {'value': 'None', 'prob': 1.0}, 'Card2_suit': {'value': 'None', 'prob': 1.0}, 'Card3_suit': {'value': 'None', 'prob': 1.0}, 'Card4_suit': {'value': 'None', 'prob': 1.0}, 'Card5_suit': {'value': 'None', 'prob': 1.0}, 'Player0_hole1_suit': {'value': 'None', 'prob': 1.0}, 'Player0_hole2_suit': {'value': 'None', 'prob': 1.0}, 'Player1_hole1_suit': {'value': 'None', 'prob': 1.0}, 'Player1_hole2_suit': {'value': 'None', 'prob': 1.0}, 'Player2_hole1_suit': {'value': 'None', 'prob': 1.0}, 'Player2_hole2_suit': {'value': 'None', 'prob': 1.0}, 'betAmount': '', 'isRaise': {'value': 'False', 'prob': 1.0}, 'isBet': {'value': 'False', 'prob': 1.0}, 'isCall': {'value': 'False', 'prob': 1.0}, 'isCheck': {'value': 'False', 'prob': 1.0}, 'isFold': {'value': 'False', 'prob': 1.0}}, {'id': 0, 'Player0_name': '', 'Player1_name': 'babrain', 'Player2_name': '', 'Player0_balance': '23,0 BB', 'Player1_balance': '23,0 BB', 'Player2_balance': '25,0 BB', 'Player0_isActive': {'value': 'a', 'prob': 1.0}, 'Player1_isActive': {'value': 'a', 'prob': 1.0}, 'Player2_isActive': {'value': 'n', 'prob': 1.0}, 'Player0_bet': '', 'Player1_bet': 'v', 'Player2_bet': '', 'Pot': 'Pot- 4,0 BB', 'Player0_isDealer': {'value': 'n', 'prob': 1.0}, 'Player1_isDealer': {'value': 'n', 'prob': 1.0}, 'Player2_isDealer': {'value': 'a', 'prob': 1.0}, 'Card1_value': {'value': 'j', 'prob': 0.9999980926513672}, 'Card2_value': {'value': '2', 'prob': 1.0}, 'Card3_value': {'value': '3', 'prob': 0.9996916055679321}, 'Card4_value': {'value': 'None', 'prob': 1.0}, 'Card5_value': {'value': 'None', 'prob': 1.0}, 'Player0_hole1_value': {'value': 'None', 'prob': 1.0}, 'Player0_hole2_value': {'value': 'None', 'prob': 1.0}, 'Player1_hole1_value': {'value': 'None', 'prob': 0.9999970197677612}, 'Player1_hole2_value': {'value': 'None', 'prob': 1.0}, 'Player2_hole1_value': {'value': 'None', 'prob': 1.0}, 'Player2_hole2_value': {'value': 'None', 'prob': 1.0}, 'Card1_suit': {'value': 'c', 'prob': 1.0}, 'Card2_suit': {'value': 's', 'prob': 0.9989612102508545}, 'Card3_suit': {'value': 'c', 'prob': 1.0}, 'Card4_suit': {'value': 'None', 'prob': 1.0}, 'Card5_suit': {'value': 'None', 'prob': 1.0}, 'Player0_hole1_suit': {'value': 'None', 'prob': 1.0}, 'Player0_hole2_suit': {'value': 'None', 'prob': 1.0}, 'Player1_hole1_suit': {'value': 'None', 'prob': 1.0}, 'Player1_hole2_suit': {'value': 'None', 'prob': 1.0}, 'Player2_hole1_suit': {'value': 'None', 'prob': 1.0}, 'Player2_hole2_suit': {'value': 'None', 'prob': 1.0}, 'betAmount': 'e', 'isRaise': {'value': 'False', 'prob': 1.0}, 'isBet': {'value': 'False', 'prob': 1.0}, 'isCall': {'value': 'False', 'prob': 1.0}, 'isCheck': {'value': 'False', 'prob': 1.0}, 'isFold': {'value': 'False', 'prob': 1.0}}, {'id': 3, 'Player0_name': 'Posts BB', 'Player1_name': 'Vacuum008', 'Player2_name': '4iigin 8', 'Player0_balance': '21,0 BB', 'Player1_balance': '29,0 BB', 'Player2_balance': '23,5 BB', 'Player0_isActive': {'value': 'a', 'prob': 1.0}, 'Player1_isActive': {'value': 'a', 'prob': 1.0}, 'Player2_isActive': {'value': 'a', 'prob': 1.0}, 'Player0_bet': '1,0 BB', 'Player1_bet': 'v', 'Player2_bet': '0,5 BB', 'Pot': 'Pot 1,5 BB', 'Player0_isDealer': {'value': 'n', 'prob': 1.0}, 'Player1_isDealer': {'value': 'a', 'prob': 1.0}, 'Player2_isDealer': {'value': 'n', 'prob': 1.0}, 'Card1_value': {'value': 'None', 'prob': 1.0}, 'Card2_value': {'value': 'None', 'prob': 1.0}, 'Card3_value': {'value': 'None', 'prob': 1.0}, 'Card4_value': {'value': 'None', 'prob': 1.0}, 'Card5_value': {'value': 'None', 'prob': 1.0}, 'Player0_hole1_value': {'value': 'None', 'prob': 1.0}, 'Player0_hole2_value': {'value': 'None', 'prob': 1.0}, 'Player1_hole1_value': {'value': 'None', 'prob': 0.9891301393508911}, 'Player1_hole2_value': {'value': 'None', 'prob': 1.0}, 'Player2_hole1_value': {'value': 'j', 'prob': 1.0}, 'Player2_hole2_value': {'value': 'a', 'prob': 1.0}, 'Card1_suit': {'value': 'None', 'prob': 1.0}, 'Card2_suit': {'value': 'None', 'prob': 1.0}, 'Card3_suit': {'value': 'None', 'prob': 1.0}, 'Card4_suit': {'value': 'None', 'prob': 1.0}, 'Card5_suit': {'value': 'None', 'prob': 1.0}, 'Player0_hole1_suit': {'value': 'None', 'prob': 1.0}, 'Player0_hole2_suit': {'value': 'None', 'prob': 1.0}, 'Player1_hole1_suit': {'value': 'None', 'prob': 1.0}, 'Player1_hole2_suit': {'value': 'None', 'prob': 1.0}, 'Player2_hole1_suit': {'value': 'd', 'prob': 1.0}, 'Player2_hole2_suit': {'value': 's', 'prob': 0.9995007514953613}, 'betAmount': 'j', 'isRaise': {'value': 'False', 'prob': 1.0}, 'isBet': {'value': 'False', 'prob': 1.0}, 'isCall': {'value': 'False', 'prob': 1.0}, 'isCheck': {'value': 'False', 'prob': 1.0}, 'isFold': {'value': 'False', 'prob': 1.0}}, {'id': 2, 'Player0_name': 'Fcld', 'Player1_name': 'gaeleto1_', 'Player2_name': 'So Lucky', 'Player0_balance': '24,0 BB', 'Player1_balance': '23,0 BB', 'Player2_balance': '24,5 BB', 'Player0_isActive': {'value': 'n', 'prob': 1.0}, 'Player1_isActive': {'value': 'n', 'prob': 1.0}, 'Player2_isActive': {'value': 'n', 'prob': 1.0}, 'Player0_bet': '', 'Player1_bet': '3,5 BB', 'Player2_bet': '', 'Pot': 'Pot3,5 BB', 'Player0_isDealer': {'value': 'n', 'prob': 1.0}, 'Player1_isDealer': {'value': 'a', 'prob': 1.0}, 'Player2_isDealer': {'value': 'n', 'prob': 1.0}, 'Card1_value': {'value': 'None', 'prob': 1.0}, 'Card2_value': {'value': 'None', 'prob': 1.0}, 'Card3_value': {'value': 'None', 'prob': 1.0}, 'Card4_value': {'value': 'None', 'prob': 1.0}, 'Card5_value': {'value': 'None', 'prob': 1.0}, 'Player0_hole1_value': {'value': 'None', 'prob': 1.0}, 'Player0_hole2_value': {'value': 'None', 'prob': 1.0}, 'Player1_hole1_value': {'value': 'None', 'prob': 1.0}, 'Player1_hole2_value': {'value': 'None', 'prob': 1.0}, 'Player2_hole1_value': {'value': 'None', 'prob': 1.0}, 'Player2_hole2_value': {'value': 'None', 'prob': 1.0}, 'Card1_suit': {'value': 'None', 'prob': 1.0}, 'Card2_suit': {'value': 'None', 'prob': 1.0}, 'Card3_suit': {'value': 'None', 'prob': 1.0}, 'Card4_suit': {'value': 'None', 'prob': 1.0}, 'Card5_suit': {'value': 'None', 'prob': 1.0}, 'Player0_hole1_suit': {'value': 'None', 'prob': 1.0}, 'Player0_hole2_suit': {'value': 'None', 'prob': 1.0}, 'Player1_hole1_suit': {'value': 'None', 'prob': 1.0}, 'Player1_hole2_suit': {'value': 'None', 'prob': 1.0}, 'Player2_hole1_suit': {'value': 'None', 'prob': 1.0}, 'Player2_hole2_suit': {'value': 'None', 'prob': 1.0}, 'betAmount': '.', 'isRaise': {'value': 'False', 'prob': 1.0}, 'isBet': {'value': 'False', 'prob': 1.0}, 'isCall': {'value': 'False', 'prob': 1.0}, 'isCheck': {'value': 'False', 'prob': 1.0}, 'isFold': {'value': 'False', 'prob': 1.0}}];
 const regPot = /(S|D|\d)+(?!\s\d)((\.|\,){0,3}\d{1,2}){0,1}/;
-const regBalance = /(S|D|\d)+\s{0,1}\d{0,2}(\.|\,){0,3}\d{0,1}/;
+const regBalance = /(S|D|\d)+\s{0,1}\d{0,2}(\.|\,){0,3}\d{0,2}/;
 const regBet = /\d+(?!([A-Z])){0,4}((\.|\,){0,3}\d{1,2}){0,1}/;
 const regAllin = /(all|((4|A)(1|L|I)(1|L|I)-))/i;
 
@@ -282,30 +282,34 @@ class Validator {
                         });
                         console.log(`frameCreator/// validator // new artificial blinds// SB: ${SB}, BB: ${BB}`);
                     } else if (activePlayersLength > 2) {
+                        console.log(`dealerPosition: ${dealerPosition}, this.playersCount: ${this.playersCount}`);
                         if (dealerPosition !== undefined) {
                             let SBposition, BBposition;
-                            this.playSetup.movesOrder(this.playersCount, dealerPosition, dealerPosition).forEach((player, i) => {
-                                if (playersWasActive[i]) {
+                            this.playSetup.movesOrder(this.playersCount, dealerPosition, dealerPosition).forEach(chair => {
+                                console.log(`inside movesOrder /// chair: ${chair}`);
+                                if (playersWasActive[chair]) {
                                     if (SBposition === undefined) {
-                                        SBposition = i;
+                                        SBposition = chair;
                                     } else if (BBposition === undefined) {
-                                        BBposition = i;
+                                        BBposition = chair;
                                     }
                                 }
                             });
 
+                            console.log(`SBposition: ${SBposition}, BBposition: ${BBposition}`);
                             const betsRest = playersWasActive.reduce((sum, player, i) => {
                                 if (player && i !== SBposition && i !== BBposition) {
+                                    console.log(`not blind`);
                                     return sum + playerBets[`Player${i}_bet`];
                                 }
+                                return sum;
                             }, 0);
-
 
 
                             const validBlind = (playerBets[`Player${SBposition}_bet`] === (pot.Pot - betsRest)/3) || (playerBets[`Player${BBposition}_bet`] === (pot.Pot - betsRest)/1.5);
                             if (!validBlind) {
                                 console.log('frameCreator/// validator // 3 players+! can not find valid blind. Invalid frame');
-                                console.log(`playerBets[\`Player${SBposition}_bet\`]: ${playerBets[`Player${SBposition}_bet`]}, playerBets[\`Player${BBposition}_bet\`]: ${playerBets[`Player${BBposition}_bet`]}, (pot.Pot - betsRest)/1.5: ${(pot.Pot - betsRest)/1.5}`);
+                                console.log(`betsRest: ${betsRest}, playerBets[\`Player${SBposition}_bet\`]: ${playerBets[`Player${SBposition}_bet`]}, playerBets[\`Player${BBposition}_bet\`]: ${playerBets[`Player${BBposition}_bet`]}, (pot.Pot - betsRest)/1.5: ${(pot.Pot - betsRest)/1.5}`);
                                 return INVALID_FRAME;
                             }
                             playerBets[`Player${SBposition}_bet`] = (pot.Pot - betsRest)/3;
@@ -343,12 +347,6 @@ class Validator {
             }
             const isNewStreet = this.isStreetChanged(recFrame);
             const currentStreet = this.playSetup.rawActionList[this.playSetup.rawActionList.length - 1].street;
-            if (isNewStreet === undefined) {
-                console.log('frameCreator/// пропущенна одна или более улиц - отменяем попытку валидации');
-                this.playSetup.rejectHand = true;
-                return INVALID_FRAME;
-            }
-
             const isTerminalStreetState = this.playSetup.isTerminalStreetState();
             console.log(`frameCreator/// validator   not new hand, isNewStreet: ${isNewStreet}, isTerminalStreetState: ${isTerminalStreetState}`);
 
@@ -778,34 +776,29 @@ class Validator {
                 && enumPoker.enumPoker.cardsSuits.includes(recFrame.Card1_suit.value)
                 && enumPoker.enumPoker.cardsValues.includes(recFrame.Card1_value.value)) {
                 console.log(`frameValidator /// isStreetChanged// // flop appeared`);
-                if (!enumPoker.enumPoker.cardsSuits.includes(recFrame.Card4_suit.value)
-                    && !enumPoker.enumPoker.cardsValues.includes(recFrame.Card4_value.value)) {    // but not turn+
-                    return true;
-                } else {
-                    return undefined;
+                if (enumPoker.enumPoker.cardsSuits.includes(recFrame.Card4_suit.value)
+                    && enumPoker.enumPoker.cardsValues.includes(recFrame.Card4_value.value)) {
+                    console.log(`frameValidator /// isStreetChanged// // turn appeared`);
                 }
+                return true;
             } else {        // not all flop cards appeared or there is steel preflop
                 return false;
             }
         } else if (this.playSetup.rawActionList[this.playSetup.rawActionList.length - 1].street === 1) {
             if (enumPoker.enumPoker.cardsSuits.includes(recFrame.Card4_suit.value)
                 && enumPoker.enumPoker.cardsValues.includes(recFrame.Card4_value.value)) {    // turn appeared
-                if (!enumPoker.enumPoker.cardsSuits.includes(recFrame.Card5_suit.value)
-                    && !enumPoker.enumPoker.cardsValues.includes(recFrame.Card5_value.value)) {    // but not river
-                    return true;
-                } else {
-                    return undefined;
+                console.log(`frameValidator /// isStreetChanged// // turn appeared`);
+                if (enumPoker.enumPoker.cardsSuits.includes(recFrame.Card5_suit.value)
+                    && enumPoker.enumPoker.cardsValues.includes(recFrame.Card5_value.value)) {    // but not river
+                    console.log(`frameValidator /// isStreetChanged// // river appeared`);
                 }
-            } else {
-                return false;
-            }
-        } else if (this.playSetup.rawActionList[this.playSetup.rawActionList.length - 1].street === 2) {
-            if (enumPoker.enumPoker.cardsSuits.includes(recFrame.Card5_suit.value)
-                && enumPoker.enumPoker.cardsValues.includes(recFrame.Card5_value.value)) {    // river appeared
                 return true;
             } else {
                 return false;
             }
+        } else if (this.playSetup.rawActionList[this.playSetup.rawActionList.length - 1].street === 2) {
+            return enumPoker.enumPoker.cardsSuits.includes(recFrame.Card5_suit.value)
+                && enumPoker.enumPoker.cardsValues.includes(recFrame.Card5_value.value);
         } else {
             return false;
         }
