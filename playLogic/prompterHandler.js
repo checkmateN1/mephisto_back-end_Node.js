@@ -116,7 +116,6 @@ class PlaySetup {
         this.rejectHand = false;
         this.prevPlayFrame = null;
         this.prevPlayFrameTime = null;
-        this.needToPrompt = true;
         this.fantomRawActionsCount = 0;
         this.lastPromptMoveType = null; // используем для эвристики по поводу того, кто именно ставил, когда это не известно.
         this.isNewHand = true;          // сетим на фолс внутри мувс_хендлер
@@ -125,12 +124,15 @@ class PlaySetup {
         this.selfRestart = 0;
         // debug info
         this.txtFile = '';
+        this.frameHandlerCount = 0;
     }
 
     frameHandler(rawFrame, gameTypesSettings) {
+        this.frameHandlerCount += 1;
+        console.log(`!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!this.frameHandlerCount: ${this.frameHandlerCount}`);
         console.log(`start frameHandler/// this.txtFile: ${this.txtFile}`);
         this.gameTypesSettings = gameTypesSettings;
-        const playFrame = this.needToPrompt ? this.validator.createFrame(rawFrame) : rawFrame;
+        const playFrame = this.validator.createFrame(rawFrame);
         if (playFrame === INVALID_FRAME) {
             console.log('INVALID FRAME from validator');
             return REJECT_HAND;
@@ -156,10 +158,10 @@ class PlaySetup {
         if (this.rejectHand) {
             return REJECT_HAND;
         }
-        this.needToPrompt = true;
 
         this.getMovesFromFrame(playFrame);
         this.selfRestart = 0;
+
         if (this.rejectHand) {
             return REJECT_HAND;
         }
@@ -167,11 +169,9 @@ class PlaySetup {
         this.prevPlayFrame = playFrame;
         this.prevPlayFrameTime = moment().format('h:mm:ss');
 
-        console.log(`this.needToPrompt: ${this.needToPrompt}, playFrame.isButtons: ${playFrame.isButtons}, this.rejectHand: ${this.rejectHand}`);
+        console.log(`playFrame.isButtons: ${playFrame.isButtons}, this.rejectHand: ${this.rejectHand}`);
         // if (this.needToPrompt && playFrame.isButtons) {
-        if (this.needToPrompt) {
-            return PROMPT;
-        }
+        return PROMPT;
     };
 
     getMovesFromFrame(playFrame) {
@@ -348,9 +348,8 @@ class PlaySetup {
                         console.log(`prompterHandler /// wasDeferredMove: ${wasDeferredMove}`);
                         if (!this.selfRestart) {
                             this.fantomRawActionsCount = 0;
-                            this.needToPrompt = false;
                             this.selfRestart += 1;
-                            this.frameHandler(playFrame);        // запускаем еще раз фрейм, так как не все действия были добавлены при первом проходе
+                            this.getMovesFromFrame(playFrame);        // запускаем еще раз фрейм, так как не все действия были добавлены при первом проходе
                         }
                     }
 
@@ -396,9 +395,8 @@ class PlaySetup {
                     // угадали и уже запушили мувы в равАктионс
                     if (!this.selfRestart) {
                         this.fantomRawActionsCount = 0;
-                        this.needToPrompt = false;
                         this.selfRestart += 1;
-                        this.frameHandler(playFrame);
+                        this.getMovesFromFrame(playFrame);
                     }
                 } else if (potTerminal > potIfAllCallFold) {  // был bet или рейз!
                     this.restoreRawAction();
@@ -574,9 +572,8 @@ class PlaySetup {
                             // запускаем еще раз фрейм, и нас уже ждет терминальная улица c запушенными строками
                             if (!this.selfRestart) {
                                 this.fantomRawActionsCount = 0;
-                                this.needToPrompt = false;
                                 this.selfRestart += 1;
-                                this.frameHandler(playFrame);
+                                this.getMovesFromFrame(playFrame);
                             }
                         } else {
                             // откатываем и предполагаем другое
@@ -776,9 +773,8 @@ class PlaySetup {
                 console.log(this.rawActionList);
                 console.log('запускаем повторно frameHandler после того как добавили всем чеки');
                 if (!this.selfRestart) {
-                    this.needToPrompt = false;
                     this.selfRestart += 1;
-                    this.frameHandler(playFrame);    // запускаем еще раз фрейм, так как не все действия были добавлены при первом проходе
+                    this.getMovesFromFrame(playFrame);    // запускаем еще раз фрейм, так как не все действия были добавлены при первом проходе
                 }
                 // или игроки выставились. Ждем и собираем шоудауны.. формируем историю руки с победами.
             } else {     // появилась новая карта борда и возможно мувы ИЛИ просто ждем новых мувов
@@ -897,9 +893,8 @@ class PlaySetup {
                             if (wasDeferredMove) {      // был отложенный мув, который прошел через круг
                                 if (!this.selfRestart) {
                                     this.fantomRawActionsCount = 0;
-                                    this.needToPrompt = false;
                                     this.selfRestart += 1;
-                                    this.frameHandler(playFrame);        // запускаем еще раз фрейм, так как не все действия были добавлены при первом проходе
+                                    this.getMovesFromFrame(playFrame);        // запускаем еще раз фрейм, так как не все действия были добавлены при первом проходе
                                 }
                             }
                         }
@@ -1195,7 +1190,7 @@ class PlaySetup {
         }, this.initPlayers.length + 1);
 
         // если видели кнопки на предыдущем фрейме а на текущем их нету..
-        if (chairTo === undefined && this.prevPlayFrame && this.prevPlayFrame.isButtons && !playFrame.isButtons && this.prevPlayFrame.board.length === playFrame.board.length) {     // hero's turn
+        if (chairTo === undefined && this.prevPlayFrame && this.prevPlayFrame.isButtons && !playFrame.isButtons && this.prevPlayFrame.board.length === playFrame.board.length && this.prevPlayFrame.handNumber !== playFrame.handNumber) {     // hero's turn
             console.log('nobody invested, but was buttons at previous frame and no buttons at the moment. Setting chairTo to heroRecPosition');
             console.log('this.prevPlayFrame');
             console.log(this.prevPlayFrame);
