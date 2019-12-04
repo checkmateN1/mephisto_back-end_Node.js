@@ -171,33 +171,33 @@ class Validator {
                 playerBalances[player_balance] = 0;
             } else {
                 const matchBalance = recFrame[player_balance].match(regBalance);
-                playerBalances[player_balance] = matchBalance ? +matchBalance[0]
-                        .replace(/(\s{1,2})*(?=(\d{0,2}(?=(\.|\,))))/, '')
-                        .replace(/\s(?=\d)/, '')
-                        .replace(/(\.|\,)+(?=(\d)){0,1}/, '.')
+                playerBalances[player_balance] = matchBalance ? parseInt((+matchBalance[0]
+                    .replace(/(\s{1,2})*(?=(\d{0,2}(?=(\.|\,))))/, '')
+                    .replace(/\s(?=\d)/, '')
+                    .replace(/(\.|\,)+(?=(\d)){0,1}/, '.')) * 100)
                     : null;
             }
 
             const player_bet = `Player${i}_bet`;
             const matchBet = recFrame[player_bet].match(regBet);
-            playerBets[player_bet] = matchBet ? +matchBet[0]
-                    .replace(/(\.|\,)+(?=(\d)){0,1}/, '.')
+            playerBets[player_bet] = matchBet ? parseInt((+matchBet[0]
+                    .replace(/(\.|\,)+(?=(\d)){0,1}/, '.')) * 100)
                 : 0;
 
-            if (!this.isNumber(parseFloat(playerBets[player_bet]))) {
+            if (!this.isNumber(parseInt(playerBets[player_bet]))) {
                 playerBets[player_bet] = 0;
             }
-            // console.log(`check empty chair in validator: isNewHand: ${isNewHand}, chair: ${i}, isNotDealer: ${recFrame[`Player${i}_isDealer`].value !== 'y'}, isNotActive: ${recFrame[`Player${i}_isActive`].value !== 'y'}, parseFloat(playerBets[player_bet]) === 0 : ${parseFloat(playerBets[player_bet]) === 0}`);
-            const isEmptyChair = isNewHand && recFrame[`Player${i}_isDealer`].value !== 'y' && recFrame[`Player${i}_isActive`].value !== 'y' && parseFloat(playerBets[player_bet]) === 0;
+            // console.log(`check empty chair in validator: isNewHand: ${isNewHand}, chair: ${i}, isNotDealer: ${recFrame[`Player${i}_isDealer`].value !== 'y'}, isNotActive: ${recFrame[`Player${i}_isActive`].value !== 'y'}, parseInt(playerBets[player_bet]) === 0 : ${parseInt(playerBets[player_bet]) === 0}`);
+            const isEmptyChair = isNewHand && recFrame[`Player${i}_isDealer`].value !== 'y' && recFrame[`Player${i}_isActive`].value !== 'y' && parseInt(playerBets[player_bet]) === 0;
 
-            if (!this.isNumber(parseFloat(playerBalances[player_balance]))) {
+            if (!this.isNumber(parseInt(playerBalances[player_balance]))) {
                 // если баланс не цифра и у игрока нету дилера и он не активен и новая рука и ставка не число - считаем стул пустым и не плюсуем к грязным балансам
                 if (isEmptyChair) {
                     playerBalances[player_balance] = 0;
                 } else {
-                    // console.log(`check for unclear balances/// parseFloat(playerBalances[player_balance]): chair: ${i} ${parseFloat(playerBalances[player_balance])} `);
+                    // console.log(`check for unclear balances/// parseInt(playerBalances[player_balance]): chair: ${i} ${parseInt(playerBalances[player_balance])} `);
                     unclearBalancesCount++;
-                    playerBalances[player_balance] = 10000;
+                    playerBalances[player_balance] = 100000;
                 }
             }
             // console.log(`frameCreator/// recFrame[\`Player${i}_isDealer\`].value: ${recFrame[`Player${i}_isDealer`].value}`);
@@ -213,14 +213,14 @@ class Validator {
 
         const matchPot = recFrame.Pot.match(regPot);
         const pot = {
-            Pot: matchPot ? +matchPot[0]
+            Pot: matchPot ? parseInt((+matchPot[0]
                     .replace(/S/, 5)
                     .replace(/D/, 0)
-                    .replace(/(\.|\,)+(?=(\d)){0,1}/, '.')
+                    .replace(/(\.|\,)+(?=(\d)){0,1}/, '.')) * 100)
                 : 0,
         };
 
-        const isPotNumber = this.isNumber(parseFloat(pot.Pot));
+        const isPotNumber = this.isNumber(parseInt(pot.Pot));
         console.log(`frameCreator/// unclearBalancesCount: ${unclearBalancesCount}, isPotNumber: ${isPotNumber}, pot.Pot: ${pot.Pot}, dealersCount: ${dealersCount}, activeCount: ${activeCount}`);
         const isPotBetsEqual = pot.Pot === Object.keys(playerBets).reduce((sum, bet) => sum + playerBets[bet], 0);
         if (isNewHand) {
@@ -268,37 +268,37 @@ class Validator {
                             if (!player) {
                                 return false;
                             }
-                            if (player.bet === 0.5 && player.isDealer) {
-                                SB = 0.5;
+                            if (player.bet === 500 && player.isDealer) {
+                                SB = 500;
                             }
-                            if (player.bet === 1 && !player.isDealer) {
-                                BB = 1;
+                            if (player.bet === 100 && !player.isDealer) {
+                                BB = 100;
                             }
-                            return player && (((player.bet === pot.Pot/3 || player.bet === 0.5) && player.isDealer) || ((player.bet === pot.Pot/1.5 || player.bet === 1) && !player.isDealer));
+                            return player && (((player.bet === pot.Pot/3 || player.bet === 50) && player.isDealer) || ((player.bet === pot.Pot/1.5 || player.bet === 100) && !player.isDealer));
                         }).length;
                         if (!validBlind) {
                             console.log('frameCreator/// validator // ha! can not find valid blind. Invalid frame');
                             return INVALID_FRAME;
                         }
                         if (SB && BB) {         // trying to fix wrong pot
-                            pot.Pot = 1.5;
+                            pot.Pot = 150;
                         }
                         playersWasActive.forEach((player, i) => {
                             if (player) {
                                 if (player.isDealer) {
-                                    if (player.bet !== 0.5 && BB === 1 && pot.Pot < 5) {
+                                    if (player.bet !== 50 && BB === 100 && pot.Pot < 500) {
                                         SB = pot.Pot - BB;
                                         playerBets[`Player${i}_bet`] = SB;
-                                    } else if (player.bet !== 0.5) {
+                                    } else if (player.bet !== 50) {
                                         SB = pot.Pot/3;
                                         playerBets[`Player${i}_bet`] = SB;   // valid SB size
                                     }
                                 } else {
-                                    if (player.bet !== 1 && SB === 0.5 && pot.Pot < 4) {
+                                    if (player.bet !== 100 && SB === 50 && pot.Pot < 500) {
                                         BB = pot.Pot - SB;
                                         playerBets[`Player${i}_bet`] = BB;
-                                    } else if (player.bet !== 1) {
-                                        BB = pot.Pot/1.5;
+                                    } else if (player.bet !== 100) {
+                                        BB = pot.Pot/150;
                                         playerBets[`Player${i}_bet`] = BB;   // valid BB size
                                     }
                                 }
@@ -323,7 +323,6 @@ class Validator {
                             console.log(`SBposition: ${SBposition}, BBposition: ${BBposition}`);
                             const betsRest = playersWasActive.reduce((sum, player, i) => {
                                 if (player && i !== SBposition && i !== BBposition) {
-                                    console.log(`not blind`);
                                     return sum + playerBets[`Player${i}_bet`];
                                 }
                                 return sum;
@@ -332,13 +331,31 @@ class Validator {
 
                             const validBlind = (playerBets[`Player${SBposition}_bet`] === (pot.Pot - betsRest)/3) || (playerBets[`Player${BBposition}_bet`] === (pot.Pot - betsRest)/1.5);
                             if (!validBlind) {
-                                console.log('frameCreator/// validator // 3 players+! can not find valid blind. Invalid frame');
-                                console.log(`betsRest: ${betsRest}, playerBets[\`Player${SBposition}_bet\`]: ${playerBets[`Player${SBposition}_bet`]}, playerBets[\`Player${BBposition}_bet\`]: ${playerBets[`Player${BBposition}_bet`]}, (pot.Pot - betsRest)/1.5: ${(pot.Pot - betsRest)/1.5}`);
-                                return INVALID_FRAME;
+                                if (playerBets[`Player${SBposition}_bet`] === 50 && playerBets[`Player${BBposition}_bet`] === 100 && pot.Pot < 450 && betsRest > 0) {
+                                    let position;
+                                    const restBetterCount = playersWasActive.reduce((sum, player, i) => {
+                                        if (player && i !== SBposition && i !== BBposition && playerBets[`Player${i}_bet`] > 0) {
+                                            position = i;
+                                            return sum + 1;
+                                        }
+                                        return sum;
+                                    }, 0);
+                                    if (restBetterCount === 1 && position !== undefined) {
+                                        playerBets[`Player${position}_bet`] = pot.Pot - 150;   // BB + SB
+                                    } else {
+                                        console.log('frameCreator/// validator // can not find valid not blind bets. Invalid frame');
+                                        return INVALID_FRAME;
+                                    }
+                                } else {
+                                    console.log('frameCreator/// validator // 3 players+! can not find valid blind. Invalid frame');
+                                    console.log(`betsRest: ${betsRest}, playerBets[\`Player${SBposition}_bet\`]: ${playerBets[`Player${SBposition}_bet`]}, playerBets[\`Player${BBposition}_bet\`]: ${playerBets[`Player${BBposition}_bet`]}, (pot.Pot - betsRest)/1.5: ${(pot.Pot - betsRest)/1.5}`);
+                                    return INVALID_FRAME;
+                                }
+                            } else {
+                                playerBets[`Player${SBposition}_bet`] = (pot.Pot - betsRest)/3;
+                                playerBets[`Player${BBposition}_bet`] = (pot.Pot - betsRest)/1.5;
+                                console.log(`frameCreator/// validator // new artificial blinds// SB: ${playerBets[`Player${SBposition}_bet`]}, BB: ${playerBets[`Player${BBposition}_bet`]}`);
                             }
-                            playerBets[`Player${SBposition}_bet`] = (pot.Pot - betsRest)/3;
-                            playerBets[`Player${BBposition}_bet`] = (pot.Pot - betsRest)/1.5;
-                            console.log(`frameCreator/// validator // new artificial blinds// SB: ${playerBets[`Player${SBposition}_bet`]}, BB: ${playerBets[`Player${BBposition}_bet`]}`);
                         } else {
                             console.log('frameCreator/// validator // can not find dealer. Invalid frame');
                             return INVALID_FRAME;
@@ -456,7 +473,7 @@ class Validator {
                                                 } else {
                                                     const initBalance = this.playSetup.initPlayerBalance(this.playSetup.initPlayers[i].enumPosition);
                                                     // console.log(`inside possibleMaxAmounts/// chair: ${i}, player.initBalance: ${player.initBalance}, playerBalances[\`Player${player.i}_balance\`]: ${playerBalances[`Player${player.i}_balance`]}, amount: ${amount}`);
-                                                    playerBets[`Player${i}_bet`] = +(Math.max(initBalance - playerBalances[`Player${i}_balance`] - amount, 0)).toFixed(2);
+                                                    playerBets[`Player${i}_bet`] = Math.max(initBalance - playerBalances[`Player${i}_balance`] - amount, 0);
                                                 }
                                             }
                                         });
@@ -485,7 +502,7 @@ class Validator {
                                 // playerBets[`Player${i}_bet`] = this.playSetup.getLastValidMoveAmount(i);
                                 playerBets[`Player${i}_bet`] = 0;
                             } else {
-                                playerBets[`Player${i}_bet`] = +(Math.max(this.playSetup.initPlayerBalance(this.playSetup.initPlayers[i].enumPosition) - playerBalances[`Player${i}_balance`] - maxAmount, 0)).toFixed(2);
+                                playerBets[`Player${i}_bet`] = Math.max(this.playSetup.initPlayerBalance(this.playSetup.initPlayers[i].enumPosition) - playerBalances[`Player${i}_balance`] - maxAmount, 0);
                             }
                         }
                     });

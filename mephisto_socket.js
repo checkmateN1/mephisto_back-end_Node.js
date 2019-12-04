@@ -101,20 +101,27 @@ io.on('connection', client => {
                     console.log(txtFile);
                     fs.readFile(req.folder + '\\' + txtFile, 'utf8', (err, data) => {
                         if (err) throw err;
-                        const frameData = JSON.parse(data);
+                        let frameData;
+                        try {
+                            frameData = JSON.parse(data);
+                        } catch (error) {
+                            console.log(error);
+                        }
 
-                        const prompterData = {
-                            request: {
-                                requestType: 'prompter',
-                            },
-                            data: frameData,
-                            txtFile,
-                            client,
-                        };
+                        if (frameData) {
+                            const prompterData = {
+                                request: {
+                                    requestType: 'prompter',
+                                },
+                                data: frameData,
+                                txtFile,
+                                client,
+                            };
 
-                        setTimeout(() => {
-                            sessionsHandler.sessionsListener(token, frameData.id, prompterData);     // data.id == table id from recognition
-                        }, 100);
+                            setTimeout(() => {
+                                sessionsHandler.sessionsListener(token, frameData.id, prompterData);     // data.id == table id from recognition
+                            }, 100);
+                        }
                     });
                 }
             });
