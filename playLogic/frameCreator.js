@@ -424,9 +424,10 @@ class Validator {
                         if (player !== undefined) {
                             if (!this.playSetup.wasFoldBefore(i)) {
                                 const initBalance = this.playSetup.initPlayerBalance(this.playSetup.initPlayers[i].enumPosition);
+                                console.log(`test init balances/// chair: ${i}, this.playSetup.initPlayers[i].enumPosition: ${this.playSetup.initPlayers[i].enumPosition}, this.playSetup.initPlayerBalance: ${this.playSetup.initPlayerBalance(this.playSetup.initPlayers[i].enumPosition)}`);
                                 possiblePlayers.push({ i, initBalance });
 
-                                const  amount = initBalance - playerBalances[`Player${i}_balance`] + playerBets[`Player${i}_bet`];
+                                const  amount = initBalance - playerBalances[`Player${i}_balance`] - playerBets[`Player${i}_bet`];
                                 console.log(`inside playSetup.initPlayers.forEach /// chair: ${i}, initBalance: ${initBalance}, amount: ${amount}, playerBalances: ${playerBalances[`Player${i}_balance`]}, playerBets: ${playerBets[`Player${i}_bet`]}, `);
                                 if (possibleMaxAmounts.includes(amount)) {
                                     validAmount = amount;
@@ -449,9 +450,13 @@ class Validator {
                                         balancesDiffArr.forEach((balance, i) => {
                                             if (balance !== undefined) {
                                                 if (this.playSetup.wasFoldBefore(i)) {
-                                                    playerBets[`Player${i}_bet`] = this.playSetup.getLastValidMoveStreet(i) === currentStreet ? this.playSetup.getLastValidMoveAmount(i) : 0;
+                                                    // console.log(`inside possibleMaxAmounts/// chair: ${i}, this.playSetup.getLastValidMoveStreet(i) === currentStreet: ${this.playSetup.getLastValidMoveStreet(i) === currentStreet}, this.playSetup.getLastValidMoveAmount(i): ${this.playSetup.getLastValidMoveAmount(i)}`);
+                                                    playerBets[`Player${i}_bet`] = 0;
+                                                    // playerBets[`Player${i}_bet`] = this.playSetup.getLastValidMoveStreet(i) === currentStreet ? this.playSetup.getLastValidMoveAmount(i) : 0;
                                                 } else {
-                                                    playerBets[`Player${i}_bet`] = +(Math.max(player.initBalance - playerBalances[`Player${player.i}_balance`] - amount, 0)).toFixed(2);
+                                                    const initBalance = this.playSetup.initPlayerBalance(this.playSetup.initPlayers[i].enumPosition);
+                                                    // console.log(`inside possibleMaxAmounts/// chair: ${i}, player.initBalance: ${player.initBalance}, playerBalances[\`Player${player.i}_balance\`]: ${playerBalances[`Player${player.i}_balance`]}, amount: ${amount}`);
+                                                    playerBets[`Player${i}_bet`] = +(Math.max(initBalance - playerBalances[`Player${i}_balance`] - amount, 0)).toFixed(2);
                                                 }
                                             }
                                         });
@@ -469,7 +474,7 @@ class Validator {
                     }, false);
 
                     if (!isFoundValidBets) {
-                        // console.log('frameCreator/// all bets are with mistake! But its ok with balances and pot. Invalid frame!');
+                        console.log('frameCreator/// all bets are with mistake! But its ok with balances and pot. Invalid frame!');
                         return INVALID_FRAME;
                     }
                 } else {        // new street and terminal state
