@@ -263,20 +263,44 @@ class Validator {
                     const activePlayersLength = playersWasActive.filter(player => player !== undefined).length;
                     if (activePlayersLength === 2) {        // ha
                         // делаем проверку, что хотя бы один блайнд соответствует правилам по сайзингу
-                        const validBlind = playersWasActive.filter((player, i) => player && ((player.bet === pot.Pot/3 && player.isDealer) || (player.bet === pot.Pot/1.5 && !player.isDealer))).length;
+                        let SB, BB;
+                        const validBlind = playersWasActive.filter((player, i) => {
+                            if (!player) {
+                                return false;
+                            }
+                            if (player.bet === 0.5 && player.isDealer) {
+                                SB = 0.5;
+                            }
+                            if (player.bet === 1 && !player.isDealer) {
+                                BB = 1;
+                            }
+                            return player && (((player.bet === pot.Pot/3 || player.bet === 0.5) && player.isDealer) || ((player.bet === pot.Pot/1.5 || player.bet === 1) && !player.isDealer));
+                        }).length;
                         if (!validBlind) {
                             console.log('frameCreator/// validator // ha! can not find valid blind. Invalid frame');
                             return INVALID_FRAME;
                         }
-                        let SB, BB;
+                        if (SB && BB) {         // trying to fix wrong pot
+                            pot.Pot = 1.5;
+                        }
                         playersWasActive.forEach((player, i) => {
                             if (player) {
                                 if (player.isDealer) {
-                                    playerBets[`Player${i}_bet`] = pot.Pot/3;   // valid SB size
-                                    SB = pot.Pot/3;
+                                    if (player.bet !== 0.5 && BB === 1 && pot.Pot < 5) {
+                                        SB = pot.Pot - BB;
+                                        playerBets[`Player${i}_bet`] = SB;
+                                    } else if (player.bet !== 0.5) {
+                                        SB = pot.Pot/3;
+                                        playerBets[`Player${i}_bet`] = SB;   // valid SB size
+                                    }
                                 } else {
-                                    playerBets[`Player${i}_bet`] = pot.Pot/1.5;   // valid bb size
-                                    BB = pot.Pot/2;
+                                    if (player.bet !== 1 && SB === 0.5 && pot.Pot < 4) {
+                                        BB = pot.Pot - SB;
+                                        playerBets[`Player${i}_bet`] = BB;
+                                    } else if (player.bet !== 1) {
+                                        BB = pot.Pot/1.5;
+                                        playerBets[`Player${i}_bet`] = BB;   // valid BB size
+                                    }
                                 }
                             }
                         });
@@ -400,9 +424,10 @@ class Validator {
                         if (player !== undefined) {
                             if (!this.playSetup.wasFoldBefore(i)) {
                                 const initBalance = this.playSetup.initPlayerBalance(this.playSetup.initPlayers[i].enumPosition);
+                                console.log(`test init balances/// chair: ${i}, this.playSetup.initPlayers[i].enumPosition: ${this.playSetup.initPlayers[i].enumPosition}, this.playSetup.initPlayerBalance: ${this.playSetup.initPlayerBalance(this.playSetup.initPlayers[i].enumPosition)}`);
                                 possiblePlayers.push({ i, initBalance });
 
-                                const  amount = initBalance - playerBalances[`Player${i}_balance`] + playerBets[`Player${i}_bet`];
+                                const  amount = initBalance - playerBalances[`Player${i}_balance`] - playerBets[`Player${i}_bet`];
                                 console.log(`inside playSetup.initPlayers.forEach /// chair: ${i}, initBalance: ${initBalance}, amount: ${amount}, playerBalances: ${playerBalances[`Player${i}_balance`]}, playerBets: ${playerBets[`Player${i}_bet`]}, `);
                                 if (possibleMaxAmounts.includes(amount)) {
                                     validAmount = amount;
@@ -425,9 +450,13 @@ class Validator {
                                         balancesDiffArr.forEach((balance, i) => {
                                             if (balance !== undefined) {
                                                 if (this.playSetup.wasFoldBefore(i)) {
-                                                    playerBets[`Player${i}_bet`] = this.playSetup.getLastValidMoveStreet(i) === currentStreet ? this.playSetup.getLastValidMoveAmount(i) : 0;
+                                                    // console.log(`inside possibleMaxAmounts/// chair: ${i}, this.playSetup.getLastValidMoveStreet(i) === currentStreet: ${this.playSetup.getLastValidMoveStreet(i) === currentStreet}, this.playSetup.getLastValidMoveAmount(i): ${this.playSetup.getLastValidMoveAmount(i)}`);
+                                                    playerBets[`Player${i}_bet`] = 0;
+                                                    // playerBets[`Player${i}_bet`] = this.playSetup.getLastValidMoveStreet(i) === currentStreet ? this.playSetup.getLastValidMoveAmount(i) : 0;
                                                 } else {
-                                                    playerBets[`Player${i}_bet`] = +(Math.max(player.initBalance - playerBalances[`Player${player.i}_balance`] - amount, 0)).toFixed(2);
+                                                    const initBalance = this.playSetup.initPlayerBalance(this.playSetup.initPlayers[i].enumPosition);
+                                                    // console.log(`inside possibleMaxAmounts/// chair: ${i}, player.initBalance: ${player.initBalance}, playerBalances[\`Player${player.i}_balance\`]: ${playerBalances[`Player${player.i}_balance`]}, amount: ${amount}`);
+                                                    playerBets[`Player${i}_bet`] = +(Math.max(initBalance - playerBalances[`Player${i}_balance`] - amount, 0)).toFixed(2);
                                                 }
                                             }
                                         });
@@ -445,7 +474,7 @@ class Validator {
                     }, false);
 
                     if (!isFoundValidBets) {
-                        // console.log('frameCreator/// all bets are with mistake! But its ok with balances and pot. Invalid frame!');
+                        console.log('frameCreator/// all bets are with mistake! But its ok with balances and pot. Invalid frame!');
                         return INVALID_FRAME;
                     }
                 } else {        // new street and terminal state
