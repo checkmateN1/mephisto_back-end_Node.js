@@ -260,7 +260,7 @@ class PlaySetup {
                 console.log('///////////////////////');
 
                 console.log('no changing street');
-                const chairTo = this.getChairTo(playFrame, lastRecPosition);
+                const chairTo = this.getChairTo(playFrame, lastRecPosition, undefined, true);
                 console.log(`chairTo: ${chairTo ? chairTo : undefined}`);
 
                 if (chairTo !== undefined) {        // есть игрок с измененным состоянием + нету перехода улицы!
@@ -903,7 +903,8 @@ class PlaySetup {
         const agroChair = this.getRecAgroChairWithMaxAmount();
 
         let heroCards;
-
+        const isTerminal = this.isTerminalStreetState();
+        const curStreet = this.getStreetNumber(this.board.length);
         const players = this.initPlayers.map((player, i) => {
             if (player.cards) {
                 heroCards = player.cards;
@@ -911,14 +912,14 @@ class PlaySetup {
 
             return {
                 nickname: player.player,
-                balance: this.getLastValidMoveBalance(i),
-                bet: this.isTerminalStreetState() ? 0 : this.getLastValidMoveAmount(i),
+                balance: this.getLastValidMoveBalance(i)/100,
+                bet: (curStreet !== currentStreet && isTerminal) ? 0 : this.getLastMoveAmount(i)/100,
                 isDealer: player.isDealer,
                 agroClass: i === agroChair ? 'bet-raise' : 'check-call',
             };
         });
 
-        const pot = this.getPot();
+        const pot = this.getPot()/100;
 
         const result = {
             players,
@@ -1146,10 +1147,10 @@ class PlaySetup {
         }, this.rawActionList[this.rawActionList.length - 1].pot + this.rawActionList[this.rawActionList.length - 1].invest);
     }
 
-    getChairTo(playFrame, lastRecPosition, isTerminalState) {
+    getChairTo(playFrame, lastRecPosition, isTerminalState, isOldStreet) {
         let chairTo;
 
-        this.getReversListOrder(this.initPlayers.length, this.getRecPositionBefore(this.initPlayers.length, lastRecPosition)).forEach(chair => {
+        this.getReversListOrder(this.initPlayers.length, isOldStreet ? lastRecPosition : this.getRecPositionBefore(this.initPlayers.length, lastRecPosition)).forEach(chair => {
             console.log(`inside getChairTo/// lastRecPosition: ${lastRecPosition}, chair: ${chair}`);
             // played
             if (chairTo === undefined && this.initPlayers[chair] !== undefined) {
@@ -1264,6 +1265,16 @@ class PlaySetup {
         for (let i = this.rawActionList.length - 1; i >= 0; i--) {
             if (this.rawActionList[i].position === this.initPlayers[chair].enumPosition) {
                 return this.rawActionList[i].amount;
+            }
+        }
+        return 0;   // was't any move before
+    }
+
+    getLastMoveAmount(chair) {
+        const currentStreet = this.rawActionList[this.rawActionList.length - 1].street;
+        for (let i = this.rawActionList.length - 1; i >= 0; i--) {
+            if (this.rawActionList[i].position === this.initPlayers[chair].enumPosition) {
+                return currentStreet === this.rawActionList[i].street ? this.rawActionList[i].amount : 0;
             }
         }
         return 0;   // was't any move before
