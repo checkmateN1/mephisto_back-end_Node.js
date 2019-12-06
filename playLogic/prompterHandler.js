@@ -161,6 +161,8 @@ class PlaySetup {
 
         this.getMovesFromFrame(playFrame);
         this.selfRestart = 0;
+        console.log('this.rawActionList at the end of getMovesFromFrame');
+        console.log(this.rawActionList);
 
         if (this.rejectHand) {
             return REJECT_HAND;
@@ -260,7 +262,7 @@ class PlaySetup {
                 console.log('///////////////////////');
 
                 console.log('no changing street');
-                const chairTo = this.getChairTo(playFrame, lastRecPosition, undefined, true);
+                const chairTo = this.getChairTo(playFrame, lastRecPosition, false);
                 console.log(`chairTo: ${chairTo ? chairTo : undefined}`);
 
                 if (chairTo !== undefined) {        // есть игрок с измененным состоянием + нету перехода улицы!
@@ -411,7 +413,7 @@ class PlaySetup {
                         console.log(`was raise at previous street and time between frames was: ${ms}`);
 
                         const heroStartBalance = this.initPlayerBalance(this.initPlayers[playFrame.heroRecPosition].enumPosition);
-                        const heroAmount = playFrame.playPlayers[playFrame.heroRecPosition].curBalance - playFrame.playPlayers[playFrame.heroRecPosition].betAmount;
+                        const heroAmount = playFrame.playPlayers[playFrame.heroRecPosition].curBalance + playFrame.playPlayers[playFrame.heroRecPosition].betAmount;
 
                         const heroMaxAmount = heroStartBalance - heroAmount;
                         console.log(`heroStartBalance: ${heroStartBalance}, heroAmount: ${heroAmount}, heroMaxAmount: ${heroMaxAmount}`);
@@ -424,7 +426,7 @@ class PlaySetup {
                         this.movesOrder(this.initPlayers.length, this.getLastRawActionsChair(), this.getRecPositionBefore(this.initPlayers.length, chairFrom)).reduce((pot, chair) => {
                             if (!passHero && this.initPlayers[chair] !== undefined) {
                                 for (let i = this.rawActionList.length - 1; i >= -1; i--) {
-                                    if (i > 0 && currentStreet === this.rawActionList[i].street) {
+                                    if (i > -1 && currentStreet === this.rawActionList[i].street) {
                                         if (this.initPlayers[chair].enumPosition === this.rawActionList[i].position) {
                                             console.log(`test inside cur street and the same position in movesOrder`);
                                             ///////////////////////////////////////////////////////////////// hero
@@ -793,7 +795,8 @@ class PlaySetup {
                     const firstChair = this.positionEnumKeyMap[this.getFirstEnumPositionToMove(false)];
                     console.log(`seted board ok, terminal state and firstChair to move at new street is: ${firstChair}`);
                     // const chairTo = this.getChairTo(playFrame, this.getRecPositionBefore(this.initPlayers.length, firstChair), true, firstChair);
-                    const chairTo = this.getChairTo(playFrame, this.getRecPositionBefore(this.initPlayers.length, firstChair), true);
+                    // const chairTo = this.getChairTo(playFrame, this.getRecPositionBefore(this.initPlayers.length, firstChair), true);
+                    const chairTo = this.getChairTo(playFrame, firstChair, true);
 
                     console.log(`new street and terminal state. Try to get chairTo: ${chairTo ? chairTo : ''}`);
 
@@ -887,8 +890,6 @@ class PlaySetup {
                 }
             }
         }
-        console.log('this.rawActionList at the end of getMovesFromFrame');
-        console.log(this.rawActionList);
     }
 
     createHtmlPrompt(prompt) {
@@ -1147,10 +1148,11 @@ class PlaySetup {
         }, this.rawActionList[this.rawActionList.length - 1].pot + this.rawActionList[this.rawActionList.length - 1].invest);
     }
 
-    getChairTo(playFrame, lastRecPosition, isTerminalState, isOldStreet) {
+    getChairTo(playFrame, lastRecPosition, isTerminalState) {
+        const positionBefore = this.getRecPositionBefore(this.initPlayers.length, lastRecPosition);
         let chairTo;
 
-        this.getReversListOrder(this.initPlayers.length, isOldStreet ? lastRecPosition : this.getRecPositionBefore(this.initPlayers.length, lastRecPosition)).forEach(chair => {
+        this.getReversListOrder(this.initPlayers.length, isTerminalState ? positionBefore : lastRecPosition).forEach(chair => {
             console.log(`inside getChairTo/// lastRecPosition: ${lastRecPosition}, chair: ${chair}`);
             // played
             if (chairTo === undefined && this.initPlayers[chair] !== undefined) {
@@ -1194,13 +1196,15 @@ class PlaySetup {
         }
 
         // если видим кнопки - игрок перед хиро походил
-        if (chairTo === undefined && playFrame.isButtons && lastRecPosition !== playFrame.heroRecPosition) {     // hero's turn
+        const positionAfter = this.getRecPositionAfter(this.initPlayers.length, lastRecPosition);
+        if (chairTo === undefined && playFrame.isButtons && (isTerminalState ? lastRecPosition : positionAfter) !== playFrame.heroRecPosition) {     // hero's turn
             console.log(`enter additional condition in getChairTo: see buttons`);
             const positionBefore = this.getRecPositionBefore(this.initPlayers.length, playFrame.heroRecPosition);
-            if (positionBefore !== lastRecPosition) {
-                console.log('see buttons and nobody invested and hero did not start first - setting chairTo as player before hero');
-                chairTo = this.getRecPositionBefore(this.initPlayers.length, playFrame.heroRecPosition);     // spin&go chair 2
-            }
+            console.log('see buttons and nobody invested and hero did not start first - setting chairTo as player before hero');
+            chairTo = positionBefore;     // spin&go chair 2
+            // if (positionBefore !== lastRecPosition) {
+            //
+            // }
         }
 
         return chairTo;

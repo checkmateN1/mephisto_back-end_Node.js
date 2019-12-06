@@ -171,7 +171,7 @@ class Validator {
                 playerBalances[player_balance] = 0;
             } else {
                 const matchBalance = recFrame[player_balance].match(regBalance);
-                playerBalances[player_balance] = matchBalance ? parseInt((+matchBalance[0]
+                playerBalances[player_balance] = matchBalance ? Math.round((+matchBalance[0]
                     .replace(/(\s{1,2})*(?=(\d{0,2}(?=(\.|\,))))/, '')
                     .replace(/\s(?=\d)/, '')
                     .replace(/(\.|\,)+(?=(\d)){0,1}/, '.')) * 100)
@@ -180,22 +180,22 @@ class Validator {
 
             const player_bet = `Player${i}_bet`;
             const matchBet = recFrame[player_bet].match(regBet);
-            playerBets[player_bet] = matchBet ? parseInt((+matchBet[0]
+            playerBets[player_bet] = matchBet ? Math.round((+matchBet[0]
                     .replace(/(\.|\,)+(?=(\d)){0,1}/, '.')) * 100)
                 : 0;
 
-            if (!this.isNumber(parseInt(playerBets[player_bet]))) {
+            if (!this.isNumber(playerBets[player_bet])) {
                 playerBets[player_bet] = 0;
             }
-            // console.log(`check empty chair in validator: isNewHand: ${isNewHand}, chair: ${i}, isNotDealer: ${recFrame[`Player${i}_isDealer`].value !== 'y'}, isNotActive: ${recFrame[`Player${i}_isActive`].value !== 'y'}, parseInt(playerBets[player_bet]) === 0 : ${parseInt(playerBets[player_bet]) === 0}`);
-            const isEmptyChair = isNewHand && recFrame[`Player${i}_isDealer`].value !== 'y' && recFrame[`Player${i}_isActive`].value !== 'y' && parseInt(playerBets[player_bet]) === 0;
+            // console.log(`check empty chair in validator: isNewHand: ${isNewHand}, chair: ${i}, isNotDealer: ${recFrame[`Player${i}_isDealer`].value !== 'y'}, isNotActive: ${recFrame[`Player${i}_isActive`].value !== 'y'}, Math.round(playerBets[player_bet]) === 0 : ${Math.round(playerBets[player_bet]) === 0}`);
+            const isEmptyChair = isNewHand && recFrame[`Player${i}_isDealer`].value !== 'y' && recFrame[`Player${i}_isActive`].value !== 'y' && playerBets[player_bet] === 0;
 
-            if (!this.isNumber(parseInt(playerBalances[player_balance]))) {
+            if (!this.isNumber(playerBalances[player_balance])) {
                 // если баланс не цифра и у игрока нету дилера и он не активен и новая рука и ставка не число - считаем стул пустым и не плюсуем к грязным балансам
                 if (isEmptyChair) {
                     playerBalances[player_balance] = 0;
                 } else {
-                    // console.log(`check for unclear balances/// parseInt(playerBalances[player_balance]): chair: ${i} ${parseInt(playerBalances[player_balance])} `);
+                    // console.log(`check for unclear balances/// Math.round(playerBalances[player_balance]): chair: ${i} ${Math.round(playerBalances[player_balance])} `);
                     unclearBalancesCount++;
                     playerBalances[player_balance] = 100000;
                 }
@@ -213,14 +213,14 @@ class Validator {
 
         const matchPot = recFrame.Pot.match(regPot);
         const pot = {
-            Pot: matchPot ? parseInt((+matchPot[0]
+            Pot: matchPot ? Math.round((+matchPot[0]
                     .replace(/S/, 5)
                     .replace(/D/, 0)
                     .replace(/(\.|\,)+(?=(\d)){0,1}/, '.')) * 100)
                 : 0,
         };
 
-        const isPotNumber = this.isNumber(parseInt(pot.Pot));
+        const isPotNumber = this.isNumber(pot.Pot);
         console.log(`frameCreator/// unclearBalancesCount: ${unclearBalancesCount}, isPotNumber: ${isPotNumber}, pot.Pot: ${pot.Pot}, dealersCount: ${dealersCount}, activeCount: ${activeCount}`);
         const isPotBetsEqual = pot.Pot === Object.keys(playerBets).reduce((sum, bet) => sum + playerBets[bet], 0);
         if (isNewHand) {
@@ -268,8 +268,8 @@ class Validator {
                             if (!player) {
                                 return false;
                             }
-                            if (player.bet === 500 && player.isDealer) {
-                                SB = 500;
+                            if (player.bet === 50 && player.isDealer) {
+                                SB = 50;
                             }
                             if (player.bet === 100 && !player.isDealer) {
                                 BB = 100;
@@ -283,6 +283,7 @@ class Validator {
                         if (SB && BB) {         // trying to fix wrong pot
                             pot.Pot = 150;
                         }
+                        console.log(`test SB BB/// SB: ${SB}, BB: ${BB}`);
                         playersWasActive.forEach((player, i) => {
                             if (player) {
                                 if (player.isDealer) {
@@ -448,7 +449,7 @@ class Validator {
                                 console.log(`inside playSetup.initPlayers.forEach /// chair: ${i}, initBalance: ${initBalance}, amount: ${amount}, playerBalances: ${playerBalances[`Player${i}_balance`]}, playerBets: ${playerBets[`Player${i}_bet`]}, `);
                                 if (possibleMaxAmounts.includes(amount)) {
                                     validAmount = amount;
-                                } else {
+                                } else if (amount > currentMaxAmount) {
                                     possibleMaxAmounts.push(amount);
                                 }
                             }
@@ -472,7 +473,7 @@ class Validator {
                                                     // playerBets[`Player${i}_bet`] = this.playSetup.getLastValidMoveStreet(i) === currentStreet ? this.playSetup.getLastValidMoveAmount(i) : 0;
                                                 } else {
                                                     const initBalance = this.playSetup.initPlayerBalance(this.playSetup.initPlayers[i].enumPosition);
-                                                    // console.log(`inside possibleMaxAmounts/// chair: ${i}, player.initBalance: ${player.initBalance}, playerBalances[\`Player${player.i}_balance\`]: ${playerBalances[`Player${player.i}_balance`]}, amount: ${amount}`);
+                                                    console.log(`inside possibleMaxAmounts/// chair: ${i}, initBalance: ${initBalance}, playerBalances[\`Player${i}_balance\`]: ${playerBalances[`Player${i}_balance`]}, amount: ${amount}`);
                                                     playerBets[`Player${i}_bet`] = Math.max(initBalance - playerBalances[`Player${i}_balance`] - amount, 0);
                                                 }
                                             }
