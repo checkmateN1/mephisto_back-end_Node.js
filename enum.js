@@ -12,6 +12,7 @@ const enumPoker = Object.freeze({
         'Spin&Go': {
             heroChair: 2,
             playersCount: 3,
+            hashSum: [7500, 5000, 3750, 2500, 1875, 1500, 1250],
         }
     },
     cardsValues: ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'j', 'q', 'k', 'a'],

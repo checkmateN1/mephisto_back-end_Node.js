@@ -46,6 +46,7 @@ class Validator {
         this.playSetup = playSetup;
         this.playersCount;
         this.heroChair;
+        this.dismissCount = 0;
         this.prevFrame = null;
     }
 
@@ -67,17 +68,20 @@ class Validator {
             // console.log('frameCreator/// createFrame: good frame!');
 
         } else {
+            console.log(`frameCreator/// createFrame: no dealer found or wrong hero hand. INVALID_FRAME`);
             return INVALID_FRAME;
         }
 
         const isNewHand = this.checkNewHand(recFrame);
         console.log(`frameCreator/// createFrame: isNewHand: ${isNewHand}, this.playSetup.rejectHand: ${this.playSetup.rejectHand}`);
         if (this.playSetup.rejectHand && !isNewHand) {
+            console.log(`this.playSetup.rejectHand/// INVALID_FRAME`);
             return INVALID_FRAME;
         }
 
         if (isNewHand && enumPoker.enumPoker.cardsSuits.includes(recFrame.Card1_suit.value)) {           // reject new hand with any board cards
             this.playSetup.rejectHand = true;
+            console.log(`frameCreator/// createFrame: New hand and see flop already. INVALID_FRAME`);
             return INVALID_FRAME;
         }
 
@@ -85,9 +89,10 @@ class Validator {
         this.prevFrame = recFrame;
 
         if (validFrame === INVALID_FRAME) {
-            // console.log('frameCreator/// invalid frame after validateFrame');
+            console.log('frameCreator/// invalid frame after validateFrame');
             return INVALID_FRAME;
         } else {
+            this.dismissCount = 0;
             // создаем фрейм
             const playPlayers = [];
 
@@ -223,6 +228,22 @@ class Validator {
         const isPotNumber = this.isNumber(pot.Pot);
         console.log(`frameCreator/// unclearBalancesCount: ${unclearBalancesCount}, isPotNumber: ${isPotNumber}, pot.Pot: ${pot.Pot}, dealersCount: ${dealersCount}, activeCount: ${activeCount}`);
         const isPotBetsEqual = pot.Pot === Object.keys(playerBets).reduce((sum, bet) => sum + playerBets[bet], 0);
+
+        //dismiss one frame for waiting async balance-bet-pot appearing
+        if (!this.dismissCount) {
+            let hashSum;
+            if (this.playSetup.gameTypesSettings === 'Spin&Go') {
+                const balances = Object.keys(playerBalances).reduce((sum, player) => sum + playerBalances[player], 0);
+                const diff = this.getMinHashSumDiff(pot.Pot + balances, enumPoker.enumPoker.gameTypesSettings['Spin&Go'].hashSum);
+                if (diff > 2) {
+                    console.log('frameCreator/// validator // new hand! wrong hash sum balances and pot not equal one of Spin&Go hash constants');
+                    this.dismissCount++;
+                    return INVALID_FRAME;
+                }
+            }
+        }
+        this.dismissCount = 0;
+
         if (isNewHand) {
             if (!unclearBalancesCount
                 && isPotNumber
@@ -510,6 +531,37 @@ class Validator {
                 }
             } else {        // pot or balances are wrong
                 if (!isNewStreet) {
+                    // асинхронное появление ставок и пота вслед за уменьшением баланса (сначала баланс а след фрейм ставка + пот)
+                    // 1)проверяем: если вырос пот и у одно из активных игроков прирос бет на прирост (пота - прирост ставок относительно последних валидных)
+                    // но баланс остался таким же как его последний валидный баланс
+                    // 2) abc(бет + баланс) - (последние валидные бет + баланс) > 0
+
+                    // 3) прирос пот но не изменились балансы и при этом хоть как-то изменился бет одного из игроков(скорее всего у него асинхронная ставка)
+                    //
+                    if (!isNewHand) {
+                        let isInvalidFrame;
+                        const asyncCount = this.playSetup.initPlayers.forEach((player, i) => {
+                            if (player !== undefined && !this.playSetup.wasFoldBefore(i)) {
+                                const lastValidBalance = this.playSetup.getLastValidMoveBalance(i);
+                                const lastValidAmount = this.playSetup.getLastValidMoveAmount(i);
+                                const curBalance = playerBalances[`Player${i}_balance`];
+                                const curAmount = playerBets[`Player${i}_bet`];
+
+                                if (lastValidAmount === curAmount
+                                    && lastValidBalance > curBalance) {
+                                    console.log(`dismiss 1 frame: async player invest detected!`);
+                                    isInvalidFrame = true;
+                                }
+                            }
+                        });
+                        if (isInvalidFrame) {
+                            return INVALID_FRAME;
+                        }
+
+                        // проверка и исправление баланса в прошлом
+
+                    }
+
                     const balancesDiffArrBets = [];
                     const balancesDiffByBets = this.playSetup.initPlayers.reduce((balancesDiff, player, i) => {
                         if (this.playSetup.initPlayers[i] !== undefined) {
@@ -812,6 +864,13 @@ class Validator {
             return isFound;
         }, false);
         return foldChair;
+    }
+
+    getMinHashSumDiff(sum, hashesArr) {
+        return hashesArr.reduce((epsilon, cur) => {
+            const min = Math.abs(cur - sum);
+            return min < epsilon ? min : epsilon;
+        }, 100500);
     }
 
     isStreetChanged(recFrame) {

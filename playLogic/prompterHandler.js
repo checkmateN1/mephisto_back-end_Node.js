@@ -124,12 +124,11 @@ class PlaySetup {
         this.selfRestart = 0;
         // debug info
         this.txtFile = '';
-        this.frameHandlerCount = 0;
+        // this.frameHandlerCount = 0;
     }
 
     frameHandler(rawFrame, gameTypesSettings) {
-        this.frameHandlerCount += 1;
-        console.log(`!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!this.frameHandlerCount: ${this.frameHandlerCount}`);
+        // this.frameHandlerCount += 1;
         console.log(`start frameHandler/// this.txtFile: ${this.txtFile}`);
         this.gameTypesSettings = gameTypesSettings;
         const playFrame = this.validator.createFrame(rawFrame);
@@ -1067,7 +1066,8 @@ class PlaySetup {
                                 return pot;
                             } else {
                                 // если не уменьшился баланс относительно запушенного И амаунт меньше макс амаунта И баланс > 0 - то игрок сфолдил здесь
-                                console.log(`test inside potCallFold// found move with position and did not fold before for chair: ${chair}, index: ${i}`);
+                                // console.log(`test inside potCallFold// found move with position and did not fold before for chair: ${chair}, index: ${i}`);
+
                                 if (this.rawActionList[i].balance - this.rawActionList[i].invest === playFrame.playPlayers[chair].curBalance
                                     && this.rawActionList[i].amount < maxAmount
                                     && this.rawActionList[i].balance - this.rawActionList[i].invest > 0) {     // fold here
@@ -1099,6 +1099,9 @@ class PlaySetup {
                                     this.rawActionList[i].amount + callAmount,
                                     this.initPlayers[chair].enumPosition,
                                     callAmount));
+
+                                console.log(`test inside callfold after call/check push/// this.rawActionList:`);
+                                console.log(this.rawActionList);
 
                                 this.fantomRawActionsCount++;
                                 return pot + callAmount;
