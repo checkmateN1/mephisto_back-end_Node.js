@@ -593,176 +593,169 @@ class PlaySetup {
                         // 1) определяем последнего повышающего. Если кроме него активны 2 и более игрока, которые могли повысить по стеку - отменяем подсказывание
                         // 2) если активный игрок кроме повышающего 1 - считаем, что повысил он.
                         // если не было повышений - отменяем подсказывание
-                        if (maxAmount) {
-                            let raisedChair = -1;
-                            let isMaxAgroAmountBBPost;
-                            for (let i = this.rawActionList.length - 1; i >= 0; i--) {
-                                if (this.initPlayers[chairWithMaxAmount].enumPosition === this.rawActionList[i].position) {
-                                    if (this.rawActionList[i].action === 0) {
-                                        isMaxAgroAmountBBPost = true;
-                                    }
-                                    break;
+                        let raisedChair = -1;
+                        let isMaxAgroAmountBBPost;
+                        for (let i = this.rawActionList.length - 1; i >= 0; i--) {
+                            if (this.initPlayers[chairFrom].enumPosition === this.rawActionList[i].position) {
+                                if (this.rawActionList[i].action === 0) {
+                                    isMaxAgroAmountBBPost = true;
                                 }
+                                break;
                             }
+                        }
 
-                            let freezeFantomRawActionsCount = 0;        // инкрементируем при добавлении не агрессивного действия за игрока
-                            const possibleToRaiseCount = this.movesOrder(this.initPlayers.length, this.getLastRawActionsChair(), isMaxAgroAmountBBPost ? chairFrom : this.getRecPositionBefore(this.initPlayers.length, chairFrom)).reduce((isSteelPossible, chair) => {
-                                console.log(`trying to find raisers inside possibleToRaiseCount = movesOrder// chair: ${chair}`);
-                                if (isSteelPossible && this.initPlayers[chair] !== undefined) {
-                                    // проверям, что игрок уже не колил макс амаунт
-                                    let isCallMaxAmount;
-                                    for (let i = this.rawActionList.length - 1; i >= 0; i--) {
-                                        if (this.initPlayers[chair].enumPosition === this.rawActionList[i].position && chair !== chairWithMaxAmount) {
-                                            if ((this.rawActionList[i].action === 3 || this.rawActionList[i].action === 4) && this.rawActionList[i].amount === maxAmount && this.rawActionList[i].street === currentStreet) {
-                                                isCallMaxAmount = true;
-                                            }
-                                            break;
+                        let freezeFantomRawActionsCount = 0;        // инкрементируем при добавлении не агрессивного действия за игрока
+                        const possibleToRaiseCount = this.movesOrder(this.initPlayers.length, this.getLastRawActionsChair(), isMaxAgroAmountBBPost ? chairFrom : this.getRecPositionBefore(this.initPlayers.length, chairFrom)).reduce((isSteelPossible, chair) => {
+                            console.log(`trying to find raisers inside possibleToRaiseCount = movesOrder// chair: ${chair}`);
+                            if (isSteelPossible && this.initPlayers[chair] !== undefined) {
+                                // проверям, что игрок уже не колил макс амаунт
+                                let isCallMaxAmount;
+                                for (let i = this.rawActionList.length - 1; i >= 0; i--) {
+                                    if (this.initPlayers[chair].enumPosition === this.rawActionList[i].position && chair !== chairFrom) {
+                                        if ((this.rawActionList[i].action === 3 || this.rawActionList[i].action === 4) && this.rawActionList[i].amount === maxAmount && this.rawActionList[i].street === currentStreet) {
+                                            isCallMaxAmount = true;
                                         }
+                                        break;
                                     }
+                                }
 
-                                    if (!isCallMaxAmount) {
-                                        const terminalBalance = playFrame.playPlayers[chair].curBalance + playFrame.playPlayers[chair].betAmount;
-                                        const nextRawActionBalance = this.getPrevRecBalanceOnCurStreet(chair);
-                                        const prevAmount = this.getPrevAmountOnCurStreet(chair);
-                                        const balanceDiff = nextRawActionBalance - terminalBalance;
-                                        if (!this.wasFoldBefore(chair)) {
-                                            console.log(`inside possibleToRaiseCount = movesOrder// chair: ${chair}, was not FoldBefore, balanceDiff: ${balanceDiff}`);
-                                            if (balanceDiff) {     // call-call or raise!
-                                                // raise
+                                if (!isCallMaxAmount) {
+                                    const terminalBalance = playFrame.playPlayers[chair].curBalance + playFrame.playPlayers[chair].betAmount;
+                                    const nextRawActionBalance = this.getPrevRecBalanceOnCurStreet(chair);
+                                    const prevAmount = this.getPrevAmountOnCurStreet(chair);
+                                    const balanceDiff = nextRawActionBalance - terminalBalance;
+                                    if (!this.wasFoldBefore(chair)) {
+                                        console.log(`inside possibleToRaiseCount = movesOrder// chair: ${chair}, was not FoldBefore, balanceDiff: ${balanceDiff}`);
+                                        if (balanceDiff) {     // call-call or raise!
+                                            // raise
+                                            this.rawActionList.push(new ActionString(
+                                                curStreet,
+                                                this.initPlayers[chair].player,
+                                                nextRawActionBalance,
+                                                enumPoker.enumPoker.actionsType.indexOf(maxAmount ? 'raise' : 'bet'),
+                                                this.rawActionList[this.rawActionList.length - 1].pot + this.rawActionList[this.rawActionList.length - 1].invest,
+                                                maxAmount + balanceDiff,
+                                                this.initPlayers[chair].enumPosition,
+                                                balanceDiff));
+
+                                            this.fantomRawActionsCount++;
+
+                                            const potIfAllCallFold = this.getCallFoldPot(playFrame, chair, maxAmount + balanceDiff);
+
+                                            if (potIfAllCallFold === potTerminal) {
+                                                if (raisedChair < 0) {
+                                                    raisedChair = chair;
+                                                } else {        // 2 or more raisers
+                                                    raisedChair = -1;
+                                                    return false;   // isSteelPossible = false;
+                                                }
+                                            }
+                                            this.restoreRawAction(freezeFantomRawActionsCount);
+
+                                            if (chair !== chairFrom) {
+                                                // call-call
+                                                const callAmount = Math.min(nextRawActionBalance + prevAmount, maxAmount);
                                                 this.rawActionList.push(new ActionString(
                                                     curStreet,
                                                     this.initPlayers[chair].player,
                                                     nextRawActionBalance,
-                                                    enumPoker.enumPoker.actionsType.indexOf('raise'),
+                                                    enumPoker.enumPoker.actionsType.indexOf(maxAmount ? 'call' : 'check'),
+                                                    this.rawActionList[this.rawActionList.length - 1].pot + this.rawActionList[this.rawActionList.length - 1].invest,
+                                                    callAmount,
+                                                    this.initPlayers[chair].enumPosition,
+                                                    Math.min(maxAmount - prevAmount, nextRawActionBalance)));
+
+                                                this.fantomRawActionsCount++;
+                                                freezeFantomRawActionsCount++;
+                                            }
+
+                                        } else {    // fold
+                                            this.rawActionList.push(new ActionString(
+                                                curStreet,
+                                                this.initPlayers[chair].player,
+                                                nextRawActionBalance,
+                                                enumPoker.enumPoker.actionsType.indexOf(maxAmount ? 'fold' : 'check'),
+                                                this.rawActionList[this.rawActionList.length - 1].pot + this.rawActionList[this.rawActionList.length - 1].invest,
+                                                prevAmount,
+                                                this.initPlayers[chair].enumPosition,
+                                                0));
+
+                                            this.fantomRawActionsCount++;
+                                            freezeFantomRawActionsCount++;
+                                        }
+                                    }
+                                }
+                            }
+                            return isSteelPossible;
+                        }, true);
+
+                        this.restoreRawAction();
+
+                        console.log(`possibleToRaiseCount: ${possibleToRaiseCount}, raisedChair: ${raisedChair}`);
+
+                        if (raisedChair > -1) {         // found ONE raiser!
+                            let passHero = false;
+                            this.movesOrder(this.initPlayers.length, this.getLastRawActionsChair(), isMaxAgroAmountBBPost ? chairFrom : this.getRecPositionBefore(this.initPlayers.length, chairFrom)).forEach(chair => {
+                                console.log(`after found raisedChair: ${raisedChair}, inside movesOrder// chair: ${chair}`);
+                                if (!passHero && this.initPlayers[chair] !== undefined) {
+                                    const terminalBalance = playFrame.playPlayers[chair].curBalance + playFrame.playPlayers[chair].betAmount;
+                                    const nextRawActionBalance = this.getPrevRecBalanceOnCurStreet(chair);
+                                    const prevAmount = this.getPrevAmountOnCurStreet(chair);
+                                    const balanceDiff = nextRawActionBalance - terminalBalance;
+                                    if (!this.wasFoldBefore(chair)) {
+                                        if (balanceDiff) {     // call-call or raise!
+                                            // raise
+                                            if (raisedChair === chair) {
+                                                this.rawActionList.push(new ActionString(
+                                                    curStreet,
+                                                    this.initPlayers[chair].player,
+                                                    nextRawActionBalance,
+                                                    enumPoker.enumPoker.actionsType.indexOf(maxAmount ? 'raise' : 'bet'),
                                                     this.rawActionList[this.rawActionList.length - 1].pot + this.rawActionList[this.rawActionList.length - 1].invest,
                                                     maxAmount + balanceDiff,
                                                     this.initPlayers[chair].enumPosition,
                                                     balanceDiff));
 
-                                                this.fantomRawActionsCount++;
-
-                                                const potIfAllCallFold = this.getCallFoldPot(playFrame, chair, maxAmount + balanceDiff);
-
-                                                if (potIfAllCallFold === potTerminal) {
-                                                    if (raisedChair < 0) {
-                                                        raisedChair = chair;
-                                                    } else {        // 2 or more raisers
-                                                        raisedChair = -1;
-                                                        return false;   // isSteelPossible = false;
-                                                    }
-                                                }
-                                                this.restoreRawAction(freezeFantomRawActionsCount);
-
-                                                if (chair !== chairWithMaxAmount) {
-                                                    // call-call
-                                                    const callAmount = Math.min(nextRawActionBalance + prevAmount, maxAmount);
-                                                    this.rawActionList.push(new ActionString(
-                                                        curStreet,
-                                                        this.initPlayers[chair].player,
-                                                        nextRawActionBalance,
-                                                        enumPoker.enumPoker.actionsType.indexOf('call'),
-                                                        this.rawActionList[this.rawActionList.length - 1].pot + this.rawActionList[this.rawActionList.length - 1].invest,
-                                                        callAmount,
-                                                        this.initPlayers[chair].enumPosition,
-                                                        Math.min(maxAmount - prevAmount, nextRawActionBalance)));
-
-                                                    this.fantomRawActionsCount++;
-                                                    freezeFantomRawActionsCount++;
-                                                }
-
-                                            } else {    // fold
+                                                this.getCallFoldPot(playFrame, chair, maxAmount + balanceDiff);
+                                                passHero = true;
+                                            } else {
+                                                // call-call
+                                                const callAmount = Math.min(nextRawActionBalance + prevAmount, maxAmount);
                                                 this.rawActionList.push(new ActionString(
                                                     curStreet,
                                                     this.initPlayers[chair].player,
                                                     nextRawActionBalance,
-                                                    enumPoker.enumPoker.actionsType.indexOf('fold'),
+                                                    enumPoker.enumPoker.actionsType.indexOf(maxAmount ? 'call' : 'check'),
                                                     this.rawActionList[this.rawActionList.length - 1].pot + this.rawActionList[this.rawActionList.length - 1].invest,
-                                                    prevAmount,
+                                                    callAmount,
                                                     this.initPlayers[chair].enumPosition,
-                                                    0));
-
-                                                this.fantomRawActionsCount++;
-                                                freezeFantomRawActionsCount++;
+                                                    Math.min(maxAmount - prevAmount, nextRawActionBalance)));
                                             }
+
+                                        } else {    // fold
+                                            this.rawActionList.push(new ActionString(
+                                                curStreet,
+                                                this.initPlayers[chair].player,
+                                                nextRawActionBalance,
+                                                enumPoker.enumPoker.actionsType.indexOf(maxAmount ? 'fold' : 'check'),
+                                                this.rawActionList[this.rawActionList.length - 1].pot + this.rawActionList[this.rawActionList.length - 1].invest,
+                                                prevAmount,
+                                                this.initPlayers[chair].enumPosition,
+                                                0));
                                         }
                                     }
                                 }
-                                return isSteelPossible;
-                            }, true);
+                            });
+                            this.fantomRawActionsCount = 0;
 
-                            this.restoreRawAction();
-
-                            console.log(`possibleToRaiseCount: ${possibleToRaiseCount}, raisedChair: ${raisedChair}`);
-
-                            if (raisedChair > -1) {         // found ONE raiser!
-                                let passHero = false;
-                                this.movesOrder(this.initPlayers.length, this.getLastRawActionsChair(), isMaxAgroAmountBBPost ? chairFrom : this.getRecPositionBefore(this.initPlayers.length, chairFrom)).forEach(chair => {
-                                    console.log(`after found raisedChair: ${raisedChair}, inside movesOrder// chair: ${chair}`);
-                                    if (!passHero && this.initPlayers[chair] !== undefined) {
-                                        const terminalBalance = playFrame.playPlayers[chair].curBalance + playFrame.playPlayers[chair].betAmount;
-                                        const nextRawActionBalance = this.getPrevRecBalanceOnCurStreet(chair);
-                                        const prevAmount = this.getPrevAmountOnCurStreet(chair);
-                                        const balanceDiff = nextRawActionBalance - terminalBalance;
-                                        if (!this.wasFoldBefore(chair)) {
-                                            if (balanceDiff) {     // call-call or raise!
-                                                // raise
-                                                if (raisedChair === chair) {
-                                                    this.rawActionList.push(new ActionString(
-                                                        curStreet,
-                                                        this.initPlayers[chair].player,
-                                                        nextRawActionBalance,
-                                                        enumPoker.enumPoker.actionsType.indexOf('raise'),
-                                                        this.rawActionList[this.rawActionList.length - 1].pot + this.rawActionList[this.rawActionList.length - 1].invest,
-                                                        maxAmount + balanceDiff,
-                                                        this.initPlayers[chair].enumPosition,
-                                                        balanceDiff));
-
-                                                    this.getCallFoldPot(playFrame, chair, maxAmount + balanceDiff);
-                                                    passHero = true;
-                                                } else {
-                                                    // call-call
-                                                    const callAmount = Math.min(nextRawActionBalance + prevAmount, maxAmount);
-                                                    this.rawActionList.push(new ActionString(
-                                                        curStreet,
-                                                        this.initPlayers[chair].player,
-                                                        nextRawActionBalance,
-                                                        enumPoker.enumPoker.actionsType.indexOf('call'),
-                                                        this.rawActionList[this.rawActionList.length - 1].pot + this.rawActionList[this.rawActionList.length - 1].invest,
-                                                        callAmount,
-                                                        this.initPlayers[chair].enumPosition,
-                                                        Math.min(maxAmount - prevAmount, nextRawActionBalance)));
-                                                }
-
-                                            } else {    // fold
-                                                this.rawActionList.push(new ActionString(
-                                                    curStreet,
-                                                    this.initPlayers[chair].player,
-                                                    nextRawActionBalance,
-                                                    enumPoker.enumPoker.actionsType.indexOf('fold'),
-                                                    this.rawActionList[this.rawActionList.length - 1].pot + this.rawActionList[this.rawActionList.length - 1].invest,
-                                                    prevAmount,
-                                                    this.initPlayers[chair].enumPosition,
-                                                    0));
-                                            }
-                                        }
-                                    }
-                                });
-                                this.fantomRawActionsCount = 0;
-
-                                console.log('запускаем повторно getMovesFromFrame после того как заполнили предыдущую улицу');
-                                if (!this.selfRestart) {
-                                    this.selfRestart += 1;
-                                    this.getMovesFromFrame(playFrame);    // запускаем еще раз фрейм, так как не все действия были добавлены при первом проходе
-                                }
-
-                            } else {
-                                console.log('Ошибка с рассчетом пота или 2 и более возможных рейзера');
-                                this.rejectHand = true;
-                                return false;
+                            console.log('запускаем повторно getMovesFromFrame после того как заполнили предыдущую улицу');
+                            if (!this.selfRestart) {
+                                this.selfRestart += 1;
+                                this.getMovesFromFrame(playFrame);    // запускаем еще раз фрейм, так как не все действия были добавлены при первом проходе
                             }
 
                         } else {
-                            console.log('невозможно определить повышающего после чеков! Отменяем подсказывание');
+                            console.log('Ошибка с рассчетом пота или 2 и более возможных рейзера');
                             this.rejectHand = true;
                             return false;
                         }
@@ -1237,7 +1230,6 @@ class PlaySetup {
         });
 
         // если видели кнопки на предыдущем фрейме а на текущем их нету..
-        // if (chairTo === undefined && this.prevPlayFrame && this.prevPlayFrame.isButtons && !playFrame.isButtons && this.prevPlayFrame.board.length === playFrame.board.length && this.prevPlayFrame.handNumber !== playFrame.handNumber) {     // hero's turn
         if (chairTo === undefined && this.prevPlayFrame && this.prevPlayFrame.isButtons && !playFrame.isButtons && this.prevPlayFrame.board.length === playFrame.board.length) {     // hero's turn
             console.log('nobody invested, but was buttons at previous frame and no buttons at the moment. Setting chairTo to heroRecPosition');
             console.log('this.prevPlayFrame');
@@ -1254,9 +1246,19 @@ class PlaySetup {
             const positionBefore = this.getRecPositionBefore(this.initPlayers.length, playFrame.heroRecPosition);
             console.log('see buttons and nobody invested and hero did not start first - setting chairTo as player before hero');
             chairTo = positionBefore;     // spin&go chair 2
-            // if (positionBefore !== lastRecPosition) {
-            //
-            // }
+        }
+
+        // если на новой улице первый ход хиро, но 2 фрейма нету кнопок и никто не вложил деньги - чайрТу = стул хиро(хиро чек)
+        if (chairTo === undefined
+            && isTerminalState
+            && !playFrame.isButtons
+            && !this.prevPlayFrame.isButtons
+            && lastRecPosition === playFrame.heroRecPosition
+            && this.prevPlayFrame.board.length === playFrame.board.length
+            && this.getStreetNumber(playFrame.board.length) > this.rawActionList[this.rawActionList.length - 1].street) {     // hero's turn
+
+            console.log(`two frames did not see buttons and hero turn at new street. Set chairTo as hero position`);
+            chairTo = playFrame.heroRecPosition;     // spin&go chair 2
         }
 
         return chairTo;
