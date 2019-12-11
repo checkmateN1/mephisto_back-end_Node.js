@@ -50,19 +50,19 @@ class Validator {
         this.prevFrame = null;
     }
 
-    createFrame(recFrame) {
-        console.log('frameCreator/// enter createFrame in validator. recFrame:');
-        console.log(recFrame);
+    createFrame(rawFrame) {
+        console.log('frameCreator/// enter createFrame in validator. rawFrame:');
+        console.log(rawFrame);
         this.playersCount = enumPoker.enumPoker.gameTypesSettings[this.playSetup.gameTypesSettings || 'Spin&Go'].playersCount;
         this.heroChair = enumPoker.enumPoker.gameTypesSettings[this.playSetup.gameTypesSettings || 'Spin&Go'].heroChair;
-        const dealers = Array(this.playersCount).fill().reduce((count, pl, i) => recFrame[`Player${i}_isDealer`].value === 'y' ? (count + 1) : count, 0);
+        const dealers = Array(this.playersCount).fill().reduce((count, pl, i) => rawFrame[`Player${i}_isDealer`].value === 'y' ? (count + 1) : count, 0);
 
         // console.log(`frameCreator/// this.heroChair: ${this.heroChair}, this.playersCount: ${this.playersCount}, dealers: ${dealers}`);
 
-        if (enumPoker.enumPoker.cardsSuits.includes(recFrame[`Player${this.heroChair}_hole1_suit`].value)
-            && enumPoker.enumPoker.cardsSuits.includes(recFrame[`Player${this.heroChair}_hole2_suit`].value)
-            && enumPoker.enumPoker.cardsValues.includes(recFrame[`Player${this.heroChair}_hole1_value`].value)
-            && enumPoker.enumPoker.cardsValues.includes(recFrame[`Player${this.heroChair}_hole2_value`].value)
+        if (enumPoker.enumPoker.cardsSuits.includes(rawFrame[`Player${this.heroChair}_hole1_suit`].value)
+            && enumPoker.enumPoker.cardsSuits.includes(rawFrame[`Player${this.heroChair}_hole2_suit`].value)
+            && enumPoker.enumPoker.cardsValues.includes(rawFrame[`Player${this.heroChair}_hole1_value`].value)
+            && enumPoker.enumPoker.cardsValues.includes(rawFrame[`Player${this.heroChair}_hole2_value`].value)
             && dealers > 0) {
             // good frame
             // console.log('frameCreator/// createFrame: good frame!');
@@ -72,21 +72,21 @@ class Validator {
             return INVALID_FRAME;
         }
 
-        const isNewHand = this.checkNewHand(recFrame);
+        const isNewHand = this.checkNewHand(rawFrame);
         console.log(`frameCreator/// createFrame: isNewHand: ${isNewHand}, this.playSetup.rejectHand: ${this.playSetup.rejectHand}`);
         if (this.playSetup.rejectHand && !isNewHand) {
             console.log(`this.playSetup.rejectHand/// INVALID_FRAME`);
             return INVALID_FRAME;
         }
 
-        if (isNewHand && enumPoker.enumPoker.cardsSuits.includes(recFrame.Card1_suit.value)) {           // reject new hand with any board cards
+        if (isNewHand && enumPoker.enumPoker.cardsSuits.includes(rawFrame.Card1_suit.value)) {           // reject new hand with any board cards
             this.playSetup.rejectHand = true;
             console.log(`frameCreator/// createFrame: New hand and see flop already. INVALID_FRAME`);
             return INVALID_FRAME;
         }
 
-        const validFrame = this.validateFrame(recFrame, isNewHand);
-        this.prevFrame = recFrame;
+        const validFrame = this.validateFrame(rawFrame, isNewHand);
+        this.prevFrame = rawFrame;
 
         if (validFrame === INVALID_FRAME) {
             console.log('frameCreator/// invalid frame after validateFrame');
@@ -162,20 +162,21 @@ class Validator {
         }
     };
 
-    validateFrame(recFrame, isNewHand) {
+    validateFrame(rawFrame, isNewHand) {
         console.log('frameCreator/// enter validateFrame');
         const playerBalances = {};
         const playerBets = {};
         let unclearBalancesCount = 0;
         let dealersCount = 0;
         let activeCount = 0;
+        let emptyChairs = [];   // хранит true/false в соответствующих номеру стула в начале новой руки
 
         Array(this.playersCount).fill().forEach((pl, i) => {
             const player_balance = `Player${i}_balance`;
-            if (regAllin.test(recFrame[player_balance])) {
+            if (regAllin.test(rawFrame[player_balance])) {
                 playerBalances[player_balance] = 0;
             } else {
-                const matchBalance = recFrame[player_balance].match(regBalance);
+                const matchBalance = rawFrame[player_balance].match(regBalance);
                 playerBalances[player_balance] = matchBalance ? Math.round((+matchBalance[0]
                     .replace(/(\s{1,2})*(?=(\d{0,2}(?=(\.|\,))))/, '')
                     .replace(/\s(?=\d)/, '')
@@ -184,7 +185,7 @@ class Validator {
             }
 
             const player_bet = `Player${i}_bet`;
-            const matchBet = recFrame[player_bet].match(regBet);
+            const matchBet = rawFrame[player_bet].match(regBet);
             playerBets[player_bet] = matchBet ? Math.round((+matchBet[0]
                     .replace(/(\.|\,)+(?=(\d)){0,1}/, '.')) * 100)
                 : 0;
@@ -192,8 +193,9 @@ class Validator {
             if (!this.isNumber(playerBets[player_bet])) {
                 playerBets[player_bet] = 0;
             }
-            // console.log(`check empty chair in validator: isNewHand: ${isNewHand}, chair: ${i}, isNotDealer: ${recFrame[`Player${i}_isDealer`].value !== 'y'}, isNotActive: ${recFrame[`Player${i}_isActive`].value !== 'y'}, Math.round(playerBets[player_bet]) === 0 : ${Math.round(playerBets[player_bet]) === 0}`);
-            const isEmptyChair = isNewHand && recFrame[`Player${i}_isDealer`].value !== 'y' && recFrame[`Player${i}_isActive`].value !== 'y' && playerBets[player_bet] === 0;
+            // console.log(`check empty chair in validator: isNewHand: ${isNewHand}, chair: ${i}, isNotDealer: ${rawFrame[`Player${i}_isDealer`].value !== 'y'}, isNotActive: ${rawFrame[`Player${i}_isActive`].value !== 'y'}, Math.round(playerBets[player_bet]) === 0 : ${Math.round(playerBets[player_bet]) === 0}`);
+            const isEmptyChair = isNewHand && rawFrame[`Player${i}_isDealer`].value !== 'y' && rawFrame[`Player${i}_isActive`].value !== 'y' && playerBets[player_bet] === 0;
+            emptyChairs[i] = isEmptyChair;
 
             if (!this.isNumber(playerBalances[player_balance])) {
                 // если баланс не цифра и у игрока нету дилера и он не активен и новая рука и ставка не число - считаем стул пустым и не плюсуем к грязным балансам
@@ -205,18 +207,19 @@ class Validator {
                     playerBalances[player_balance] = 100000;
                 }
             }
-            // console.log(`frameCreator/// recFrame[\`Player${i}_isDealer\`].value: ${recFrame[`Player${i}_isDealer`].value}`);
-            if (recFrame[`Player${i}_isDealer`].value === 'y') {
+            // console.log(`frameCreator/// rawFrame[\`Player${i}_isDealer\`].value: ${rawFrame[`Player${i}_isDealer`].value}`);
+            if (rawFrame[`Player${i}_isDealer`].value === 'y') {
                 dealersCount++;
             }
-            // console.log(`frameCreator/// recFrame[\`Player${i}_isActive\`].value: ${recFrame[`Player${i}_isActive`].value}`);
-            if (recFrame[`Player${i}_isActive`].value === 'y' || i === this.heroChair) {
+            // console.log(`frameCreator/// rawFrame[\`Player${i}_isActive\`].value: ${rawFrame[`Player${i}_isActive`].value}`);
+            if (rawFrame[`Player${i}_isActive`].value === 'y' || i === this.heroChair) {
                 activeCount++;
             }
             console.log(`playerBalances[${i}]: ${playerBalances[player_balance]}, playerBets[${i}]: ${playerBets[player_bet]}`);
         });
 
-        const matchPot = recFrame.Pot.match(regPot);
+        const clearPot = rawFrame.Pot.replace(/.*(?=P)/, '');   // убрали символы до слова Pot так как бывают цифры
+        const matchPot = clearPot.match(regPot);
         const pot = {
             Pot: matchPot ? Math.round((+matchPot[0]
                     .replace(/S/, 5)
@@ -230,46 +233,60 @@ class Validator {
         const isPotBetsEqual = pot.Pot === Object.keys(playerBets).reduce((sum, bet) => sum + playerBets[bet], 0);
 
         //dismiss one frame for waiting async balance-bet-pot appearing
-        if (!this.dismissCount) {
-            let hashSum;
-            if (this.playSetup.gameTypesSettings === 'Spin&Go') {
-                const balances = Object.keys(playerBalances).reduce((sum, player) => sum + playerBalances[player], 0);
-                const diff = this.getMinHashSumDiff(pot.Pot + balances, enumPoker.enumPoker.gameTypesSettings['Spin&Go'].hashSum);
-                if (diff > 2) {
-                    console.log('frameCreator/// validator // new hand! wrong hash sum balances and pot not equal one of Spin&Go hash constants');
-                    this.dismissCount++;
+        let hashSum;
+        if (this.playSetup.gameTypesSettings === 'Spin&Go' && isNewHand) {
+            const balances = Object.keys(playerBalances).reduce((sum, player) => sum + playerBalances[player], 0);
+            const diff = this.getMinHashSumDiff(pot.Pot + balances, enumPoker.enumPoker.gameTypesSettings['Spin&Go'].hashSum);
+            const emptyChair = emptyChairs.indexOf(true);
+            if (diff > 2) {
+                // проверяем diff еще раз если пустой стул empty с неправильным пустым цифро-балансом
+                if (emptyChair !== -1) {
+                    const balancesNew = Object.keys(playerBalances).reduce((sum, player, i) => sum + (i === emptyChair ? 0 : playerBalances[player]), 0);
+                    const diffNew = this.getMinHashSumDiff(pot.Pot + balancesNew, enumPoker.enumPoker.gameTypesSettings['Spin&Go'].hashSum);
+                    if (diffNew > 2) {
+                        console.log('frameCreator/// validator // wrong hash sum balances and pot not equal one of Spin&Go hash constants');
+                        console.log(`diff: ${diff}, diffNew: ${diffNew}, pot.Pot: ${pot.Pot}, balances: ${balances}`);
+                        return INVALID_FRAME;
+                    } else {
+                        console.log(`new hand and check hash blinds sum/// diffNew: ${diffNew}`);
+                    }
+                } else {
+                    console.log('frameCreator/// validator // wrong hash sum balances and pot not equal one of Spin&Go hash constants');
+                    console.log(`diff: ${diff}, pot.Pot: ${pot.Pot}, balances: ${balances}`);
                     return INVALID_FRAME;
                 }
             }
+            console.log(`new hand and check hash blinds sum/// diff: ${diff}`);
+            hashSum = true;
         }
-        this.dismissCount = 0;
 
         if (isNewHand) {
             if (!unclearBalancesCount
                 && isPotNumber
                 && isPotBetsEqual
+                && hashSum
                 && dealersCount === 1
                 && activeCount > 1) {     // good first frame
                 console.log('frameCreator/// good first frame');
-                return Object.assign(recFrame, pot, playerBets, playerBalances);
+                return Object.assign(rawFrame, pot, playerBets, playerBalances);
             } else {
                 if (!isPotBetsEqual) {
                     let dealerPosition;
                     const playersWasActive = Array(this.playersCount).fill().map((player, i) => {
                         let isGoodCards;
                         if (i === this.heroChair) {
-                            const hole1Value = recFrame[`Player${i}_hole1_value`].value;
-                            const hole2Value = recFrame[`Player${i}_hole2_value`].value;
-                            const hole1Suit = recFrame[`Player${i}_hole1_suit`].value;
-                            const hole2Suit = recFrame[`Player${i}_hole2_suit`].value;
+                            const hole1Value = rawFrame[`Player${i}_hole1_value`].value;
+                            const hole2Value = rawFrame[`Player${i}_hole2_value`].value;
+                            const hole1Suit = rawFrame[`Player${i}_hole1_suit`].value;
+                            const hole2Suit = rawFrame[`Player${i}_hole2_suit`].value;
                             isGoodCards = enumPoker.enumPoker.cardsValues.includes(hole1Value)
                                 && enumPoker.enumPoker.cardsValues.includes(hole2Value)
                                 && enumPoker.enumPoker.cardsSuits.includes(hole1Suit)
                                 && enumPoker.enumPoker.cardsSuits.includes(hole2Suit);
                         }
                         const bet = playerBets[`Player${i}_bet`];
-                        const isActive = recFrame[`Player${i}_isActive`].value === 'y';
-                        const isDealer = recFrame[`Player${i}_isDealer`].value === 'y';
+                        const isActive = rawFrame[`Player${i}_isActive`].value === 'y';
+                        const isDealer = rawFrame[`Player${i}_isDealer`].value === 'y';
                         if (isDealer) {
                             dealerPosition = i;
                         }
@@ -394,7 +411,7 @@ class Validator {
                         && dealersCount === 1
                         && activeCount > 1) {     // good first frame with artificial blinds
                         console.log('frameCreator/// good first frame with artificial blinds!');
-                        return Object.assign(recFrame, pot, playerBets, playerBalances);
+                        return Object.assign(rawFrame, pot, playerBets, playerBalances);
                     } else {
                         console.log('frameCreator/// bad first frame: pot and bets are equal but something else not');
                         return INVALID_FRAME;
@@ -408,10 +425,10 @@ class Validator {
             if (!isPotNumber) {
                 pot.Pot = 0;
             }
-            const isNewStreet = this.isStreetChanged(recFrame);
+            const isNewStreet = this.isStreetChanged(rawFrame);
             const currentStreet = this.playSetup.rawActionList[this.playSetup.rawActionList.length - 1].street;
             const isTerminalStreetState = this.playSetup.isTerminalStreetState();
-            console.log(`frameCreator/// validator   not new hand, isNewStreet: ${isNewStreet}, isTerminalStreetState: ${isTerminalStreetState}`);
+            console.log(`frameCreator/// validator not new hand, isNewStreet: ${isNewStreet}, isTerminalStreetState: ${isTerminalStreetState}`);
 
             // if (isTerminalStreetState && !isNewStreet) {
             //     console.log('frameCreator/// терминальное состояние и нету следующей карты - ждем следующую улицу');
@@ -423,10 +440,14 @@ class Validator {
             const balancesDiff = this.playSetup.initPlayers.reduce((balancesDiff, player, i) => {
                 if (this.playSetup.initPlayers[i] !== undefined) {
                     if (this.playSetup.wasFoldBefore(i)) {         // compare last move balance with init balance
+                        console.log(`inside balancesDiff/// player folded before! chair: ${i}, initBalance: ${this.playSetup.initPlayers[i].initBalance}, this.playSetup.getLastValidMoveBalance(i): ${this.playSetup.getLastValidMoveBalance(i)}`);
                         balancesDiffArr[i] = this.playSetup.initPlayers[i].initBalance - this.playSetup.getLastValidMoveBalance(i);
+                        console.log(`balancesDiff: ${balancesDiff}, balancesDiffArr[i]: ${balancesDiffArr[i]}`);
                         return balancesDiff + balancesDiffArr[i];
                     } else {
+                        console.log(`inside balancesDiff/// chair: ${i}, initBalance: ${this.playSetup.initPlayers[i].initBalance}`);
                         balancesDiffArr[i] = this.playSetup.initPlayers[i].initBalance - playerBalances[`Player${i}_balance`];
+                        console.log(`balancesDiff: ${balancesDiff}, balancesDiffArr[i]: ${balancesDiffArr[i]}`);
                         return balancesDiff + balancesDiffArr[i];
                     }
                 } else {
@@ -538,29 +559,29 @@ class Validator {
 
                     // 3) прирос пот но не изменились балансы и при этом хоть как-то изменился бет одного из игроков(скорее всего у него асинхронная ставка)
                     //
-                    if (!isNewHand) {
-                        let isInvalidFrame;
-                        const asyncCount = this.playSetup.initPlayers.forEach((player, i) => {
-                            if (player !== undefined && !this.playSetup.wasFoldBefore(i)) {
-                                const lastValidBalance = this.playSetup.getLastValidMoveBalance(i);
-                                const lastValidAmount = this.playSetup.getLastValidMoveAmount(i);
-                                const curBalance = playerBalances[`Player${i}_balance`];
-                                const curAmount = playerBets[`Player${i}_bet`];
-
-                                if (lastValidAmount === curAmount
-                                    && lastValidBalance > curBalance) {
-                                    console.log(`dismiss 1 frame: async player invest detected!`);
-                                    isInvalidFrame = true;
-                                }
-                            }
-                        });
-                        if (isInvalidFrame) {
-                            return INVALID_FRAME;
-                        }
-
-                        // проверка и исправление баланса в прошлом
-
-                    }
+                    // if (!isNewHand) {
+                    //     let isInvalidFrame;
+                    //     const asyncCount = this.playSetup.initPlayers.forEach((player, i) => {
+                    //         if (player !== undefined && !this.playSetup.wasFoldBefore(i)) {
+                    //             const lastValidBalance = this.playSetup.getLastValidMoveBalance(i);
+                    //             const lastValidAmount = this.playSetup.getLastValidMoveAmount(i);
+                    //             const curBalance = playerBalances[`Player${i}_balance`];
+                    //             const curAmount = playerBets[`Player${i}_bet`];
+                    //
+                    //             if (lastValidAmount === curAmount
+                    //                 && lastValidBalance > curBalance) {
+                    //                 console.log(`dismiss 1 frame: async player invest detected!`);
+                    //                 isInvalidFrame = true;
+                    //             }
+                    //         }
+                    //     });
+                    //     if (isInvalidFrame) {
+                    //         return INVALID_FRAME;
+                    //     }
+                    //
+                    //     // проверка и исправление баланса в прошлом
+                    //
+                    // }
 
                     const balancesDiffArrBets = [];
                     const balancesDiffByBets = this.playSetup.initPlayers.reduce((balancesDiff, player, i) => {
@@ -578,6 +599,7 @@ class Validator {
                     }, 0);
 
                     if (pot.Pot === balancesDiffByBets) {     // pot and bets are correct
+                        console.log(`pot or balances are wrong/// pot.Pot === balancesDiffByBets, setting new valid balances`);
                         this.playSetup.initPlayers.forEach((player, i) => {
                             if (player !== undefined) {
                                 playerBalances[`Player${i}_balance`] = this.playSetup.initPlayers[i].initBalance - balancesDiffArrBets[i];
@@ -624,7 +646,7 @@ class Validator {
                         if (maxAmount !== undefined) {
                             // знаем макс амаунт и можем проверить пот или все балансы по ставкам + амаунт, а затем установить всем валидные балансы или пот
                             // определяем кто сфолдил между фреймами и высчитываем для него возможные места фолда
-                            const foldChair = this.getFoldedChair(recFrame);
+                            const foldChair = this.getFoldedChair(rawFrame);
 
                             if (foldChair !== undefined) {  // found one folded player
                                 // create an arr with possible maxAmounts
@@ -755,7 +777,7 @@ class Validator {
                             // }, amountAVG);
                             //
                             //
-                            // const foldChair = this.getFoldedChair(recFrame);
+                            // const foldChair = this.getFoldedChair(rawFrame);
                             // let foldAmount;
                             // if (foldChair !== undefined) {  // somebody folded between frames
                             //     // 1) проверяем что фолдун не колил макс амаунт
@@ -847,15 +869,15 @@ class Validator {
                 }
             }
         }
-        return Object.assign(recFrame, pot, playerBets, playerBalances);
+        return Object.assign(rawFrame, pot, playerBets, playerBalances);
     }
 
-    getFoldedChair(recFrame) {
+    getFoldedChair(rawFrame) {
         let foldChair;
         this.playSetup.initPlayers.reduce((isFound, player, i) => {
             if (!isFound) {
                 if (player !== undefined) {
-                    if (!this.playSetup.wasFoldBefore(i) && recFrame[`Player${i}_isActive`].value === 'n') {  // folded between frames
+                    if (!this.playSetup.wasFoldBefore(i) && rawFrame[`Player${i}_isActive`].value === 'n') {  // folded between frames
                         foldChair = i;
                         return true;
                     }
@@ -873,17 +895,17 @@ class Validator {
         }, 100500);
     }
 
-    isStreetChanged(recFrame) {
+    isStreetChanged(rawFrame) {
         if (this.playSetup.rawActionList[this.playSetup.rawActionList.length - 1].street === 0) {
-            if (enumPoker.enumPoker.cardsSuits.includes(recFrame.Card3_suit.value)        // flop appeared
-                && enumPoker.enumPoker.cardsValues.includes(recFrame.Card3_value.value)
-                && enumPoker.enumPoker.cardsSuits.includes(recFrame.Card2_suit.value)
-                && enumPoker.enumPoker.cardsValues.includes(recFrame.Card2_value.value)
-                && enumPoker.enumPoker.cardsSuits.includes(recFrame.Card1_suit.value)
-                && enumPoker.enumPoker.cardsValues.includes(recFrame.Card1_value.value)) {
+            if (enumPoker.enumPoker.cardsSuits.includes(rawFrame.Card3_suit.value)        // flop appeared
+                && enumPoker.enumPoker.cardsValues.includes(rawFrame.Card3_value.value)
+                && enumPoker.enumPoker.cardsSuits.includes(rawFrame.Card2_suit.value)
+                && enumPoker.enumPoker.cardsValues.includes(rawFrame.Card2_value.value)
+                && enumPoker.enumPoker.cardsSuits.includes(rawFrame.Card1_suit.value)
+                && enumPoker.enumPoker.cardsValues.includes(rawFrame.Card1_value.value)) {
                 console.log(`frameValidator /// isStreetChanged// // flop appeared`);
-                if (enumPoker.enumPoker.cardsSuits.includes(recFrame.Card4_suit.value)
-                    && enumPoker.enumPoker.cardsValues.includes(recFrame.Card4_value.value)) {
+                if (enumPoker.enumPoker.cardsSuits.includes(rawFrame.Card4_suit.value)
+                    && enumPoker.enumPoker.cardsValues.includes(rawFrame.Card4_value.value)) {
                     console.log(`frameValidator /// isStreetChanged// // turn appeared`);
                 }
                 return true;
@@ -891,11 +913,11 @@ class Validator {
                 return false;
             }
         } else if (this.playSetup.rawActionList[this.playSetup.rawActionList.length - 1].street === 1) {
-            if (enumPoker.enumPoker.cardsSuits.includes(recFrame.Card4_suit.value)
-                && enumPoker.enumPoker.cardsValues.includes(recFrame.Card4_value.value)) {    // turn appeared
+            if (enumPoker.enumPoker.cardsSuits.includes(rawFrame.Card4_suit.value)
+                && enumPoker.enumPoker.cardsValues.includes(rawFrame.Card4_value.value)) {    // turn appeared
                 console.log(`frameValidator /// isStreetChanged// // turn appeared`);
-                if (enumPoker.enumPoker.cardsSuits.includes(recFrame.Card5_suit.value)
-                    && enumPoker.enumPoker.cardsValues.includes(recFrame.Card5_value.value)) {    // but not river
+                if (enumPoker.enumPoker.cardsSuits.includes(rawFrame.Card5_suit.value)
+                    && enumPoker.enumPoker.cardsValues.includes(rawFrame.Card5_value.value)) {    // but not river
                     console.log(`frameValidator /// isStreetChanged// // river appeared`);
                 }
                 return true;
@@ -903,8 +925,8 @@ class Validator {
                 return false;
             }
         } else if (this.playSetup.rawActionList[this.playSetup.rawActionList.length - 1].street === 2) {
-            return enumPoker.enumPoker.cardsSuits.includes(recFrame.Card5_suit.value)
-                && enumPoker.enumPoker.cardsValues.includes(recFrame.Card5_value.value);
+            return enumPoker.enumPoker.cardsSuits.includes(rawFrame.Card5_suit.value)
+                && enumPoker.enumPoker.cardsValues.includes(rawFrame.Card5_value.value);
         } else {
             return false;
         }
@@ -915,7 +937,7 @@ class Validator {
         return newHandNumber !== this.playSetup.handNumber ? newHandNumber : this.getHandNumber();
     }
 
-    checkNewHand(recFrame) {
+    checkNewHand(rawFrame) {
         if (this.prevFrame === null) {
             console.log(`frameCreator/// checkNewHand// this.prevFrame === null: ${this.prevFrame === null}`);
             return true;
@@ -925,12 +947,12 @@ class Validator {
         const sumBoardCardsDiff = Array(5).fill().reduce((sum, card, i) => {
             return sum + (((this.prevFrame[`Card${i+1}_suit`].value !== 'None'
                 || this.prevFrame[`Card${i+1}_value`].value !== 'None')
-                && recFrame[`Card${i+1}_suit`].value === 'None') ? 1 : 0);
+                && rawFrame[`Card${i+1}_suit`].value === 'None') ? 1 : 0);
         }, 0);
 
         // dealer
         const isDealerMoved = Array(this.playersCount).fill().reduce((count, pl, i) => {
-            const isChanged = recFrame[`Player${i}_isDealer`].value !== this.prevFrame[`Player${i}_isDealer`].value;
+            const isChanged = rawFrame[`Player${i}_isDealer`].value !== this.prevFrame[`Player${i}_isDealer`].value;
             return count + (isChanged ? 1 : 0);
         }, 0) === 2; // 2 - one disappeared and another one appeared
 
@@ -941,10 +963,10 @@ class Validator {
             return true;
         }
         // hero
-        const hole1_suit = recFrame[`Player${this.heroChair}_hole1_suit`].value;
-        const hole2_suit = recFrame[`Player${this.heroChair}_hole2_suit`].value;
-        const hole1_value = recFrame[`Player${this.heroChair}_hole1_value`].value;
-        const hole2_value = recFrame[`Player${this.heroChair}_hole2_value`].value;
+        const hole1_suit = rawFrame[`Player${this.heroChair}_hole1_suit`].value;
+        const hole2_suit = rawFrame[`Player${this.heroChair}_hole2_suit`].value;
+        const hole1_value = rawFrame[`Player${this.heroChair}_hole1_value`].value;
+        const hole2_value = rawFrame[`Player${this.heroChair}_hole2_value`].value;
 
         const isHeroHand = hole1_suit !== 'None' && hole2_suit !== 'None' && hole1_value !== 'None' && hole2_value !== 'None';
 

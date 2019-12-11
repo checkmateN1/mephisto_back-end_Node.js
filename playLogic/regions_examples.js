@@ -33,6 +33,7 @@ str[29] = 'A11-111';                  // All-in
 str[30] = 'Pot: 24 BB 171';           // 24
 str[31] = 'POot: 4BB -...';           // 4
 str[32] = 'Potz 2 BB';           // 2!
+str[33] = '1 Pot: 2 BB';           // 2!
 
 // balances
 const balances = [];
@@ -45,7 +46,6 @@ balances[5] = '38 4 BB';          // 38.4
 balances[6] = '4 8 BB';             // 48
 balances[7] = '10.05 BB';          // 10.05
 balances[8] = '24.95 BB';          // 24.95
-
 
 // bets
 const bets = [];
@@ -68,32 +68,32 @@ const regBet = /\d+(?!([A-Z])){0,4}((\.|\,){0,3}\d{1,2}){0,1}/;
 // const regBalance = /\d+\S{0,1}\d/;
 
 // pot
-// str.forEach(str => {
-//     if (regAllin.test(str)) {
-//         console.log(`input: ${str};    output: 0`);
-//     } else {
-//         const matchArr = str.match(regPot);
-//         console.log(`input: ${str};    output: ${matchArr ? matchArr[0]
-//                 .replace(/S/, 5)
-//                 .replace(/D/, 0)
-//                 .replace(/(\.|\,)+(?=(\d)){0,1}/, '.')
-//             : null}`);
-//     }
-// });
-
-// // balances
-balances.forEach(str => {
-    if (!regBalance.test(str)) {
-        console.log(`input: ${str};    output: 0 or fail`);
+str.forEach(str => {
+    if (regAllin.test(str)) {
+        console.log(`input: ${str};    output: 0`);
     } else {
-        const matchArr = str.match(regBalance);
+        const matchArr = str.match(regPot);
         console.log(`input: ${str};    output: ${matchArr ? matchArr[0]
-                .replace(/(\s{1,2})*(?=(\d{0,2}(?=(\.|\,))))/, '')
-                .replace(/\s(?=\d)/, '')
+                .replace(/S/, 5)
+                .replace(/D/, 0)
                 .replace(/(\.|\,)+(?=(\d)){0,1}/, '.')
             : null}`);
     }
 });
+
+// // balances
+// balances.forEach(str => {
+//     if (!regBalance.test(str)) {
+//         console.log(`input: ${str};    output: 0 or fail`);
+//     } else {
+//         const matchArr = str.match(regBalance);
+//         console.log(`input: ${str};    output: ${matchArr ? matchArr[0]
+//                 .replace(/(\s{1,2})*(?=(\d{0,2}(?=(\.|\,))))/, '')
+//                 .replace(/\s(?=\d)/, '')
+//                 .replace(/(\.|\,)+(?=(\d)){0,1}/, '.')
+//             : null}`);
+//     }
+// });
 
 // bets
 // console.log('bets');
