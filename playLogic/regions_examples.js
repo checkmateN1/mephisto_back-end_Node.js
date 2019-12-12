@@ -28,12 +28,11 @@ str[24] = 'All-in';                  // 0
 str[25] = 'Pot 4,0 BB 4...';                  // 4.0
 str[26] = 'Pot: B,0 BB .,';                  // 8.0
 str[27] = '23 0 BB';                  // 23.0
-str[28] = '411-111';                  // All-in
-str[29] = 'A11-111';                  // All-in
 str[30] = 'Pot: 24 BB 171';           // 24
 str[31] = 'POot: 4BB -...';           // 4
 str[32] = 'Potz 2 BB';           // 2!
 str[33] = '1 Pot: 2 BB';           // 2!
+str[34] = 'Pot: 2 8B ..';           // 2!!
 
 // balances
 const balances = [];
@@ -46,6 +45,11 @@ balances[5] = '38 4 BB';          // 38.4
 balances[6] = '4 8 BB';             // 48
 balances[7] = '10.05 BB';          // 10.05
 balances[8] = '24.95 BB';          // 24.95
+balances[9] = 'S34 BB';          // 34
+balances[10] = '15.6 5 BB';          // 15.65
+balances[11] = '5.6 5 BB';          // 5.65     test
+balances[12] = '5.6 5BB';          // 5.65      test
+balances[13] = '16.3 B BB';          // 16.38
 
 // bets
 const bets = [];
@@ -63,37 +67,38 @@ bets[8] = '1 BB';           // 1
 // const regPot = /(S|D|B|\d)+(?!\S){0,4}((\.|\,){0,3}\d{1,2})/;
 const regPot = /(S|D|\d)+(?!\s\d)((\.|\,){0,3}\d{1,2}){0,1}/;
 const regAllin = /(all|((4|A)(1|L|I)(1|L|I)-))/i;
-const regBalance = /(S|D|\d)+\s{0,1}\d{0,2}(\.|\,){0,3}\d{0,2}/;
+const regBalance = /\d+\s{0,1}\d{0,2}(\.|\,){0,3}\d{0,2}/;
 const regBet = /\d+(?!([A-Z])){0,4}((\.|\,){0,3}\d{1,2}){0,1}/;
 // const regBalance = /\d+\S{0,1}\d/;
 
 // pot
-str.forEach(str => {
-    if (regAllin.test(str)) {
-        console.log(`input: ${str};    output: 0`);
+// str.forEach(str => {
+//     let clearPot = str.replace(/.*(?=P)/, '').replace(/(?<=\d)(\s8B)/, ' BB');   // убрали символы до слова Pot так как бывают цифры + 8B = BB
+//     const matchPot = clearPot.match(regPot);
+//     const pot = {
+//         Pot: matchPot ? Math.round((+matchPot[0]
+//                 .replace(/S/, 5)
+//                 .replace(/D/, 0)
+//                 .replace(/(\.|\,)+(?=(\d)){0,1}/, '.')) * 100)
+//             : 0,
+//     };
+//     console.log(`input: ${str};    output: ${pot.Pot}`);
+// });
+
+// // balances
+balances.forEach(str => {
+    if (!regBalance.test(str)) {
+        console.log(`input: ${str};    output: 0 or fail`);
     } else {
-        const matchArr = str.match(regPot);
+        const strNew = str.replace(/(?<=\.\d\s)B(?=\sB)/, '8').replace(/(?<=\d{1,2}\.\d)\s(?=\d)/, '');
+        const matchArr = strNew.match(regBalance);
         console.log(`input: ${str};    output: ${matchArr ? matchArr[0]
-                .replace(/S/, 5)
-                .replace(/D/, 0)
+                .replace(/(\s{1,2})*(?=(\d{0,2}(?=(\.|\,))))/, '')
+                .replace(/\s(?=\d)/, '')
                 .replace(/(\.|\,)+(?=(\d)){0,1}/, '.')
             : null}`);
     }
 });
-
-// // balances
-// balances.forEach(str => {
-//     if (!regBalance.test(str)) {
-//         console.log(`input: ${str};    output: 0 or fail`);
-//     } else {
-//         const matchArr = str.match(regBalance);
-//         console.log(`input: ${str};    output: ${matchArr ? matchArr[0]
-//                 .replace(/(\s{1,2})*(?=(\d{0,2}(?=(\.|\,))))/, '')
-//                 .replace(/\s(?=\d)/, '')
-//                 .replace(/(\.|\,)+(?=(\d)){0,1}/, '.')
-//             : null}`);
-//     }
-// });
 
 // bets
 // console.log('bets');
