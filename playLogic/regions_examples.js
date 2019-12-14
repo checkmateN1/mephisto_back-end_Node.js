@@ -50,6 +50,7 @@ balances[10] = '15.6 5 BB';          // 15.65
 balances[11] = '5.6 5 BB';          // 5.65     test
 balances[12] = '5.6 5BB';          // 5.65      test
 balances[13] = '16.3 B BB';          // 16.38
+balances[14] = '24 5 BB';          // 24.5
 
 // bets
 const bets = [];

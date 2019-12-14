@@ -897,6 +897,7 @@ class Validator {
     }
 
     getMinHashSumDiff(sum, hashesArr) {
+        console.log(`inside diff calculating// sum: ${sum}`);
         return hashesArr.reduce((epsilon, cur) => {
             const min = Math.abs(cur - sum);
             return min < epsilon ? min : epsilon;

@@ -1110,7 +1110,9 @@ class PlaySetup {
         const isBBCanCheck = currentStreet === 0 && this.getLastRawAction(chairWithMaxAmount) === 0;    // bb raise last on preflop and had max amount
         const chairTo = isBBCanCheck ? chairWithMaxAmount : this.getRecPositionBefore(this.initPlayers.length, chairWithMaxAmount);
         return this.movesOrder(this.initPlayers.length, this.getLastRawActionsChair(), chairTo).reduce((pot, chair) => {
-            // console.log(`inside getCallFoldPot/// chair: ${chair}`);
+            console.log(`inside getCallFoldPot/// chair: ${chair}`);
+            console.log(`inside getCallFoldPot/// this.rawActionlist in start getCallFoldPot`);
+            console.log(this.rawActionList);
             if (this.initPlayers[chair] !== undefined) {
                 for (let i = this.rawActionList.length - 1; i >= -1; i--) {
                     if (i > -1 && (street || currentStreet) === this.rawActionList[i].street) {
@@ -1121,8 +1123,8 @@ class PlaySetup {
                                 return pot;
                             } else {
                                 // если не уменьшился баланс относительно запушенного И амаунт меньше макс амаунта И баланс > 0 - то игрок сфолдил здесь
-                                // console.log(`test inside potCallFold// found move with position and did not fold before for chair: ${chair}, index: ${i}`);
-
+                                console.log(`test inside potCallFold// found move with position and did not fold before for chair: ${chair}, index: ${i}`);
+                                console.log(`this.rawActionList[i].balance - this.rawActionList[i].invest: ${this.rawActionList[i].balance - this.rawActionList[i].invest}, playFrame.playPlayers[chair].curBalance: ${playFrame.playPlayers[chair].curBalance}`);
                                 if (this.rawActionList[i].balance - this.rawActionList[i].invest === playFrame.playPlayers[chair].curBalance
                                     && this.rawActionList[i].amount < maxAmount
                                     && this.rawActionList[i].balance - this.rawActionList[i].invest > 0) {     // fold here
@@ -1165,7 +1167,8 @@ class PlaySetup {
                     } else {    // не ходил на этой улице
                         if (!this.wasFoldBefore(chair)) {
                             const balance = this.initPlayerBalance(this.initPlayers[chair].enumPosition);
-                            if (playFrame.playPlayers[chair].curBalance <= balance) {
+                            if ((maxAmount && balance > playFrame.playPlayers[chair].curBalance) || !maxAmount) {
+                                console.log(`chair: ${chair} did not move before at cur street, playFrame.playPlayers[chair].curBalance: ${playFrame.playPlayers[chair].curBalance}, balance: ${balance}`);
                                 const callAmount = Math.min(balance, maxAmount);
 
                                 this.rawActionList.push(new ActionString(
@@ -1180,7 +1183,7 @@ class PlaySetup {
 
                                 this.fantomRawActionsCount++;
                                 return pot + callAmount;
-                            } else if (maxAmount) {
+                            } else {
 
                                 this.rawActionList.push(new ActionString(
                                     street || currentStreet,
@@ -1195,7 +1198,6 @@ class PlaySetup {
                                 this.fantomRawActionsCount++;
                                 return pot;
                             }
-                            return pot;
                         }
                         return pot;
                     }
