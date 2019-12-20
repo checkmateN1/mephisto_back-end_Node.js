@@ -195,6 +195,63 @@ io.on('connection', client => {
                 }
             });
 
+            client.on('saveSetup', data => {
+                if (!_.isEmpty(data)) {
+                    client.emit('saveSetupSuccess');
+
+                    console.log(data);
+
+                    fs.writeFile(__dirname + `/savedSetups/${data.fileName}_____${moment().format('DD-MM-YYYY-HH-mm')}.txt`, JSON.stringify(data), (err) => {
+                        // throws an error, you could also catch it here
+                        if (err) throw err;
+
+                        // success case, the file was saved
+                        console.log('saved setup!');
+                    });
+                } else {
+                    client.emit('saveSetupError');
+                }
+            });
+
+            client.on('openSetups', () => {
+                const files = fs.readdirSync(__dirname + `/savedSetups`);
+                console.log(files);
+
+                if (files.length) {
+                    client.emit('setupsList', files);
+                }
+            });
+
+            client.on('openSetup', fileName => {
+                if (fileName) {
+                    console.log(`got openSetup request from simulator. fileName: ${fileName}`);
+
+                    fs.readFile(__dirname + `/savedSetups/${fileName}`, 'utf8',
+                        (error, data) => {
+                            if(error) {
+                                console.info(`error reading file: ${__dirname}/savedSetups/${fileName}`);
+                            } else {
+                                client.emit('openSetupSuccess', JSON.parse(data));
+                            }
+                    });
+                }
+            });
+
+            client.on('preOpenSetup', fileName => {
+                if (fileName) {
+                    console.log(`got openSetup request from simulator. fileName: ${fileName}`);
+
+                    fs.readFile(__dirname + `/savedSetups/${fileName}`, 'utf8',
+                        (error, data) => {
+                            if(error) {
+                                console.info(`error reading file: ${__dirname}/savedSetups/${fileName}`);
+                            } else {
+                                client.emit('preOpenSetupSuccess', JSON.parse(data).fileDescription);
+                            }
+                        });
+                }
+            });
+
             client.on('disconnect', () => {
                 delete sequenceNumberByClient[client.id];
                 console.info(`Client gone [${client.id}]`);
@@ -203,7 +260,11 @@ io.on('connection', client => {
     });
 });
 
-// server.listen(27990, '192.168.1.20', function(){
+// server.listen(27991, '192.168.1.30', function(){        // lucifer
+//     console.log("Сервер ожидает подключения...");
+// });
+
+// server.listen(27990, '192.168.1.20', function(){        // mephisto
 //     console.log("Сервер ожидает подключения...");
 // });
 
