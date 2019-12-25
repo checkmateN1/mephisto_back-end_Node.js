@@ -71,7 +71,8 @@ io.on('connection', client => {
                     if (dirPath !== req.folder) {
                         dirPath = req.folder;
                         const files = fs.readdirSync(req.folder);
-                        filesInDir = files.filter(file => /jpg/.test(file));
+                        filesInDir = files.filter(file => /jpg/.test(file))
+                            .sort((a, b) => +a.match(/(?<=_)\d*(?=\.jpg)/)[0] - +b.match(/(?<=_)\d*(?=\.jpg)/)[0]);
                         fileToSend = req.file;
                         fs.readFile(req.folder + '\\' + req.file, function(err, buf){
                             if (err) throw err; // Fail if the file can't be read.
@@ -169,7 +170,7 @@ io.on('connection', client => {
                         client,
                     };
 
-                    sessionsHandler.sessionsListener(token, frameData.id, prompterData);     // data.id == table id from recognition
+                    // sessionsHandler.sessionsListener(token, frameData.id, prompterData);     // data.id == table id from recognition
                 } else {
                     client.emit('frameError', data);
                 }
@@ -186,8 +187,8 @@ io.on('connection', client => {
                     console.log(data);
 
                     (async function() {
-                        const result = await sessionsHandler.sessionsListener(token, client.id, data);
-                        client.emit('simulationsResponse', result);
+                        // const result = await sessionsHandler.sessionsListener(token, client.id, data);
+                        // client.emit('simulationsResponse', result);
                     })();
 
                 } else {

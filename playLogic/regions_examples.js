@@ -33,6 +33,7 @@ str[31] = 'POot: 4BB -...';           // 4
 str[32] = 'Potz 2 BB';           // 2!
 str[33] = '1 Pot: 2 BB';           // 2!
 str[34] = 'Pot: 2 8B ..';           // 2!!
+str[35] = 'Pot: 1 8.60 BB';           // 18.60
 
 // balances
 const balances = [];
@@ -73,33 +74,33 @@ const regBet = /\d+(?!([A-Z])){0,4}((\.|\,){0,3}\d{1,2}){0,1}/;
 // const regBalance = /\d+\S{0,1}\d/;
 
 // pot
-// str.forEach(str => {
-//     let clearPot = str.replace(/.*(?=P)/, '').replace(/(?<=\d)(\s8B)/, ' BB');   // убрали символы до слова Pot так как бывают цифры + 8B = BB
-//     const matchPot = clearPot.match(regPot);
-//     const pot = {
-//         Pot: matchPot ? Math.round((+matchPot[0]
-//                 .replace(/S/, 5)
-//                 .replace(/D/, 0)
-//                 .replace(/(\.|\,)+(?=(\d)){0,1}/, '.')) * 100)
-//             : 0,
-//     };
-//     console.log(`input: ${str};    output: ${pot.Pot}`);
-// });
+str.forEach((str, i) => {
+    let clearPot = str.replace(/.*(?=P)/, '').replace(/(?<=\d)\s(?=\d(\.|\,))/, '').replace(/(?<=\d)(\s8B)/, ' BB');   // убрали символы до слова Pot так как бывают цифры + 8B = BB
+    const matchPot = clearPot.match(regPot);
+    const pot = {
+        Pot: matchPot ? Math.round((+matchPot[0]
+                .replace(/S/, 5)
+                .replace(/D/, 0)
+                .replace(/(\.|\,)+(?=(\d)){0,1}/, '.')) * 100)
+            : 0,
+    };
+    console.log(`index: ${i}, input: ${str};    output: ${pot.Pot}`);
+});
 
 // // balances
-balances.forEach(str => {
-    if (!regBalance.test(str)) {
-        console.log(`input: ${str};    output: 0 or fail`);
-    } else {
-        const strNew = str.replace(/(?<=\.\d\s)B(?=\sB)/, '8').replace(/(?<=\d{1,2}\.\d)\s(?=\d)/, '');
-        const matchArr = strNew.match(regBalance);
-        console.log(`input: ${str};    output: ${matchArr ? matchArr[0]
-                .replace(/(\s{1,2})*(?=(\d{0,2}(?=(\.|\,))))/, '')
-                .replace(/\s(?=\d)/, '')
-                .replace(/(\.|\,)+(?=(\d)){0,1}/, '.')
-            : null}`);
-    }
-});
+// balances.forEach(str => {
+//     if (!regBalance.test(str)) {
+//         console.log(`input: ${str};    output: 0 or fail`);
+//     } else {
+//         const strNew = str.replace(/(?<=\.\d\s)B(?=\sB)/, '8').replace(/(?<=\d{1,2}\.\d)\s(?=\d)/, '');
+//         const matchArr = strNew.match(regBalance);
+//         console.log(`input: ${str};    output: ${matchArr ? matchArr[0]
+//                 .replace(/(\s{1,2})*(?=(\d{0,2}(?=(\.|\,))))/, '')
+//                 .replace(/\s(?=\d)/, '')
+//                 .replace(/(\.|\,)+(?=(\d)){0,1}/, '.')
+//             : null}`);
+//     }
+// });
 
 // bets
 // console.log('bets');

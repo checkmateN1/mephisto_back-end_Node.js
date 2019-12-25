@@ -48,3 +48,4 @@ function checkNewHand(prevFrame, curFrame, heroChair, playersCount) {
 
 
 
+

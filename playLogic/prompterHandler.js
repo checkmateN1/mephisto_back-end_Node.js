@@ -2,7 +2,7 @@ const moment = require('moment');
 
 const enumPoker = require('../enum');
 const enumCommon = require('../enum');
-const moves = require('./prompterMovesHandler');
+// const moves = require('./prompterMovesHandler');     // molotok
 const validator = require('./frameCreator');
 
 const REJECT_HAND = enumCommon.enumCommon.REJECT_HAND;
@@ -1040,7 +1040,7 @@ class PlaySetup {
         </div>
     </div>`;
 
-        console.log(shape);
+        // console.log(shape);
 
         return result;
     }

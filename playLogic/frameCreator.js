@@ -219,7 +219,7 @@ class Validator {
             console.log(`playerBalances[${i}]: ${playerBalances[player_balance]}, playerBets[${i}]: ${playerBets[player_bet]}`);
         });
 
-        const clearPot = rawFrame.Pot.replace(/.*(?=P)/, '').replace(/(?<=\d)(\s8B)/, ' BB');   // убрали символы до слова Pot так как бывают цифры
+        const clearPot = rawFrame.Pot.replace(/.*(?=P)/, '').replace(/(?<=\d)\s(?=\d(\.|\,))/, '').replace(/(?<=\d)(\s8B)/, ' BB');   // убрали символы до слова Pot так как бывают цифры
         const matchPot = clearPot.match(regPot);
         const pot = {
             Pot: matchPot ? Math.round((+matchPot[0]

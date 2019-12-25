@@ -1,24 +1,10 @@
-var repl = require('repl');
-var ffi = require('ffi');
-var ref = require('ref');
-var Struct = require('ref-struct');
-var ArrayType = require('ref-array');
-var int = ref.types.int;
-var float = ref.types.float;
-var double = ref.types.double;
-var CString = ref.types.CString;
-
-var IntArray = ArrayType(int);
-var FloatArray = ArrayType(float);
-var DoubleArray = ArrayType(double);
-
 const _ = require('lodash');
 
 
-const PokerEngine = require('./pokerEngine');
+// const PokerEngine = require('./pokerEngine');
 const prompterHandler = require('./playLogic/prompterHandler');
-const middleware = require('./engineMiddleware_work');
-const moves = require('./movesHandler');
+// const middleware = require('./engineMiddleware_work');   // molotok
+// const moves = require('./movesHandler');     // molotok
 
 class SimulationsQueue {
     constructor() {
@@ -34,7 +20,8 @@ class SimulationsQueue {
                 this.activeSimulations.push(task);
             }
 
-            const result = middleware.getAllHandsStrategy(task.sessionSetup, task.request, [-1,0,1]);   // request need for client and stuff
+            // const result = middleware.getAllHandsStrategy(task.sessionSetup, task.request, [-1,0,1]);   // request need for client and stuff
+            // up molotok
             // handle result
 
             this.activeSimulations = this.activeSimulations.filter(simulation => simulation.engineID !== task.engineID);
@@ -72,7 +59,7 @@ class Session {
                 Object.keys(this.setups).forEach(setupID => {
                     clearInterval(this.setups[setupID].intervalToDestroy);
                     if (this.setups[setupID].engineID !== -1) {
-                        PokerEngine.ReleaseSetup(this.setups[setupID].engineID);
+                        // PokerEngine.ReleaseSetup(this.setups[setupID].engineID);
                     }
                 });
                 console.log(`session ${token} over and will be remove`);
@@ -112,7 +99,7 @@ class SessionSetup {
             if (this.timeout < 0) {
                 clearInterval(this.intervalToDestroy);
                 if (this.engineID !== -1) {
-                    PokerEngine.ReleaseSetup(this.engineID);
+                    // PokerEngine.ReleaseSetup(this.engineID);
                 }
                 console.log(`setup ${this.setupID} over and will be remove`);
                 delete sessions[token].setups[this.setupID];
@@ -133,9 +120,9 @@ class SessionSetup {
             const { act_num, street } = request.request;
             const bbSize = parseInt(Math.max(parseFloat(request.actions.preflop[0].amount), parseFloat(request.actions.preflop[1].amount)) * 100);
 
-            moves.movesHandler(request, bbSize, this);
+            // moves.movesHandler(request, bbSize, this);   // molotok
 
-            return middleware.getAllHandsStrategy(this, (act_num + street), request, [-1,0,1], true);
+            // return middleware.getAllHandsStrategy(this, (act_num + street), request, [-1,0,1], true);    // molotok
         }
         // last move hero simulation for prompter
         if (requestType === 'prompter') {
@@ -149,8 +136,12 @@ class SessionSetup {
         }
     }
 
-    releaseSetup() { return PokerEngine.ReleaseSetup(this.engineID) }
-    setPlayer(stack, position, adaptation) { return PokerEngine.SetPlayer(this.engineID, stack, position, adaptation) }
+    releaseSetup() {
+        // return PokerEngine.ReleaseSetup(this.engineID);
+    }
+    setPlayer(stack, position, adaptation) {
+        // return PokerEngine.SetPlayer(this.engineID, stack, position, adaptation);
+    }
 }
 
 // calls every time when request comes to the server
