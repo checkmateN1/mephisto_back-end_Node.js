@@ -54,6 +54,8 @@ io.on('connection', client => {
                             console.info('error reading config file: json_config.txt');
                         } else {
                             client.emit('config', data);
+                            console.log(`sent config to client`);
+                            console.log(data);
                         }
                     });
             });
@@ -170,7 +172,7 @@ io.on('connection', client => {
                         client,
                     };
 
-                    // sessionsHandler.sessionsListener(token, frameData.id, prompterData);     // data.id == table id from recognition
+                    sessionsHandler.sessionsListener(token, frameData.id, prompterData);     // data.id == table id from recognition
                 } else {
                     client.emit('frameError', data);
                 }

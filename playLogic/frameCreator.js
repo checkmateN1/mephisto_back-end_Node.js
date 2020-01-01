@@ -53,6 +53,11 @@ class Validator {
     createFrame(rawFrame) {
         console.log('frameCreator/// enter createFrame in validator. rawFrame:');
         console.log(rawFrame);
+
+        if (rawFrame.frameData === 'frameTest') {
+            console.log(`frameCreator/// createFrame: test empty frame from client. INVALID_FRAME`);
+            return INVALID_FRAME;
+        }
         this.playersCount = enumPoker.enumPoker.gameTypesSettings[this.playSetup.gameTypesSettings || 'Spin&Go'].playersCount;
         this.heroChair = enumPoker.enumPoker.gameTypesSettings[this.playSetup.gameTypesSettings || 'Spin&Go'].heroChair;
         const dealers = Array(this.playersCount).fill().reduce((count, pl, i) => rawFrame[`Player${i}_isDealer`].value === 'y' ? (count + 1) : count, 0);

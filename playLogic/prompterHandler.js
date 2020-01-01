@@ -114,7 +114,7 @@ class PlaySetup {
         this.rawActionList = [];
         this.board = [];
         this.rejectHand = false;
-        this.prevPlayFrame = null;
+        this.prevPlayFrame = [];
         this.prevPlayFrameTime = null;
         this.fantomRawActionsCount = 0;
         this.lastPromptMoveType = null; // используем для эвристики по поводу того, кто именно ставил, когда это не известно.
@@ -147,7 +147,7 @@ class PlaySetup {
             this.rawActionList = [];
             this.playersWasActive = [];
             this.board = [];
-            this.prevPlayFrame = null;
+            this.prevPlayFrame = [];
             this.prevPlayFrameTime = null;
             this.rejectHand = false;
 
@@ -166,7 +166,10 @@ class PlaySetup {
         if (this.rejectHand) {
             return REJECT_HAND;
         }
-        this.prevPlayFrame = playFrame;
+        if (this.prevPlayFrame.length > 1) {
+            this.prevPlayFrame.shift();
+        }
+        this.prevPlayFrame.push(playFrame);
         this.prevPlayFrameTime = moment().format('h:mm:ss');
 
         console.log(`playFrame.isButtons: ${playFrame.isButtons}, this.rejectHand: ${this.rejectHand}`);
@@ -984,64 +987,61 @@ class PlaySetup {
             board: this.board,
         };
 
-        /// добавить заглушки на плееров когда их нету по аналогии с плеер1
+    //     const shape =
+    //         `<div class="main-container spins party-poker">
+    //     <div class="player player0">
+    //         <div class="nickname">${players[0] ? players[0].nickname : ''}} <span class="balance">/ ${players[0] ? players[0].balance : ''}bb</span></div>
+    //         ${players[0] && players[0].isDealer ? '<div class="dealer"><span>D</span></div>' : ''}
+    //         ${players[0] && players[0].bet ? `<div class="amount ${players[0] ? players[0].agroClass : ''}"> ${players[0] ? players[0].bet : ''}bb</div>` : ''}
+    //     </div>
+    //     <div class="player player1">
+    //         <div class="nickname">${players[1] ? players[1].nickname : ''} <span class="balance">/ ${players[1]? players[1].balance : ''}bb</span></div>
+    //         ${players[1] && players[1].isDealer ? '<div class="dealer"><span>D</span></div>' : ''}
+    //         ${players[1] && players[1].bet ? `<div class="amount ${players[1] ? players[1].agroClass : ''}"> ${players[1] ? players[1].bet : ''}bb</div>` : ''}
+    //     </div>
+    //     <div class="player player2">
+    //         <div class="nickname">${players[2] ? players[2].nickname : ''} <span class="balance">/ ${players[2]? players[2].balance : ''}bb</span></div>
+    //         ${players[2] && players[2].isDealer ? '<div class="dealer"><span>D</span></div>' : ''}
+    //         ${players[2] && players[2].bet ? `<div class="amount ${players[2] ? players[2].agroClass : ''}"> ${players[2] ? players[2].bet : ''}bb</div>` : ''}
+    //     </div>
+    //     <div class="board">
+    //         <div class="pot">Pot: ${pot}bb</div>
+    //         <div class="card ${this.board[0] ? enumPoker.enumPoker.cardsSuitsName[enumPoker.enumPoker.cardsSuits.indexOf(this.board[0].suit)] : ''}">
+    //             <div class="value">${this.board[0] ? this.board[0]['value'].toUpperCase() : ''}</div>
+    //             <div class="suit">${this.board[0] ? enumPoker.enumPoker.cardsSuitsCode[enumPoker.enumPoker.cardsSuits.indexOf(this.board[0].suit)] : ''}</div>
+    //         </div>
+    //         <div class="card ${this.board[1] ? enumPoker.enumPoker.cardsSuitsName[enumPoker.enumPoker.cardsSuits.indexOf(this.board[1].suit)] : ''}">
+    //             <div class="value">${this.board[1] ? this.board[1]['value'].toUpperCase() : ''}</div>
+    //             <div class="suit">${this.board[1] ? enumPoker.enumPoker.cardsSuitsCode[enumPoker.enumPoker.cardsSuits.indexOf(this.board[1].suit)] : ''}</div>
+    //         </div>
+    //         <div class="card ${this.board[2] ? enumPoker.enumPoker.cardsSuitsName[enumPoker.enumPoker.cardsSuits.indexOf(this.board[2].suit)] : ''}">
+    //             <div class="value">${this.board[2] ? this.board[2]['value'].toUpperCase() : ''}</div>
+    //             <div class="suit">${this.board[2] ? enumPoker.enumPoker.cardsSuitsCode[enumPoker.enumPoker.cardsSuits.indexOf(this.board[2].suit)] : ''}</div>
+    //         </div>
+    //         <div class="card ${this.board[3] ? enumPoker.enumPoker.cardsSuitsName[enumPoker.enumPoker.cardsSuits.indexOf(this.board[3].suit)] : ''}">
+    //             <div class="value">${this.board[3] ? this.board[3]['value'].toUpperCase() : ''}</div>
+    //             <div class="suit">${this.board[3] ? enumPoker.enumPoker.cardsSuitsCode[enumPoker.enumPoker.cardsSuits.indexOf(this.board[3].suit)] : ''}</div>
+    //         </div>
+    //         <div class="card ${this.board[4] ? enumPoker.enumPoker.cardsSuitsName[enumPoker.enumPoker.cardsSuits.indexOf(this.board[4].suit)] : ''}">
+    //             <div class="value">${this.board[4] ? this.board[4]['value'].toUpperCase() : ''}</div>
+    //             <div class="suit">${this.board[4] ? enumPoker.enumPoker.cardsSuitsCode[enumPoker.enumPoker.cardsSuits.indexOf(this.board[4].suit)] : ''}</div>
+    //         </div>
+    //     </div>
+    //     <div class="hero-hand">
+    //         <div class="card ${enumPoker.enumPoker.cardsSuitsName[enumPoker.enumPoker.cardsSuits.indexOf(heroCards['hole1Suit'])]}">
+    //             <div class="value">${heroCards['hole1Value'].toUpperCase()}</div>
+    //             <div class="suit">${enumPoker.enumPoker.cardsSuitsCode[enumPoker.enumPoker.cardsSuits.indexOf(heroCards['hole1Suit'])]}</div>
+    //         </div>
+    //         <div class="card ${enumPoker.enumPoker.cardsSuitsName[enumPoker.enumPoker.cardsSuits.indexOf(heroCards['hole2Suit'])]}">
+    //             <div class="value">${heroCards['hole2Value'].toUpperCase()}</div>
+    //             <div class="suit">${enumPoker.enumPoker.cardsSuitsCode[enumPoker.enumPoker.cardsSuits.indexOf(heroCards['hole2Suit'])]}</div>
+    //         </div>
+    //     </div>
+    //     <div class="prompt">
+    //     </div>
+    // </div>`;
 
-        const shape =
-            `<div class="main-container spins party-poker">
-        <div class="player player0">
-            <div class="nickname">${players[0] ? players[0].nickname : ''}} <span class="balance">/ ${players[0] ? players[0].balance : ''}bb</span></div>
-            ${players[0] && players[0].isDealer ? '<div class="dealer"><span>D</span></div>' : ''}
-            ${players[0] && players[0].bet ? `<div class="amount ${players[0] ? players[0].agroClass : ''}"> ${players[0] ? players[0].bet : ''}bb</div>` : ''}
-        </div>
-        <div class="player player1">
-            <div class="nickname">${players[1] ? players[1].nickname : ''} <span class="balance">/ ${players[1]? players[1].balance : ''}bb</span></div>
-            ${players[1] && players[1].isDealer ? '<div class="dealer"><span>D</span></div>' : ''}
-            ${players[1] && players[1].bet ? `<div class="amount ${players[1] ? players[1].agroClass : ''}"> ${players[1] ? players[1].bet : ''}bb</div>` : ''}
-        </div>
-        <div class="player player2">
-            <div class="nickname">${players[2] ? players[2].nickname : ''} <span class="balance">/ ${players[2]? players[2].balance : ''}bb</span></div>
-            ${players[2] && players[2].isDealer ? '<div class="dealer"><span>D</span></div>' : ''}
-            ${players[2] && players[2].bet ? `<div class="amount ${players[2] ? players[2].agroClass : ''}"> ${players[2] ? players[2].bet : ''}bb</div>` : ''}
-        </div>
-        <div class="board">
-            <div class="pot">Pot: ${pot}bb</div>
-            <div class="card ${this.board[0] ? enumPoker.enumPoker.cardsSuitsName[enumPoker.enumPoker.cardsSuits.indexOf(this.board[0].suit)] : ''}">
-                <div class="value">${this.board[0] ? this.board[0]['value'].toUpperCase() : ''}</div>
-                <div class="suit">${this.board[0] ? enumPoker.enumPoker.cardsSuitsCode[enumPoker.enumPoker.cardsSuits.indexOf(this.board[0].suit)] : ''}</div>
-            </div>
-            <div class="card ${this.board[1] ? enumPoker.enumPoker.cardsSuitsName[enumPoker.enumPoker.cardsSuits.indexOf(this.board[1].suit)] : ''}">
-                <div class="value">${this.board[1] ? this.board[1]['value'].toUpperCase() : ''}</div>
-                <div class="suit">${this.board[1] ? enumPoker.enumPoker.cardsSuitsCode[enumPoker.enumPoker.cardsSuits.indexOf(this.board[1].suit)] : ''}</div>
-            </div>
-            <div class="card ${this.board[2] ? enumPoker.enumPoker.cardsSuitsName[enumPoker.enumPoker.cardsSuits.indexOf(this.board[2].suit)] : ''}">
-                <div class="value">${this.board[2] ? this.board[2]['value'].toUpperCase() : ''}</div>
-                <div class="suit">${this.board[2] ? enumPoker.enumPoker.cardsSuitsCode[enumPoker.enumPoker.cardsSuits.indexOf(this.board[2].suit)] : ''}</div>
-            </div>
-            <div class="card ${this.board[3] ? enumPoker.enumPoker.cardsSuitsName[enumPoker.enumPoker.cardsSuits.indexOf(this.board[3].suit)] : ''}">
-                <div class="value">${this.board[3] ? this.board[3]['value'].toUpperCase() : ''}</div>
-                <div class="suit">${this.board[3] ? enumPoker.enumPoker.cardsSuitsCode[enumPoker.enumPoker.cardsSuits.indexOf(this.board[3].suit)] : ''}</div>
-            </div>
-            <div class="card ${this.board[4] ? enumPoker.enumPoker.cardsSuitsName[enumPoker.enumPoker.cardsSuits.indexOf(this.board[4].suit)] : ''}">
-                <div class="value">${this.board[4] ? this.board[4]['value'].toUpperCase() : ''}</div>
-                <div class="suit">${this.board[4] ? enumPoker.enumPoker.cardsSuitsCode[enumPoker.enumPoker.cardsSuits.indexOf(this.board[4].suit)] : ''}</div>
-            </div>
-        </div>
-        <div class="hero-hand">
-            <div class="card ${enumPoker.enumPoker.cardsSuitsName[enumPoker.enumPoker.cardsSuits.indexOf(heroCards['hole1Suit'])]}">
-                <div class="value">${heroCards['hole1Value'].toUpperCase()}</div>
-                <div class="suit">${enumPoker.enumPoker.cardsSuitsCode[enumPoker.enumPoker.cardsSuits.indexOf(heroCards['hole1Suit'])]}</div>
-            </div>
-            <div class="card ${enumPoker.enumPoker.cardsSuitsName[enumPoker.enumPoker.cardsSuits.indexOf(heroCards['hole2Suit'])]}">
-                <div class="value">${heroCards['hole2Value'].toUpperCase()}</div>
-                <div class="suit">${enumPoker.enumPoker.cardsSuitsCode[enumPoker.enumPoker.cardsSuits.indexOf(heroCards['hole2Suit'])]}</div>
-            </div>
-        </div>
-        <div class="prompt">
-        </div>
-    </div>`;
-
-        // console.log(shape);
-
+        // return shape;
         return result;
     }
 
@@ -1248,10 +1248,21 @@ class PlaySetup {
         });
 
         // если видели кнопки на предыдущем фрейме а на текущем их нету..
-        if (chairTo === undefined && this.prevPlayFrame && this.prevPlayFrame.isButtons && !playFrame.isButtons && this.prevPlayFrame.board.length === playFrame.board.length) {     // hero's turn
+        if (chairTo === undefined
+            && this.prevPlayFrame[0]
+            && this.prevPlayFrame[0].isButtons
+            && this.prevPlayFrame[1]
+            && !this.prevPlayFrame[1].isButtons
+            && !playFrame.isButtons
+            && this.prevPlayFrame[0].board.length === playFrame.board.length
+            && this.prevPlayFrame[1].board.length === playFrame.board.length
+            && this.rawActionList[this.rawActionList.length - 1].position !== this.initPlayers[playFrame.heroRecPosition].enumPosition) {     // hero moved
             console.log('nobody invested, but was buttons at previous frame and no buttons at the moment. Setting chairTo to heroRecPosition');
-            console.log('this.prevPlayFrame');
-            console.log(this.prevPlayFrame);
+            console.log('this.prevPlayFrame[0]');
+            console.log(this.prevPlayFrame[0]);
+
+            console.log('this.prevPlayFrame[1]');
+            console.log(this.prevPlayFrame[1]);
             console.log('playFrame');
             console.log(playFrame);
             chairTo = playFrame.heroRecPosition;     // spin&go chair 2
@@ -1270,9 +1281,9 @@ class PlaySetup {
         if (chairTo === undefined
             && isTerminalState
             && !playFrame.isButtons
-            && !this.prevPlayFrame.isButtons
+            && !this.prevPlayFrame[this.prevPlayFrame.length - 1].isButtons
             && lastRecPosition === playFrame.heroRecPosition
-            && this.prevPlayFrame.board.length === playFrame.board.length
+            && this.prevPlayFrame[this.prevPlayFrame.length - 1].board.length === playFrame.board.length
             && this.getStreetNumber(playFrame.board.length) > this.rawActionList[this.rawActionList.length - 1].street) {     // hero's turn
 
             console.log(`two frames did not see buttons and hero turn at new street. Set chairTo as hero position`);
