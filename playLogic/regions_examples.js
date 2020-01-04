@@ -34,6 +34,7 @@ str[32] = 'Potz 2 BB';           // 2!
 str[33] = '1 Pot: 2 BB';           // 2!
 str[34] = 'Pot: 2 8B ..';           // 2!!
 str[35] = 'Pot: 1 8.60 BB';           // 18.60
+str[36] = 'Pot: 12 BB P';           // 12
 
 // balances
 const balances = [];
@@ -75,7 +76,7 @@ const regBet = /\d+(?!([A-Z])){0,4}((\.|\,){0,3}\d{1,2}){0,1}/;
 
 // pot
 str.forEach((str, i) => {
-    let clearPot = str.replace(/.*(?=P)/, '').replace(/(?<=\d)\s(?=\d(\.|\,))/, '').replace(/(?<=\d)(\s8B)/, ' BB');   // убрали символы до слова Pot так как бывают цифры + 8B = BB
+    let clearPot = str.replace(/.*(?=P(0|o|O))/, '').replace(/(?<=\d)\s(?=\d(\.|\,))/, '').replace(/(?<=\d)(\s8B)/, ' BB');   // убрали символы до слова Pot так как бывают цифры + 8B = BB
     const matchPot = clearPot.match(regPot);
     const pot = {
         Pot: matchPot ? Math.round((+matchPot[0]

@@ -112,11 +112,16 @@ class Validator {
                     && enumPoker.enumPoker.cardsSuits.includes(hole1Suit)
                     && enumPoker.enumPoker.cardsSuits.includes(hole2Suit);
 
+                const seeCardsCount = (enumPoker.enumPoker.cardsValues.includes(hole1Value) ? 1 : 0)
+                + (enumPoker.enumPoker.cardsValues.includes(hole2Value) ? 1 : 0)
+                + (enumPoker.enumPoker.cardsSuits.includes(hole1Suit) ? 1 : 0)
+                + (enumPoker.enumPoker.cardsSuits.includes(hole2Suit) ? 1 : 0);
+
                 // const nickname = validFrame[`Player${i}_name`];
                 const nickname = `player_${i}`;
                 const balance = validFrame[`Player${i}_balance`];
                 const bet = validFrame[`Player${i}_bet`];
-                const isActive = validFrame[`Player${i}_isActive`].value === 'y' || (i === this.heroChair && isGoodCards);
+                const isActive = validFrame[`Player${i}_isActive`].value === 'y' || (i === this.heroChair && seeCardsCount > 2);
                 const isDealer = validFrame[`Player${i}_isDealer`].value === 'y';
                 const cards = isGoodCards ? {
                     hole1Value,
@@ -224,7 +229,7 @@ class Validator {
             console.log(`playerBalances[${i}]: ${playerBalances[player_balance]}, playerBets[${i}]: ${playerBets[player_bet]}`);
         });
 
-        const clearPot = rawFrame.Pot.replace(/.*(?=P)/, '').replace(/(?<=\d)\s(?=\d(\.|\,))/, '').replace(/(?<=\d)(\s8B)/, ' BB');   // убрали символы до слова Pot так как бывают цифры
+        const clearPot = rawFrame.replace(/.*(?=P(0|o|O))/, '').replace(/(?<=\d)\s(?=\d(\.|\,))/, '').replace(/(?<=\d)(\s8B)/, ' BB');   // убрали символы до слова Pot так как бывают цифры
         const matchPot = clearPot.match(regPot);
         const pot = {
             Pot: matchPot ? Math.round((+matchPot[0]
@@ -241,7 +246,10 @@ class Validator {
         //dismiss one frame for waiting async balance-bet-pot appearing
         let hashSum;
         if (this.playSetup.gameTypesSettings === 'Spin&Go' && isNewHand) {
-            const balances = Object.keys(playerBalances).reduce((sum, player) => sum + playerBalances[player], 0);
+            const balances = Object.keys(playerBalances).reduce((sum, player) => {
+
+                return sum + playerBalances[player];
+            }, 0);
             const diff = this.getMinHashSumDiff(pot.Pot + balances, enumPoker.enumPoker.gameTypesSettings['Spin&Go'].hashSum);
             const emptyChair = emptyChairs.indexOf(true);
             if (diff > 2) {
@@ -978,11 +986,18 @@ class Validator {
         }
         // hero
         const hole1_suit = rawFrame[`Player${this.heroChair}_hole1_suit`].value;
+        const hole1_suit_prob = rawFrame[`Player${this.heroChair}_hole1_suit`].prob;
         const hole2_suit = rawFrame[`Player${this.heroChair}_hole2_suit`].value;
+        const hole2_suit_prob = rawFrame[`Player${this.heroChair}_hole2_suit`].prob;
         const hole1_value = rawFrame[`Player${this.heroChair}_hole1_value`].value;
+        const hole1_value_prob = rawFrame[`Player${this.heroChair}_hole1_value`].prob;
         const hole2_value = rawFrame[`Player${this.heroChair}_hole2_value`].value;
+        const hole2_value_prob = rawFrame[`Player${this.heroChair}_hole2_value`].prob;
 
-        const isHeroHand = hole1_suit !== 'None' && hole2_suit !== 'None' && hole1_value !== 'None' && hole2_value !== 'None';
+        const isHeroHand = hole1_suit !== 'None' && hole1_suit_prob > 0.85
+            && hole2_suit !== 'None' && hole2_suit_prob > 0.85
+            && hole1_value !== 'None' && hole1_value_prob > 0.85
+            && hole2_value !== 'None' && hole2_value_prob > 0.85;
 
         const isHeroCardsChanged = hole1_suit !== prevHeroHand.hole1Suit  // one and more cards have changed
             || hole1_value !== prevHeroHand.hole1Value

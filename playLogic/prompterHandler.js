@@ -949,7 +949,7 @@ class PlaySetup {
         }
     }
 
-    createHtmlPrompt(prompt) {
+    createHtmlPrompt(prompt, playFrame) {
         if (!this.rawActionList.length) {
             return `<div class="main-container spins party-poker">A new hand has not yet begun</div>`
         }
@@ -964,7 +964,7 @@ class PlaySetup {
         const isTerminal = this.isTerminalStreetState();
         const curStreet = this.getStreetNumber(this.board.length);
         const players = this.initPlayers.map((player, i) => {
-            if (player.cards) {
+            if (player.cards && i === playFrame.heroRecPosition) {
                 heroCards = player.cards;
             }
 
@@ -1258,13 +1258,13 @@ class PlaySetup {
             && this.prevPlayFrame[1].board.length === playFrame.board.length
             && this.rawActionList[this.rawActionList.length - 1].position !== this.initPlayers[playFrame.heroRecPosition].enumPosition) {     // hero moved
             console.log('nobody invested, but was buttons at previous frame and no buttons at the moment. Setting chairTo to heroRecPosition');
-            console.log('this.prevPlayFrame[0]');
-            console.log(this.prevPlayFrame[0]);
-
-            console.log('this.prevPlayFrame[1]');
-            console.log(this.prevPlayFrame[1]);
-            console.log('playFrame');
-            console.log(playFrame);
+            // console.log('this.prevPlayFrame[0]');
+            // console.log(this.prevPlayFrame[0]);
+            //
+            // console.log('this.prevPlayFrame[1]');
+            // console.log(this.prevPlayFrame[1]);
+            // console.log('playFrame');
+            // console.log(playFrame);
             chairTo = playFrame.heroRecPosition;     // spin&go chair 2
         }
 
@@ -1638,7 +1638,7 @@ const prompterListener = (setup, request, gameTypesSettings) => {
     } else if (result === PROMPT) {
         console.log('шлем подсказку на клиент');
         const promptData = {
-            prompt: setup.playSetup.createHtmlPrompt(),
+            prompt: setup.playSetup.createHtmlPrompt([], setup.playSetup.prevPlayFrame[setup.playSetup.prevPlayFrame.length - 1]),
             id,
         };
         setTimeout(() => {
