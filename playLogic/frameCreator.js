@@ -2,7 +2,6 @@ const enumPoker = require('../enum');
 const enumCommon = require('../enum');
 
 const INVALID_FRAME = enumCommon.enumCommon.INVALID_FRAME;
-const testRegions = [{'id': 1, 'Player0_name': 'iblj J et', 'Player1_name': 'Wacuum008', 'Player2_name': 'SoLucky', 'Player0_balance': '23,5 BB', 'Player1_balance': '23,5 BB', 'Player2_balance': '25,0 BB', 'Player0_isActive': {'value': 'a', 'prob': 1.0}, 'Player1_isActive': {'value': 'a', 'prob': 1.0}, 'Player2_isActive': {'value': 'n', 'prob': 1.0}, 'Player0_bet': '2.0 BD', 'Player1_bet': '1,0 BB', 'Player2_bet': '', 'Pot': 'Pot 3,0 BB', 'Player0_isDealer': {'value': 'n', 'prob': 1.0}, 'Player1_isDealer': {'value': 'n', 'prob': 1.0}, 'Player2_isDealer': {'value': 'a', 'prob': 1.0}, 'Card1_value': {'value': 'None', 'prob': 1.0}, 'Card2_value': {'value': 'None', 'prob': 1.0}, 'Card3_value': {'value': 'None', 'prob': 1.0}, 'Card4_value': {'value': 'None', 'prob': 1.0}, 'Card5_value': {'value': 'None', 'prob': 1.0}, 'Player0_hole1_value': {'value': 'None', 'prob': 1.0}, 'Player0_hole2_value': {'value': 'None', 'prob': 1.0}, 'Player1_hole1_value': {'value': 'None', 'prob': 0.9956691265106201}, 'Player1_hole2_value': {'value': 'None', 'prob': 1.0}, 'Player2_hole1_value': {'value': 'None', 'prob': 1.0}, 'Player2_hole2_value': {'value': 'None', 'prob': 1.0}, 'Card1_suit': {'value': 'None', 'prob': 1.0}, 'Card2_suit': {'value': 'None', 'prob': 1.0}, 'Card3_suit': {'value': 'None', 'prob': 1.0}, 'Card4_suit': {'value': 'None', 'prob': 1.0}, 'Card5_suit': {'value': 'None', 'prob': 1.0}, 'Player0_hole1_suit': {'value': 'None', 'prob': 1.0}, 'Player0_hole2_suit': {'value': 'None', 'prob': 1.0}, 'Player1_hole1_suit': {'value': 'None', 'prob': 1.0}, 'Player1_hole2_suit': {'value': 'None', 'prob': 1.0}, 'Player2_hole1_suit': {'value': 'None', 'prob': 1.0}, 'Player2_hole2_suit': {'value': 'None', 'prob': 1.0}, 'betAmount': '', 'isRaise': {'value': 'False', 'prob': 1.0}, 'isBet': {'value': 'False', 'prob': 1.0}, 'isCall': {'value': 'False', 'prob': 1.0}, 'isCheck': {'value': 'False', 'prob': 1.0}, 'isFold': {'value': 'False', 'prob': 1.0}}, {'id': 0, 'Player0_name': '', 'Player1_name': 'babrain', 'Player2_name': '', 'Player0_balance': '23,0 BB', 'Player1_balance': '23,0 BB', 'Player2_balance': '25,0 BB', 'Player0_isActive': {'value': 'a', 'prob': 1.0}, 'Player1_isActive': {'value': 'a', 'prob': 1.0}, 'Player2_isActive': {'value': 'n', 'prob': 1.0}, 'Player0_bet': '', 'Player1_bet': 'v', 'Player2_bet': '', 'Pot': 'Pot- 4,0 BB', 'Player0_isDealer': {'value': 'n', 'prob': 1.0}, 'Player1_isDealer': {'value': 'n', 'prob': 1.0}, 'Player2_isDealer': {'value': 'a', 'prob': 1.0}, 'Card1_value': {'value': 'j', 'prob': 0.9999980926513672}, 'Card2_value': {'value': '2', 'prob': 1.0}, 'Card3_value': {'value': '3', 'prob': 0.9996916055679321}, 'Card4_value': {'value': 'None', 'prob': 1.0}, 'Card5_value': {'value': 'None', 'prob': 1.0}, 'Player0_hole1_value': {'value': 'None', 'prob': 1.0}, 'Player0_hole2_value': {'value': 'None', 'prob': 1.0}, 'Player1_hole1_value': {'value': 'None', 'prob': 0.9999970197677612}, 'Player1_hole2_value': {'value': 'None', 'prob': 1.0}, 'Player2_hole1_value': {'value': 'None', 'prob': 1.0}, 'Player2_hole2_value': {'value': 'None', 'prob': 1.0}, 'Card1_suit': {'value': 'c', 'prob': 1.0}, 'Card2_suit': {'value': 's', 'prob': 0.9989612102508545}, 'Card3_suit': {'value': 'c', 'prob': 1.0}, 'Card4_suit': {'value': 'None', 'prob': 1.0}, 'Card5_suit': {'value': 'None', 'prob': 1.0}, 'Player0_hole1_suit': {'value': 'None', 'prob': 1.0}, 'Player0_hole2_suit': {'value': 'None', 'prob': 1.0}, 'Player1_hole1_suit': {'value': 'None', 'prob': 1.0}, 'Player1_hole2_suit': {'value': 'None', 'prob': 1.0}, 'Player2_hole1_suit': {'value': 'None', 'prob': 1.0}, 'Player2_hole2_suit': {'value': 'None', 'prob': 1.0}, 'betAmount': 'e', 'isRaise': {'value': 'False', 'prob': 1.0}, 'isBet': {'value': 'False', 'prob': 1.0}, 'isCall': {'value': 'False', 'prob': 1.0}, 'isCheck': {'value': 'False', 'prob': 1.0}, 'isFold': {'value': 'False', 'prob': 1.0}}, {'id': 3, 'Player0_name': 'Posts BB', 'Player1_name': 'Vacuum008', 'Player2_name': '4iigin 8', 'Player0_balance': '21,0 BB', 'Player1_balance': '29,0 BB', 'Player2_balance': '23,5 BB', 'Player0_isActive': {'value': 'a', 'prob': 1.0}, 'Player1_isActive': {'value': 'a', 'prob': 1.0}, 'Player2_isActive': {'value': 'a', 'prob': 1.0}, 'Player0_bet': '1,0 BB', 'Player1_bet': 'v', 'Player2_bet': '0,5 BB', 'Pot': 'Pot 1,5 BB', 'Player0_isDealer': {'value': 'n', 'prob': 1.0}, 'Player1_isDealer': {'value': 'a', 'prob': 1.0}, 'Player2_isDealer': {'value': 'n', 'prob': 1.0}, 'Card1_value': {'value': 'None', 'prob': 1.0}, 'Card2_value': {'value': 'None', 'prob': 1.0}, 'Card3_value': {'value': 'None', 'prob': 1.0}, 'Card4_value': {'value': 'None', 'prob': 1.0}, 'Card5_value': {'value': 'None', 'prob': 1.0}, 'Player0_hole1_value': {'value': 'None', 'prob': 1.0}, 'Player0_hole2_value': {'value': 'None', 'prob': 1.0}, 'Player1_hole1_value': {'value': 'None', 'prob': 0.9891301393508911}, 'Player1_hole2_value': {'value': 'None', 'prob': 1.0}, 'Player2_hole1_value': {'value': 'j', 'prob': 1.0}, 'Player2_hole2_value': {'value': 'a', 'prob': 1.0}, 'Card1_suit': {'value': 'None', 'prob': 1.0}, 'Card2_suit': {'value': 'None', 'prob': 1.0}, 'Card3_suit': {'value': 'None', 'prob': 1.0}, 'Card4_suit': {'value': 'None', 'prob': 1.0}, 'Card5_suit': {'value': 'None', 'prob': 1.0}, 'Player0_hole1_suit': {'value': 'None', 'prob': 1.0}, 'Player0_hole2_suit': {'value': 'None', 'prob': 1.0}, 'Player1_hole1_suit': {'value': 'None', 'prob': 1.0}, 'Player1_hole2_suit': {'value': 'None', 'prob': 1.0}, 'Player2_hole1_suit': {'value': 'd', 'prob': 1.0}, 'Player2_hole2_suit': {'value': 's', 'prob': 0.9995007514953613}, 'betAmount': 'j', 'isRaise': {'value': 'False', 'prob': 1.0}, 'isBet': {'value': 'False', 'prob': 1.0}, 'isCall': {'value': 'False', 'prob': 1.0}, 'isCheck': {'value': 'False', 'prob': 1.0}, 'isFold': {'value': 'False', 'prob': 1.0}}, {'id': 2, 'Player0_name': 'Fcld', 'Player1_name': 'gaeleto1_', 'Player2_name': 'So Lucky', 'Player0_balance': '24,0 BB', 'Player1_balance': '23,0 BB', 'Player2_balance': '24,5 BB', 'Player0_isActive': {'value': 'n', 'prob': 1.0}, 'Player1_isActive': {'value': 'n', 'prob': 1.0}, 'Player2_isActive': {'value': 'n', 'prob': 1.0}, 'Player0_bet': '', 'Player1_bet': '3,5 BB', 'Player2_bet': '', 'Pot': 'Pot3,5 BB', 'Player0_isDealer': {'value': 'n', 'prob': 1.0}, 'Player1_isDealer': {'value': 'a', 'prob': 1.0}, 'Player2_isDealer': {'value': 'n', 'prob': 1.0}, 'Card1_value': {'value': 'None', 'prob': 1.0}, 'Card2_value': {'value': 'None', 'prob': 1.0}, 'Card3_value': {'value': 'None', 'prob': 1.0}, 'Card4_value': {'value': 'None', 'prob': 1.0}, 'Card5_value': {'value': 'None', 'prob': 1.0}, 'Player0_hole1_value': {'value': 'None', 'prob': 1.0}, 'Player0_hole2_value': {'value': 'None', 'prob': 1.0}, 'Player1_hole1_value': {'value': 'None', 'prob': 1.0}, 'Player1_hole2_value': {'value': 'None', 'prob': 1.0}, 'Player2_hole1_value': {'value': 'None', 'prob': 1.0}, 'Player2_hole2_value': {'value': 'None', 'prob': 1.0}, 'Card1_suit': {'value': 'None', 'prob': 1.0}, 'Card2_suit': {'value': 'None', 'prob': 1.0}, 'Card3_suit': {'value': 'None', 'prob': 1.0}, 'Card4_suit': {'value': 'None', 'prob': 1.0}, 'Card5_suit': {'value': 'None', 'prob': 1.0}, 'Player0_hole1_suit': {'value': 'None', 'prob': 1.0}, 'Player0_hole2_suit': {'value': 'None', 'prob': 1.0}, 'Player1_hole1_suit': {'value': 'None', 'prob': 1.0}, 'Player1_hole2_suit': {'value': 'None', 'prob': 1.0}, 'Player2_hole1_suit': {'value': 'None', 'prob': 1.0}, 'Player2_hole2_suit': {'value': 'None', 'prob': 1.0}, 'betAmount': '.', 'isRaise': {'value': 'False', 'prob': 1.0}, 'isBet': {'value': 'False', 'prob': 1.0}, 'isCall': {'value': 'False', 'prob': 1.0}, 'isCheck': {'value': 'False', 'prob': 1.0}, 'isFold': {'value': 'False', 'prob': 1.0}}];
 const regPot = /(S|D|\d)+(?!\s\d)((\.|\,){0,3}\d{1,2}){0,1}/;
 const regBalance = /\d+\s{0,1}\d{0,2}(\.|\,){0,3}\d{0,2}/;
 const regBet = /\d+(?!([A-Z])){0,4}((\.|\,){0,3}\d{1,2}){0,1}/;
@@ -186,7 +185,7 @@ class Validator {
             if (regAllin.test(rawFrame[player_balance])) {
                 playerBalances[player_balance] = 0;
             } else {
-                const clearBalance = rawFrame[player_balance].replace(/(?<=\.\d\s)B(?=\sB)/, '8').replace(/(?<=\d{1,2}\.\d)\s(?=\d)/, '');
+                const clearBalance = rawFrame[player_balance].replace(/(?<=\d)(\s8B)/, ' BB').replace(/B(?=.*(?=\sBB))/, '8').replace(/(?<=\d[0-9])\s(?=\d)/, '.').replace(/(?<=\d{1,2}\.\d)\s(?=\d)/, '');
                 const matchBalance = clearBalance.match(regBalance);
                 playerBalances[player_balance] = matchBalance ? Math.round((+matchBalance[0]
                     .replace(/(\s{1,2})*(?=(\d{0,2}(?=(\.|\,))))/, '')
@@ -196,7 +195,8 @@ class Validator {
             }
 
             const player_bet = `Player${i}_bet`;
-            const matchBet = rawFrame[player_bet].match(regBet);
+            const clearBet = rawFrame[player_bet].replace(/(?<=\d)\s(?=\d)/, '').replace(/(?<=\d)(\s8B)/, ' BB');
+            const matchBet = clearBet.match(regBet);
             playerBets[player_bet] = matchBet ? Math.round((+matchBet[0]
                     .replace(/(\.|\,)+(?=(\d)){0,1}/, '.')) * 100)
                 : 0;
@@ -229,7 +229,7 @@ class Validator {
             console.log(`playerBalances[${i}]: ${playerBalances[player_balance]}, playerBets[${i}]: ${playerBets[player_bet]}`);
         });
 
-        const clearPot = rawFrame.replace(/.*(?=P(0|o|O))/, '').replace(/(?<=\d)\s(?=\d(\.|\,))/, '').replace(/(?<=\d)(\s8B)/, ' BB');   // убрали символы до слова Pot так как бывают цифры
+        const clearPot = rawFrame.Pot.replace(/.*(?=P(0|o|O))/, '').replace(/(?<=\d)\s(?=\d(\.|\,))/, '').replace(/(?<=\d)(\s8B)/, ' BB').replace(/B(?=.*(?=\sBB))/, '8');   // убрали символы до слова Pot так как бывают цифры
         const matchPot = clearPot.match(regPot);
         const pot = {
             Pot: matchPot ? Math.round((+matchPot[0]
@@ -247,27 +247,35 @@ class Validator {
         let hashSum;
         if (this.playSetup.gameTypesSettings === 'Spin&Go' && isNewHand) {
             const balances = Object.keys(playerBalances).reduce((sum, player) => {
-
                 return sum + playerBalances[player];
             }, 0);
             const diff = this.getMinHashSumDiff(pot.Pot + balances, enumPoker.enumPoker.gameTypesSettings['Spin&Go'].hashSum);
             const emptyChair = emptyChairs.indexOf(true);
             if (diff > 2) {
-                // проверяем diff еще раз если пустой стул empty с неправильным пустым цифро-балансом
-                if (emptyChair !== -1) {
-                    const balancesNew = Object.keys(playerBalances).reduce((sum, player, i) => sum + (i === emptyChair ? 0 : playerBalances[player]), 0);
-                    const diffNew = this.getMinHashSumDiff(pot.Pot + balancesNew, enumPoker.enumPoker.gameTypesSettings['Spin&Go'].hashSum);
-                    if (diffNew > 2) {
-                        console.log('frameCreator/// validator // wrong hash sum balances and pot not equal one of Spin&Go hash constants');
-                        console.log(`diff: ${diff}, diffNew: ${diffNew}, pot.Pot: ${pot.Pot}, balances: ${balances}`);
-                        return INVALID_FRAME;
-                    } else {
-                        console.log(`new hand and check hash blinds sum/// diffNew: ${diffNew}`);
-                    }
+                // проверяем что сумма балансов и бетов = хэшу
+                const bets = Object.keys(playerBets).reduce((sum, player) => {
+                    return sum + playerBets[player];
+                }, 0);
+                const diffBets = this.getMinHashSumDiff(bets + balances, enumPoker.enumPoker.gameTypesSettings['Spin&Go'].hashSum);
+                if (diffBets <= 2) {    // балансы и беты верны
+                    pot.Pot = bets;
                 } else {
-                    console.log('frameCreator/// validator // wrong hash sum balances and pot not equal one of Spin&Go hash constants');
-                    console.log(`diff: ${diff}, pot.Pot: ${pot.Pot}, balances: ${balances}`);
-                    return INVALID_FRAME;
+                    // проверяем diff еще раз если пустой стул empty с неправильным пустым цифро-балансом
+                    if (emptyChair !== -1) {
+                        const balancesNew = Object.keys(playerBalances).reduce((sum, player, i) => sum + (i === emptyChair ? 0 : playerBalances[player]), 0);
+                        const diffNew = this.getMinHashSumDiff(pot.Pot + balancesNew, enumPoker.enumPoker.gameTypesSettings['Spin&Go'].hashSum);
+                        if (diffNew > 2) {
+                            console.log('frameCreator/// validator // wrong hash sum balances and pot not equal one of Spin&Go hash constants');
+                            console.log(`diff: ${diff}, diffNew: ${diffNew}, pot.Pot: ${pot.Pot}, balances: ${balances}`);
+                            return INVALID_FRAME;
+                        } else {
+                            console.log(`new hand and check hash blinds sum/// diffNew: ${diffNew}`);
+                        }
+                    } else {
+                        console.log('frameCreator/// validator // wrong hash sum balances and pot not equal one of Spin&Go hash constants');
+                        console.log(`diff: ${diff}, pot.Pot: ${pot.Pot}, balances: ${balances}`);
+                        return INVALID_FRAME;
+                    }
                 }
             }
             console.log(`new hand and check hash blinds sum/// diff: ${diff}`);
@@ -1014,10 +1022,6 @@ class Validator {
 }
 
 const validatorCreator = (playSetup) => new Validator(playSetup);
-
-const testFrameCreator = new Validator(testRegions[0]);
-
-
 
 module.exports.validatorCreator = validatorCreator;
 

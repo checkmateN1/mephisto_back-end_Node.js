@@ -35,6 +35,7 @@ str[33] = '1 Pot: 2 BB';           // 2!
 str[34] = 'Pot: 2 8B ..';           // 2!!
 str[35] = 'Pot: 1 8.60 BB';           // 18.60
 str[36] = 'Pot: 12 BB P';           // 12
+str[37] = '18.8B BB';           // 18.88
 
 // balances
 const balances = [];
@@ -53,6 +54,7 @@ balances[11] = '5.6 5 BB';          // 5.65     test
 balances[12] = '5.6 5BB';          // 5.65      test
 balances[13] = '16.3 B BB';          // 16.38
 balances[14] = '24 5 BB';          // 24.5
+balances[15] = '18.8B BB';          // 18.88
 
 // bets
 const bets = [];
@@ -65,6 +67,7 @@ bets[5] = '3,5 BB l';           // 3.5
 bets[6] = '0.5,BB';           // 0.5
 bets[7] = '1BB';           // 1
 bets[8] = '1 BB';           // 1
+bets[9] = '3 8 BB';           // 38
 
 
 // const regPot = /(S|D|B|\d)+(?!\S){0,4}((\.|\,){0,3}\d{1,2})/;
@@ -75,41 +78,41 @@ const regBet = /\d+(?!([A-Z])){0,4}((\.|\,){0,3}\d{1,2}){0,1}/;
 // const regBalance = /\d+\S{0,1}\d/;
 
 // pot
-str.forEach((str, i) => {
-    let clearPot = str.replace(/.*(?=P(0|o|O))/, '').replace(/(?<=\d)\s(?=\d(\.|\,))/, '').replace(/(?<=\d)(\s8B)/, ' BB');   // убрали символы до слова Pot так как бывают цифры + 8B = BB
-    const matchPot = clearPot.match(regPot);
-    const pot = {
-        Pot: matchPot ? Math.round((+matchPot[0]
-                .replace(/S/, 5)
-                .replace(/D/, 0)
-                .replace(/(\.|\,)+(?=(\d)){0,1}/, '.')) * 100)
-            : 0,
-    };
-    console.log(`index: ${i}, input: ${str};    output: ${pot.Pot}`);
-});
-
-// // balances
-// balances.forEach(str => {
-//     if (!regBalance.test(str)) {
-//         console.log(`input: ${str};    output: 0 or fail`);
-//     } else {
-//         const strNew = str.replace(/(?<=\.\d\s)B(?=\sB)/, '8').replace(/(?<=\d{1,2}\.\d)\s(?=\d)/, '');
-//         const matchArr = strNew.match(regBalance);
-//         console.log(`input: ${str};    output: ${matchArr ? matchArr[0]
-//                 .replace(/(\s{1,2})*(?=(\d{0,2}(?=(\.|\,))))/, '')
-//                 .replace(/\s(?=\d)/, '')
-//                 .replace(/(\.|\,)+(?=(\d)){0,1}/, '.')
-//             : null}`);
-//     }
+// str.forEach((str, i) => {
+//     let clearPot = str.replace(/.*(?=P(0|o|O))/, '').replace(/(?<=\d)\s(?=\d(\.|\,))/, '').replace(/(?<=\d)(\s8B)/, ' BB').replace(/B(?=.*(?=\sBB))/, '8');   // убрали символы до слова Pot так как бывают цифры + 8B = BB
+//     const matchPot = clearPot.match(regPot);
+//     const pot = {
+//         Pot: matchPot ? Math.round((+matchPot[0]
+//                 .replace(/S/, 5)
+//                 .replace(/D/, 0)
+//                 .replace(/(\.|\,)+(?=(\d)){0,1}/, '.')) * 100)
+//             : 0,
+//     };
+//     console.log(`index: ${i}, input: ${str};    output: ${pot.Pot}`);
 // });
 
+// // balances
+balances.forEach(str => {
+    if (!regBalance.test(str)) {
+        console.log(`input: ${str};    output: 0 or fail`);
+    } else {
+        const strNew = str.replace(/(?<=\d)(\s8B)/, ' BB').replace(/B(?=.*(?=\sBB))/, '8').replace(/(?<=\d[0-9])\s(?=\d)/, '.').replace(/(?<=\d{1,2}\.\d)\s(?=\d)/, '');
+        const matchArr = strNew.match(regBalance);
+        console.log(`input: ${str};    output: ${matchArr ? matchArr[0]
+                .replace(/(\s{1,2})*(?=(\d{0,2}(?=(\.|\,))))/, '')
+                .replace(/\s(?=\d)/, '')
+                .replace(/(\.|\,)+(?=(\d)){0,1}/, '.')
+            : null}`);
+    }
+});
+
 // bets
-// console.log('bets');
 // bets.forEach(str => {
 //     if (!regBet.test(str)) {
 //         console.log(`input: ${str};    output: 0 or fail`);
 //     } else {
-//         const matchArr = str.match(regBet);
+//         const clearBet = str.replace(/(?<=\d)\s(?=\d)/, '').replace(/(?<=\d)(\s8B)/, ' BB');
+//         const matchArr = clearBet.match(regBet);
 //         console.log(`input: ${str};    output: ${matchArr ? matchArr[0]
 //                 .replace(/(\.|\,)+(?=(\d)){0,1}/, '.')
 //             : null}`);
