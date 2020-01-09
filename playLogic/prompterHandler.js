@@ -1633,9 +1633,10 @@ const prompterListener = (setup, request, gameTypesSettings) => {
     const result = setup.playSetup.frameHandler(data, gameTypesSettings);
 
 
+    console.log(`!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!inside prompterListener`);
     if (result === REJECT_HAND) {
         console.log(REJECT_HAND + ' prompterListener');
-    } else if (result === PROMPT) {
+    } else if (result === PROMPT && client != null) {
         console.log('шлем подсказку на клиент');
         const promptData = {
             prompt: setup.playSetup.createHtmlPrompt([], setup.playSetup.prevPlayFrame[setup.playSetup.prevPlayFrame.length - 1]),

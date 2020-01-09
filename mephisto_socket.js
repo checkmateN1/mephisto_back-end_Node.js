@@ -20,7 +20,8 @@ const tokens = Object.freeze({
     '872k4j2k3mc8uvxoiaklsjfsdfudyjhm45nuu': 'clicker2',
 });
 
-const sequenceNumberByClient = {};
+const sequenceRecognitionClients = {};
+const sequencePrompterClients = {};
 
 // const sendPrompt = (client, prompt) => {
 //     client.emit('prompt', { prompt });
@@ -43,8 +44,6 @@ io.on('connection', client => {
         } else {
             console.info(`Client connected [${token}], id=${client.id}`);
             client.emit('authorizationSuccess');
-            // initialize this client's sequence number
-            sequenceNumberByClient[client.id] = { client, token };
 
             // config
             client.on('getConfig', () => {
@@ -61,6 +60,15 @@ io.on('connection', client => {
             });
             client.on('getConfigSuccess', () => {
                 console.info(`Client [${token}] successfully received config`);
+            });
+
+            client.on('startPromptSending', () => {
+                // if (!(token in sequencePrompterClients)) {
+                //     console.log(`!!!!!!!!!!!!!!!!!!!!########## add client in sequencePrompterClients`);
+                //     sequencePrompterClients[token] = client;
+                // }
+                console.log(`!!!!!!!!!!!!!!!!!!!!########## add client in sequencePrompterClients`);
+                sequencePrompterClients[token] = client;
             });
 
             /////////////// debug
@@ -112,14 +120,30 @@ io.on('connection', client => {
                         }
 
                         if (frameData) {
+                            // initialize this client's sequence number
+                            if (!(token in sequenceRecognitionClients)) {
+                                sequenceRecognitionClients[token] = client;
+                            }
+
                             const prompterData = {
                                 request: {
                                     requestType: 'prompter',
                                 },
                                 data: frameData,
                                 txtFile,
-                                client,
+                                client: (token in sequencePrompterClients) ? sequencePrompterClients[token] : null,
                             };
+
+                            console.log(frameData);
+
+                            // console.log('token in sequencePrompterClients');
+                            // console.log(token in sequencePrompterClients);
+                            //
+                            // console.log('prompterData.client');
+                            // console.log(prompterData.client);
+                            //
+                            // console.log('prompterData.data.id');
+                            // console.log(prompterData.data.id);
 
                             setTimeout(() => {
                                 sessionsHandler.sessionsListener(token, frameData.id, prompterData);     // data.id == table id from recognition
@@ -152,14 +176,16 @@ io.on('connection', client => {
 
             // frames and prompts
             client.on('frame', data => {
+                console.log('data');
+                console.log(data);
                 if (!_.isEmpty(data)) {
                     console.log(`got frame at ${moment().format('dddd, MMMM Do YYYY, h:mm:ss a')}`);
                     client.emit('frameSuccess', data.id);
-                    const frameData = JSON.parse(data);
+                    // const frameData = JSON.parse(data);
 
                     fs.appendFileSync('frames_log.txt',
                         `got frame at ${moment().format('dddd, MMMM Do YYYY, h:mm:ss a')} \r\n
-                        ${data} \r\n \r\n \r\n`,
+                        ${data.toString()} \r\n \r\n \r\n`,
                         function(error){
                         if(error) throw error; // если возникла ошибка
                     });
@@ -168,11 +194,20 @@ io.on('connection', client => {
                         request: {
                             requestType: 'prompter',
                         },
-                        data: frameData,
-                        client,
+                        data,
+                        client: (token in sequencePrompterClients) ? sequencePrompterClients[token] : null,
                     };
 
-                    sessionsHandler.sessionsListener(token, frameData.id, prompterData);     // data.id == table id from recognition
+                    console.log('token in sequencePrompterClients');
+                    console.log(token in sequencePrompterClients);
+
+                    console.log('prompterData.client');
+                    console.log(prompterData.client);
+
+                    console.log('data.id');
+                    console.log(data.id);
+
+                    sessionsHandler.sessionsListener(token, data.id, prompterData);
                 } else {
                     client.emit('frameError', data);
                 }
@@ -256,8 +291,13 @@ io.on('connection', client => {
             });
 
             client.on('disconnect', () => {
-                delete sequenceNumberByClient[client.id];
                 console.info(`Client gone [${client.id}]`);
+
+                if (sequenceRecognitionClients[token] && client.id === sequenceRecognitionClients[token].id) {
+                    delete sequenceRecognitionClients[token];
+                } else if (sequencePrompterClients[token] && client.id === sequencePrompterClients[token].id) {
+                    delete sequencePrompterClients[token];
+                }
             });
         }
     });
