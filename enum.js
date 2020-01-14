@@ -23,6 +23,7 @@ const enumPoker = Object.freeze({
 
 const enumCommon = Object.freeze({
     INVALID_FRAME: 'INVALID_FRAME',
+    STOP_PROMPT: 'STOP_PROMPT',
     REJECT_HAND: 'REJECT_HAND',
     PROMPT: 'prompt',
 });

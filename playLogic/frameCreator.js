@@ -41,11 +41,9 @@ class PlayFrame {
 class Validator {
     constructor(playSetup) {
         this.handNumber = -1;
-        this.prevHandNumber = -1;
         this.playSetup = playSetup;
         this.playersCount;
         this.heroChair;
-        this.dismissCount = 0;
         this.prevFrame = null;
     }
 
@@ -63,14 +61,14 @@ class Validator {
 
         // console.log(`frameCreator/// this.heroChair: ${this.heroChair}, this.playersCount: ${this.playersCount}, dealers: ${dealers}`);
 
-        if (enumPoker.enumPoker.cardsSuits.includes(rawFrame[`Player${this.heroChair}_hole1_suit`].value)
-            && enumPoker.enumPoker.cardsSuits.includes(rawFrame[`Player${this.heroChair}_hole2_suit`].value)
-            && enumPoker.enumPoker.cardsValues.includes(rawFrame[`Player${this.heroChair}_hole1_value`].value)
-            && enumPoker.enumPoker.cardsValues.includes(rawFrame[`Player${this.heroChair}_hole2_value`].value)
-            && dealers > 0) {
+        // if (enumPoker.enumPoker.cardsSuits.includes(rawFrame[`Player${this.heroChair}_hole1_suit`].value)
+        //     && enumPoker.enumPoker.cardsSuits.includes(rawFrame[`Player${this.heroChair}_hole2_suit`].value)
+        //     && enumPoker.enumPoker.cardsValues.includes(rawFrame[`Player${this.heroChair}_hole1_value`].value)
+        //     && enumPoker.enumPoker.cardsValues.includes(rawFrame[`Player${this.heroChair}_hole2_value`].value)
+        //     && dealers > 0) {
+        if (dealers > 0) {
             // good frame
             // console.log('frameCreator/// createFrame: good frame!');
-
         } else {
             console.log(`frameCreator/// createFrame: no dealer found or wrong hero hand. INVALID_FRAME`);
             return INVALID_FRAME;
@@ -96,7 +94,6 @@ class Validator {
             console.log('frameCreator/// invalid frame after validateFrame');
             return INVALID_FRAME;
         } else {
-            this.dismissCount = 0;
             // создаем фрейм
             const playPlayers = [];
 
@@ -739,7 +736,7 @@ class Validator {
                                         }
                                     });
                                 } else {
-                                    // console.log(`frameCreator/// был найден предположительный максАмаунт на предыдущей улице: ${maxAmount}, но либо пот либо ставки не верны`);
+                                    console.log(`frameCreator/// был найден предположительный максАмаунт на предыдущей улице: ${maxAmount}, но либо пот либо ставки не верны`);
                                     return INVALID_FRAME;
                                 }
                             } else {
@@ -769,7 +766,7 @@ class Validator {
                                 } else if (Math.abs(balancesDiffByBets - balancesDiff) < 3) {
                                     pot.Pot = balancesDiff;
                                 } else {
-                                    // console.log(`frameCreator/// был найден предположительный максАмаунт на предыдущей улице: ${maxAmount}, возможно 2 или более цифры не верны`);
+                                    console.log(`frameCreator/// был найден предположительный максАмаунт на предыдущей улице: ${maxAmount}, возможно 2 или более цифры не верны`);
                                     return INVALID_FRAME;
                                 }
                             }
@@ -890,7 +887,7 @@ class Validator {
                             if (Math.abs(balancesDiff - potByBetsRawPot) < 3) {     // верны балансы и ставки
                                 pot.Pot = balancesDiff;
                             } else {
-                                // console.log(`frameCreator/// терминальное состояние. Пот и балансы не совпали, пот и ставки не совпали, беты и балансы не совпали`);
+                                console.log(`frameCreator/// терминальное состояние. Пот и балансы не совпали, пот и ставки не совпали, беты и балансы не совпали`);
                                 return INVALID_FRAME;
                             }
                         }
@@ -1007,10 +1004,10 @@ class Validator {
             && hole1_value !== 'None' && hole1_value_prob > 0.85
             && hole2_value !== 'None' && hole2_value_prob > 0.85;
 
-        const isHeroCardsChanged = hole1_suit !== prevHeroHand.hole1Suit  // one and more cards have changed
-            || hole1_value !== prevHeroHand.hole1Value
-            || hole2_suit !== prevHeroHand.hole2Suit
-            || hole2_value !== prevHeroHand.hole2Value;
+        const isHeroCardsChanged = hole1_suit !== (prevHeroHand ? prevHeroHand.hole1Suit : 'None')  // one and more cards have changed
+            || hole1_value !== (prevHeroHand ? prevHeroHand.hole1Value : 'None')
+            || hole2_suit !== (prevHeroHand ? prevHeroHand.hole2Suit : 'None')
+            || hole2_value !== (prevHeroHand ? prevHeroHand.hole2Value : 'None');
 
         console.log(`frameCreator/// checkNewHand// sumBoardCardsDiff: ${sumBoardCardsDiff}, isHeroCardsChanged: ${isHeroCardsChanged}, isDealerMoved: ${isDealerMoved}`);
         return (sumBoardCardsDiff > 1 || isHeroCardsChanged || isDealerMoved) && isHeroHand;

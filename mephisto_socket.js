@@ -16,7 +16,7 @@ const tokens = Object.freeze({
     'uidfksicnm730pdemg662oermfyf75jdf9djf': 'simulator Ivan',
     'uidfksicnm730pdemg662oermfyf75jdf9djk': 'simulator Molot-ok',
     'uidfksicnm730pdemg662oermfyf75jdf9djj': 'simulator checkmate',
-    'dfioulkdgdlb87jkj53pioifjlwlo8cvjksnj': 'clicker1',
+    'dfioulkdgdlb87jkj53pioifjlwlo8cvjksnj': 'clicker1',    ////// bad token
     '872k4j2k3mc8uvxoiaklsjfsdfudyjhm45nuu': 'clicker2',
 });
 
@@ -131,7 +131,7 @@ io.on('connection', client => {
                                 },
                                 data: frameData,
                                 txtFile,
-                                client: (token in sequencePrompterClients) ? sequencePrompterClients[token] : null,
+                                client,
                             };
 
                             console.log(frameData);
@@ -176,8 +176,12 @@ io.on('connection', client => {
 
             // frames and prompts
             client.on('frame', data => {
-                console.log('data');
-                console.log(data);
+                // console.log('data');
+                // console.log(data);
+
+                console.log('token');
+                console.log(token);
+
                 if (!_.isEmpty(data)) {
                     console.log(`got frame at ${moment().format('dddd, MMMM Do YYYY, h:mm:ss a')}`);
                     client.emit('frameSuccess', data.id);
@@ -303,14 +307,14 @@ io.on('connection', client => {
     });
 });
 
-// server.listen(27991, '192.168.1.30', function(){        // lucifer
+// server.listen(27991, '192.168.1.30', function() {        // lucifer
 //     console.log("Сервер ожидает подключения...");
 // });
 
-// server.listen(27990, '192.168.1.20', function(){        // mephisto
+// server.listen(27990, '192.168.1.20', function() {        // mephisto
 //     console.log("Сервер ожидает подключения...");
 // });
 
-server.listen(27990, 'localhost', function(){
+server.listen(27990, 'localhost', function() {
     console.log("Сервер ожидает подключения...");
 });

@@ -6,6 +6,7 @@ const enumCommon = require('../enum');
 const validator = require('./frameCreator');
 
 const REJECT_HAND = enumCommon.enumCommon.REJECT_HAND;
+const STOP_PROMPT = enumCommon.enumCommon.STOP_PROMPT;
 const PROMPT = enumCommon.enumCommon.PROMPT;
 const INVALID_FRAME = enumCommon.enumCommon.INVALID_FRAME;
 
@@ -137,7 +138,7 @@ class PlaySetup {
             return REJECT_HAND;
         }
         if (this.rejectHand && playFrame.handNumber === this.handNumber) {
-            return REJECT_HAND;
+            return STOP_PROMPT;
         }
         if (playFrame.handNumber !== this.handNumber) {         // new hand
             console.log(`frameHandler/// new hand!  playFrame.handNumber: ${playFrame.handNumber}, this.handNumber: ${this.handNumber}`);
@@ -155,7 +156,7 @@ class PlaySetup {
             this.setPositionsMap();
         }
         if (this.rejectHand) {
-            return REJECT_HAND;
+            return STOP_PROMPT;
         }
 
         this.getMovesFromFrame(playFrame);
@@ -164,7 +165,7 @@ class PlaySetup {
         console.log(this.rawActionList);
 
         if (this.rejectHand) {
-            return REJECT_HAND;
+            return STOP_PROMPT;
         }
         if (this.prevPlayFrame.length > 1) {
             this.prevPlayFrame.shift();
@@ -173,6 +174,10 @@ class PlaySetup {
         this.prevPlayFrameTime = moment().format('h:mm:ss');
 
         console.log(`playFrame.isButtons: ${playFrame.isButtons}, this.rejectHand: ${this.rejectHand}`);
+        if (!playFrame.playPlayers[playFrame.heroRecPosition].isActive) {
+            return STOP_PROMPT;
+        }
+
         // if (this.needToPrompt && playFrame.isButtons) {
         return PROMPT;
     };
@@ -305,7 +310,7 @@ class PlaySetup {
                                 }
 
                                 if (prevBetAmount) {    // was bet or raise
-                                    if (prevBetAmount < playFrame.playPlayers[chair].betAmount) {       // raise or call-raise?
+                                    if (prevBetAmount < playFrame.playPlayers[chair].betAmount) {       // raise or call-raise
 
                                         this.rawActionList.push(new ActionString(
                                             curStreet,
@@ -317,10 +322,7 @@ class PlaySetup {
                                             this.initPlayers[chair].enumPosition,
                                             (isDeferredRaise ? prevBetAmount : playFrame.playPlayers[chair].betAmount) - prevAmount));
 
-                                    } else if (prevBetAmount === playFrame.playPlayers[chair].betAmount) {      // call
-                                        if (playFrame.testNumber === 2) {
-                                            console.log(2);
-                                        }
+                                    } else if (prevBetAmount >= playFrame.playPlayers[chair].betAmount) {      // call
                                         this.rawActionList.push(new ActionString(
                                             curStreet,
                                             this.initPlayers[chair].player,
@@ -953,10 +955,7 @@ class PlaySetup {
         if (!this.rawActionList.length) {
             return `<div class="main-container spins party-poker">A new hand has not yet begun</div>`
         }
-        const promptInfo = {};
-        if (prompt && prompt.length) {
 
-        }
         const currentStreet = this.rawActionList[this.rawActionList.length - 1].street;
         const agroChair = this.getRecAgroChairWithMaxAmount();
 
@@ -1251,6 +1250,7 @@ class PlaySetup {
         if (chairTo === undefined
             && this.prevPlayFrame[0]
             && this.prevPlayFrame[0].isButtons
+            && this.prevPlayFrame[0].pot === playFrame.pot
             && this.prevPlayFrame[1]
             && !this.prevPlayFrame[1].isButtons
             && !playFrame.isButtons
@@ -1258,13 +1258,7 @@ class PlaySetup {
             && this.prevPlayFrame[1].board.length === playFrame.board.length
             && this.rawActionList[this.rawActionList.length - 1].position !== this.initPlayers[playFrame.heroRecPosition].enumPosition) {     // hero moved
             console.log('nobody invested, but was buttons at previous frame and no buttons at the moment. Setting chairTo to heroRecPosition');
-            // console.log('this.prevPlayFrame[0]');
-            // console.log(this.prevPlayFrame[0]);
-            //
-            // console.log('this.prevPlayFrame[1]');
-            // console.log(this.prevPlayFrame[1]);
-            // console.log('playFrame');
-            // console.log(playFrame);
+
             chairTo = playFrame.heroRecPosition;     // spin&go chair 2
         }
 
@@ -1636,6 +1630,16 @@ const prompterListener = (setup, request, gameTypesSettings) => {
     console.log(`!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!inside prompterListener`);
     if (result === REJECT_HAND) {
         console.log(REJECT_HAND + ' prompterListener');
+    } else if (result === STOP_PROMPT) {
+        console.log(`останавливаем подсказывание для данной руки: result === STOP_PROMPT`);
+        const promptData = {
+            prompt: {},
+            id,
+        };
+        setTimeout(() => {
+            console.log('send empty prompt inside timeout');
+            client.emit(PROMPT, promptData);
+        }, 0);
     } else if (result === PROMPT && client != null) {
         console.log('шлем подсказку на клиент');
         const promptData = {
