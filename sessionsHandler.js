@@ -4,9 +4,9 @@ const _ = require('lodash');
 // const PokerEngine = require('./pokerEngine');
 const prompterHandler = require('./playLogic/prompterHandler');
 // const middleware = require('./engineMiddleware_work');   // molotok
-// const moves = require('./movesHandler');     // molotok
+const moves = require('./movesHandler');     // molotok
 
-class SimulationsQueue {
+class SimulationsQueue {            /// чинить много аккаунтов - engineID = номер стола.. пересекаются в разных акках, не учитывая уникальный токен
     constructor() {
         this.maxActiveTasks = 2;
         this.activeSimulations = [];
@@ -120,7 +120,7 @@ class SessionSetup {
             const { act_num, street } = request.request;
             const bbSize = parseInt(Math.max(parseFloat(request.actions.preflop[0].amount), parseFloat(request.actions.preflop[1].amount)) * 100);
 
-            // moves.movesHandler(request, bbSize, this);   // molotok
+            moves.movesHandler(request, bbSize, this);
 
             // return middleware.getAllHandsStrategy(this, (act_num + street), request, [-1,0,1], true);    // molotok
         }

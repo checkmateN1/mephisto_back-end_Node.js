@@ -117,7 +117,7 @@ class Validator {
                 const nickname = `player_${i}`;
                 const balance = validFrame[`Player${i}_balance`];
                 const bet = validFrame[`Player${i}_bet`];
-                const isActive = validFrame[`Player${i}_isActive`].value === 'y' || (i === this.heroChair && seeCardsCount > 2);
+                const isActive = validFrame[`Player${i}_isActive`].value === 'y' || (i === this.heroChair && seeCardsCount > 2 && (!this.playSetup.wasFoldBefore(i) || isNewHand));
                 const isDealer = validFrame[`Player${i}_isDealer`].value === 'y';
                 const cards = isGoodCards ? {
                     hole1Value,
@@ -192,7 +192,7 @@ class Validator {
             }
 
             const player_bet = `Player${i}_bet`;
-            const clearBet = rawFrame[player_bet].replace(/(?<=\d)\s(?=\d)/, '').replace(/(?<=\d)(\s8B)/, ' BB');
+            const clearBet = rawFrame[player_bet].replace(/(?<=\d)\s(?=\d)/, '').replace(/(?<=\d\.)\s(?=\d)/, '').replace(/(?<=\d)(\s8B)/, ' BB');
             const matchBet = clearBet.match(regBet);
             playerBets[player_bet] = matchBet ? Math.round((+matchBet[0]
                     .replace(/(\.|\,)+(?=(\d)){0,1}/, '.')) * 100)
@@ -226,7 +226,8 @@ class Validator {
             console.log(`playerBalances[${i}]: ${playerBalances[player_balance]}, playerBets[${i}]: ${playerBets[player_bet]}`);
         });
 
-        const clearPot = rawFrame.Pot.replace(/.*(?=P(0|o|O))/, '').replace(/(?<=\d)\s(?=\d(\.|\,))/, '').replace(/(?<=\d)(\s8B)/, ' BB').replace(/B(?=.*(?=\sBB))/, '8');   // убрали символы до слова Pot так как бывают цифры
+        const number = rawFrame.Pot.match(/\d\d\.\d\d/);
+        const clearPot = number ? number[0] : rawFrame.Pot.replace(/.*(?=P(0|o|O))/, '').replace(/(?<=\d)\s(?=\d(\.|\,))/, '').replace(/(?<=\d)(\s8B)/, ' BB').replace(/B(?=.*(?=\sBB))/, '8');   // убрали символы до слова Pot так как бывают цифры
         const matchPot = clearPot.match(regPot);
         const pot = {
             Pot: matchPot ? Math.round((+matchPot[0]
@@ -989,6 +990,7 @@ class Validator {
         } else {
             return true;
         }
+
         // hero
         const hole1_suit = rawFrame[`Player${this.heroChair}_hole1_suit`].value;
         const hole1_suit_prob = rawFrame[`Player${this.heroChair}_hole1_suit`].prob;

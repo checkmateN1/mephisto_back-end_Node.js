@@ -123,6 +123,7 @@ class PlaySetup {
         this.gameTypesSettings = gameTypesSettings;
         this.validator = validator.validatorCreator(this);
         this.selfRestart = 0;
+        this.rejectCount = 0;
         // debug info
         this.txtFile = '';
         // this.frameHandlerCount = 0;
@@ -151,6 +152,7 @@ class PlaySetup {
             this.prevPlayFrame = [];
             this.prevPlayFrameTime = null;
             this.rejectHand = false;
+            this.rejectCount = 0;
 
             this.setInitPlayers(playFrame);
             this.setPositionsMap();
@@ -174,7 +176,8 @@ class PlaySetup {
         this.prevPlayFrameTime = moment().format('h:mm:ss');
 
         console.log(`playFrame.isButtons: ${playFrame.isButtons}, this.rejectHand: ${this.rejectHand}`);
-        if (!playFrame.playPlayers[playFrame.heroRecPosition].isActive) {
+
+        if (!playFrame.playPlayers[playFrame.heroRecPosition].isActive || this.wasFoldBefore(playFrame.heroRecPosition)) {
             return STOP_PROMPT;
         }
 
@@ -189,8 +192,9 @@ class PlaySetup {
             console.log(`getMovesFromFrame/// first frame!`);
             const BBAmount = playFrame.playPlayers[this.positionEnumKeyMap[enumPoker.enumPoker.positions.indexOf('BB')]].betAmount;
 
-            if (this.bbSize.length && BBAmount > this.bbSize[this.bbSize.length - 1] * 2.5) {   // wrong BB recognition or reraise
+            if (this.bbSize.length && BBAmount > this.bbSize[this.bbSize.length - 1] * 2.5) {       // wrong BB recognition or reraise
                 this.rejectHand = true;
+                this.rejectCount = 0;
                 return false;
             } else if (this.bbSize.length > 2) {
                 this.bbSize.shift();
@@ -366,6 +370,7 @@ class PlaySetup {
                 if ((this.board.length === 3 && playFrame.board.length === 5) || (this.board.length === 0 && playFrame.board.length > 3)) {
                     console.log(`пропущена улица и на предыдущей улице все еще нужно пушить мувы. Отменяем подсказывание`);
                     this.rejectHand = true;
+                    this.rejectCount = 0;
                     return false;
                 }
                 console.log(`!!! есть переход улицы и на предыдущей улице все еще нужно пушить мувы`);
@@ -776,13 +781,19 @@ class PlaySetup {
                         } else {
                             console.log('Ошибка с рассчетом пота или 2 и более возможных рейзера');
                             this.rejectHand = true;
+                            this.rejectCount = 0;
                             return false;
                         }
                     }
 
                 } else {        // терминальный пот меньше
                     console.log('аномально большой пот если все вколили/сфолдили... разбираться!');
-                    this.rejectHand = true;
+                    if (this.rejectCount > 1) {
+                        this.rejectHand = true;
+                        this.rejectCount = 0;
+                    } else {
+                        this.rejectCount++;
+                    }
                     return false;
                 }
             }
@@ -823,6 +834,7 @@ class PlaySetup {
                 } else {
                     console.log(`was raise and we does not know who exact. Reject hand`);
                     this.rejectHand = true;
+                    this.rejectCount = 0;
                     return false;
                 }
 
@@ -1554,6 +1566,7 @@ class PlaySetup {
         console.log(this.initPlayers);
         if (!this.initPlayers.length) {
             this.rejectHand = true;
+            this.rejectCount = 0;
         }
     }
 

@@ -3,9 +3,24 @@
 const enumPoker = require('./enum');
 
 const _ = require('lodash');
-
-
 const adapt_size = 10;
+
+addon = require('C:\\projects\\mephisto_back-end_Node.js\\custom_module\\PokerEngine\\pokerengine_addon');
+// addon.DeserializeBucketingType('C:\\projects\\mephisto_back-end_Node.js\\custom_module\\buckets\\', 0);
+modelsPool = new addon.ModelsPool('C:\\projects\\mephisto_back-end_Node.js\\custom_module\\models\\regret_model', 'trained_RN');
+aggregator = new addon.RegretPoolToStrategyAggregator( modelsPool );
+const setup = new addon.Setup(1.0);
+setup.set_player(0,2500);
+setup.set_player(8,2500);
+setup.push_move(0, 50, 0);
+setup.push_move(8, 100, 0);
+// strategy = aggregator.aggregate_all(setup);
+
+// console.log(strategy);
+
+const arr = addon.GetHandsDict();
+
+console.log(arr);
 
 // simulator only!
 const movesHandler = (request, bbSize, setup) => {

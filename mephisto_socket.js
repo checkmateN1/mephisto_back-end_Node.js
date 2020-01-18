@@ -131,7 +131,8 @@ io.on('connection', client => {
                                 },
                                 data: frameData,
                                 txtFile,
-                                client,
+                                // client: (token in sequencePrompterClients) ? sequencePrompterClients[token] : null,     // test react-prompter 4 tables
+                                client,                                                                                    // test frame debugger
                             };
 
                             console.log(frameData);
