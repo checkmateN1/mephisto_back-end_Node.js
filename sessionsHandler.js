@@ -58,9 +58,6 @@ class Session {
                 // удаляем все интервалы у сетапов сессии
                 Object.keys(this.setups).forEach(setupID => {
                     clearInterval(this.setups[setupID].intervalToDestroy);
-                    if (this.setups[setupID].engineID !== -1) {
-                        // PokerEngine.ReleaseSetup(this.setups[setupID].engineID);
-                    }
                 });
                 console.log(`session ${token} over and will be remove`);
                 clearInterval(this.intervalToDestroy);
@@ -75,7 +72,7 @@ class SessionSetup {
     constructor(setupID, token) {
         this.setupID = setupID;
         this.token = token;
-        this.engineID = -1; // PokerEngine session number
+        this.addonSetup = null;  // setup
         this.timeout = setupTimeout;
         this.movesInEngine = 0;
         this.playersHills = [];     // index === player position
@@ -98,9 +95,6 @@ class SessionSetup {
             this.timeout--;
             if (this.timeout < 0) {
                 clearInterval(this.intervalToDestroy);
-                if (this.engineID !== -1) {
-                    // PokerEngine.ReleaseSetup(this.engineID);
-                }
                 console.log(`setup ${this.setupID} over and will be remove`);
                 delete sessions[token].setups[this.setupID];
             }
@@ -118,9 +112,18 @@ class SessionSetup {
         // simulator strategy
         if (requestType === 'strategy') {
             const { act_num, street } = request.request;
-            const bbSize = parseInt(Math.max(parseFloat(request.actions.preflop[0].amount), parseFloat(request.actions.preflop[1].amount)) * 100);
+            const bbSize = Math.max(parseFloat(request.actions.preflop[0].amount), parseFloat(request.actions.preflop[1].amount));
 
-            moves.movesHandler(request, bbSize, this);
+            const result = moves.movesHandler(request, bbSize, this, act_num);
+
+            // console.log('result');
+            // console.log(result);
+
+            if (result) {
+                return result;
+            } else {
+                console.log(`movesHandler/// result is undefined`);
+            }
 
             // return middleware.getAllHandsStrategy(this, (act_num + street), request, [-1,0,1], true);    // molotok
         }

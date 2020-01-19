@@ -229,8 +229,8 @@ io.on('connection', client => {
                     console.log(data);
 
                     (async function() {
-                        // const result = await sessionsHandler.sessionsListener(token, client.id, data);
-                        // client.emit('simulationsResponse', result);
+                        const result = await sessionsHandler.sessionsListener(token, client.id, data);
+                        client.emit('simulationsResponse', result);
                     })();
 
                 } else {
