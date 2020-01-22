@@ -1,6 +1,9 @@
 // const io = require("socket.io");
 const server = require('http').createServer();
-const io = require('socket.io')(server);
+const io = require('socket.io')(server, {
+    timeout: 60000,
+    pingTimeout: 60000,
+});
 // const server = io.listen(3001);
 
 // const redis = require('socket.io-redis');
@@ -247,11 +250,25 @@ io.on('connection', client => {
                     client.emit('simulationsSuccess');
 
                     console.log(data);
+                    //
+                    // setTimeout(() => {
+                    //     client.emit('simulationsResponse', {test: 100500});
+                    // }, 50);
 
-                    (async function() {
+                    // (async function() {
+                    //     const result = await sessionsHandler.sessionsListener(token, client.id, data);
+                    //     client.emit('simulationsResponse', result);
+                    // })();
+
+                    async function testAcync() {
                         const result = await sessionsHandler.sessionsListener(token, client.id, data);
                         client.emit('simulationsResponse', result);
-                    })();
+                    }
+
+                    testAcync().then(console.log(111));
+
+                    // const result = sessionsHandler.sessionsListener(token, client.id, data);
+                    // client.emit('simulationsResponse', result);
 
                 } else {
                     client.emit('simulationsError', data);
