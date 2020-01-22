@@ -7,7 +7,7 @@ const adapt_size = 10;
 
 addon = require('C:\\projects\\mephisto_back-end_Node.js\\custom_module\\PokerEngine\\pokerengine_addon');
 addon.SetDefaultDevice('cpu');
-// addon.DeserializeBucketingType('C:\\projects\\mephisto_back-end_Node.js\\custom_module\\buckets\\', 0);
+addon.DeserializeBucketingType('C:\\projects\\mephisto_back-end_Node.js\\custom_module\\buckets\\', 0);
 modelsPool = new addon.ModelsPool('C:\\projects\\mephisto_back-end_Node.js\\custom_module\\models\\regret_model', 'trained_RN');
 aggregator = new addon.RegretPoolToStrategyAggregator( modelsPool );
 // const setup = new addon.Setup(1);
@@ -180,7 +180,7 @@ const movesHandler = (request, bbSize, setup, nodeId) => {      // nodeId - на
         }
     };
 
-    const getHill = (position, curInvest, isPreflop) => {
+    const getHill = (position, curInvest) => {
         console.log(`start getHill! MovesCount: ${movesCount}, movesInEngine: ${setup.movesInEngine}`);
         const strategy = aggregator.aggregate_all(setup.addonSetup);
         console.log(`get strategy success!`);
@@ -233,7 +233,7 @@ const movesHandler = (request, bbSize, setup, nodeId) => {      // nodeId - на
                 //         '-1': 0.9509255436980047
                 //     }
                 // };
-
+                // текущий вес ноды руки!
                 weight = (index !== -1 && index > 1) ? setup.hillsCash[index].cash[i].weight * setup.hillsCash[index].cash[i].strategy[setup.hillsCash[index].cash[i].optimalSizing] : 1;
                 strat = strategy[i];
                 // if (i === 0) {      // 258 - 64, 0 - AA
@@ -244,18 +244,29 @@ const movesHandler = (request, bbSize, setup, nodeId) => {      // nodeId - на
                 //     console.log(strat);
                 // }
             }
-            return { hand, weight, strategy: strat, optimalSizing, isPreflop };
+            return { hand, weight, strategy: strat, optimalSizing };
         });
     };
 
-    getAllHandStrategy = (cash) => {            // cash = [{ hand, weight, strategy, optimalSizing, isPreflop }, .....]
+    getAllHandStrategy = (cash, position) => {            // cash = [{ hand, weight, strategy, optimalSizing, isPreflop }, .....]
 
         console.log('setup.movesCash');
         console.log(setup.movesCash);
-        // console.log('cash');
-        // console.log(cash);
+
+
+        const preflopCash = position !== undefined ? setup.hillsCash.reduceRight((cash, cur) => {
+            console.log(`position: ${position}, cur.position: ${cur.position}, cur.isPreflop: ${cur.isPreflop}`);
+            if (!cash && position === cur.position && cur.isPreflop) {
+                return cur.cash;
+            }
+            return cash;
+        }, undefined) : null;
+        console.log('preflopCash');
+        console.log(preflopCash);
+
+
         const allHandsStrategy = {     // simulator format
-            allHands: cash.map(obj => {     // { hand, weight, strategy, optimalSizing, isPreflop }
+            allHands: cash.map((obj, i) => {     // { hand, weight, strategy, optimalSizing, isPreflop }
                 const {
                     hand,
                     weight,
@@ -275,7 +286,7 @@ const movesHandler = (request, bbSize, setup, nodeId) => {      // nodeId - на
                 return {
                     hand,
                     weight,
-                    preflopWeight: 1,
+                    preflopWeight: preflopCash ? preflopCash[i].weight * preflopCash[i].strategy[preflopCash[i].optimalSizing] : 1,
                     moves: strat,
                 };
             })
@@ -283,14 +294,21 @@ const movesHandler = (request, bbSize, setup, nodeId) => {      // nodeId - на
 
         // normalize
         let maxWeight = 0;
+        let maxPreflopWeight = 0;
         allHandsStrategy.allHands.forEach( hand => {
             if (hand.weight > maxWeight) {
                 maxWeight = hand.weight;
             }
+            if (hand.preflopWeight > maxPreflopWeight) {
+                maxPreflopWeight = hand.preflopWeight;
+            }
         });
 
         allHandsStrategy.allHands = allHandsStrategy.allHands.map( hand => {
-            return Object.assign(hand, { weight: hand.weight/maxWeight});
+            return Object.assign(hand, {
+                weight: hand.weight/maxWeight,
+                preflopWeight: hand.preflopWeight/maxPreflopWeight
+            });
         }).filter(el => el.weight >= 0);
 
         // console.log('allHandsStrategy');
@@ -348,10 +366,10 @@ const movesHandler = (request, bbSize, setup, nodeId) => {      // nodeId - на
 
             let cash = [];
             if (i > 1) {
-                cash = getHill(position, maxAmountRaise, true);     // PREFLOP!!!
+                cash = getHill(position, maxAmountRaise);
             }
 
-            setup.hillsCash[movesCount] = { position, cash };
+            setup.hillsCash[movesCount] = { position, cash,  isPreflop: true };      // PREFLOP!!!
 
             const result = setup.addonSetup.push_move(position, curInvest, action);
             console.log(`setup.addonSetup.push_move(position: ${position}, curInvest: ${curInvest}, action: ${action}), pushResult: ${result}`);
@@ -436,8 +454,8 @@ const movesHandler = (request, bbSize, setup, nodeId) => {      // nodeId - на
                 }
                 isCashSteelUseful = false;
 
-                const cash = getHill(position, maxAmountRaise, false);
-                setup.hillsCash[movesCount] = { position, cash };
+                const cash = getHill(position, maxAmountRaise);
+                setup.hillsCash[movesCount] = { position, cash,  isPreflop: false };
 
                 const result = setup.addonSetup.push_move(position, curInvest, action);
                 console.log(`setup.addonSetup.push_move(position: ${position}, curInvest: ${curInvest}, action: ${action}), pushResult: ${result}`);
@@ -447,7 +465,7 @@ const movesHandler = (request, bbSize, setup, nodeId) => {      // nodeId - на
             }
 
             if (nodeId === movesCount) {
-                return getAllHandStrategy(setup.hillsCash[movesCount].cash);
+                return getAllHandStrategy(setup.hillsCash[movesCount].cash, position);
             }
             movesCount++;
             playersInvestFlop[position] = parseInt(Math.round(+request.actions.flop[i].amount * 100));
@@ -505,8 +523,8 @@ const movesHandler = (request, bbSize, setup, nodeId) => {      // nodeId - на
                 }
                 isCashSteelUseful = false;
 
-                const cash = getHill(position, maxAmountRaise, false);
-                setup.hillsCash[movesCount] = { position, cash };
+                const cash = getHill(position, maxAmountRaise);
+                setup.hillsCash[movesCount] = { position, cash,  isPreflop: false };
 
                 const result = setup.addonSetup.push_move(position, curInvest, action);
                 console.log(`setup.addonSetup.push_move(position: ${position}, curInvest: ${curInvest}, action: ${action}), pushResult: ${result}`);
@@ -516,7 +534,7 @@ const movesHandler = (request, bbSize, setup, nodeId) => {      // nodeId - на
             }
 
             if (nodeId === movesCount) {
-                return getAllHandStrategy(setup.hillsCash[movesCount].cash);
+                return getAllHandStrategy(setup.hillsCash[movesCount].cash, position);
             }
             movesCount++;
             playersInvestTurn[position] = parseInt(Math.round(+request.actions.turn[i].amount * 100));
@@ -574,8 +592,8 @@ const movesHandler = (request, bbSize, setup, nodeId) => {      // nodeId - на
                 }
                 isCashSteelUseful = false;
 
-                const cash = getHill(position, maxAmountRaise, false);
-                setup.hillsCash[movesCount] = { position, cash };
+                const cash = getHill(position, maxAmountRaise);
+                setup.hillsCash[movesCount] = { position, cash,  isPreflop: false };
 
                 const result = setup.addonSetup.push_move(position, curInvest, action);
                 console.log(`setup.addonSetup.push_move(position: ${position}, curInvest: ${curInvest}, action: ${action}), pushResult: ${result}`);
@@ -585,7 +603,7 @@ const movesHandler = (request, bbSize, setup, nodeId) => {      // nodeId - на
             }
 
             if (nodeId === movesCount) {
-                return getAllHandStrategy(setup.hillsCash[movesCount].cash);
+                return getAllHandStrategy(setup.hillsCash[movesCount].cash, position);
             }
             movesCount++;
             playersInvestRiver[position] = parseInt(Math.round(+request.actions.river[i].amount * 100));
