@@ -7,7 +7,7 @@ const adapt_size = 10;
 
 addon = require('C:\\projects\\mephisto_back-end_Node.js\\custom_module\\PokerEngine\\pokerengine_addon');
 addon.SetDefaultDevice('cpu');
-addon.DeserializeBucketingType('C:\\projects\\mephisto_back-end_Node.js\\custom_module\\buckets\\', 0);
+// addon.DeserializeBucketingType('C:\\projects\\mephisto_back-end_Node.js\\custom_module\\buckets\\', 0);
 modelsPool = new addon.ModelsPool('C:\\projects\\mephisto_back-end_Node.js\\custom_module\\models\\regret_model', 'trained_RN');
 aggregator = new addon.RegretPoolToStrategyAggregator( modelsPool );
 // const setup = new addon.Setup(1);
@@ -261,8 +261,8 @@ const movesHandler = (request, bbSize, setup, nodeId) => {      // nodeId - на
             }
             return cash;
         }, undefined) : null;
-        console.log('preflopCash');
-        console.log(preflopCash);
+        // console.log('preflopCash');
+        // console.log(preflopCash);
 
 
         const allHandsStrategy = {     // simulator format

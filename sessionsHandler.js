@@ -116,16 +116,12 @@ class SessionSetup {
 
             const result = moves.movesHandler(request, bbSize, this, act_num);
 
-            // console.log('result');
-            // console.log(result);
-
             if (result) {
                 return result;
             } else {
                 console.log(`movesHandler/// result is undefined`);
             }
 
-            // return middleware.getAllHandsStrategy(this, (act_num + street), request, [-1,0,1], true);    // molotok
         }
         // last move hero simulation for prompter
         if (requestType === 'prompter') {
