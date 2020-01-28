@@ -4,7 +4,7 @@ const _ = require('lodash');
 // const PokerEngine = require('./pokerEngine');
 const prompterHandler = require('./playLogic/prompterHandler');
 // const middleware = require('./engineMiddleware_work');   // molotok
-const moves = require('./movesHandler');     // molotok
+const moves = require('./movesHandler');
 
 class SimulationsQueue {            /// чинить много аккаунтов - engineID = номер стола.. пересекаются в разных акках, не учитывая уникальный токен
     constructor() {
@@ -75,7 +75,6 @@ class SessionSetup {
         this.addonSetup = null;  // setup
         this.timeout = setupTimeout;
         this.movesInEngine = 0;
-        this.playersHills = [];     // index === player position
         this.hillsCash = [];     // index === nIdMove.. board nIdMove === undefined. Value = { position, hill }
         this.initCash = Object.freeze({
             players: [],

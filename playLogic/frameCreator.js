@@ -43,7 +43,7 @@ class Validator {
         this.handNumber = -1;
         this.playSetup = playSetup;
         this.playersCount;
-        this.heroChair;
+        this.playSetup.heroChair;
         this.prevFrame = null;
     }
 
@@ -56,15 +56,15 @@ class Validator {
             return INVALID_FRAME;
         }
         this.playersCount = enumPoker.enumPoker.gameTypesSettings[this.playSetup.gameTypesSettings || 'Spin&Go'].playersCount;
-        this.heroChair = enumPoker.enumPoker.gameTypesSettings[this.playSetup.gameTypesSettings || 'Spin&Go'].heroChair;
+        this.playSetup.heroChair = enumPoker.enumPoker.gameTypesSettings[this.playSetup.gameTypesSettings || 'Spin&Go'].heroChair;
         const dealers = Array(this.playersCount).fill().reduce((count, pl, i) => rawFrame[`Player${i}_isDealer`].value === 'y' ? (count + 1) : count, 0);
 
-        // console.log(`frameCreator/// this.heroChair: ${this.heroChair}, this.playersCount: ${this.playersCount}, dealers: ${dealers}`);
+        // console.log(`frameCreator/// this.playSetup.heroChair: ${this.playSetup.heroChair}, this.playersCount: ${this.playersCount}, dealers: ${dealers}`);
 
-        // if (enumPoker.enumPoker.cardsSuits.includes(rawFrame[`Player${this.heroChair}_hole1_suit`].value)
-        //     && enumPoker.enumPoker.cardsSuits.includes(rawFrame[`Player${this.heroChair}_hole2_suit`].value)
-        //     && enumPoker.enumPoker.cardsValues.includes(rawFrame[`Player${this.heroChair}_hole1_value`].value)
-        //     && enumPoker.enumPoker.cardsValues.includes(rawFrame[`Player${this.heroChair}_hole2_value`].value)
+        // if (enumPoker.enumPoker.cardsSuits.includes(rawFrame[`Player${this.playSetup.heroChair}_hole1_suit`].value)
+        //     && enumPoker.enumPoker.cardsSuits.includes(rawFrame[`Player${this.playSetup.heroChair}_hole2_suit`].value)
+        //     && enumPoker.enumPoker.cardsValues.includes(rawFrame[`Player${this.playSetup.heroChair}_hole1_value`].value)
+        //     && enumPoker.enumPoker.cardsValues.includes(rawFrame[`Player${this.playSetup.heroChair}_hole2_value`].value)
         //     && dealers > 0) {
         if (dealers > 0) {
             // good frame
@@ -117,7 +117,7 @@ class Validator {
                 const nickname = `player_${i}`;
                 const balance = validFrame[`Player${i}_balance`];
                 const bet = validFrame[`Player${i}_bet`];
-                const isActive = validFrame[`Player${i}_isActive`].value === 'y' || (i === this.heroChair && seeCardsCount > 2 && (!this.playSetup.wasFoldBefore(i) || isNewHand));
+                const isActive = validFrame[`Player${i}_isActive`].value === 'y' || (i === this.playSetup.heroChair && seeCardsCount > 2 && (!this.playSetup.wasFoldBefore(i) || isNewHand));
                 const isDealer = validFrame[`Player${i}_isDealer`].value === 'y';
                 const cards = isGoodCards ? {
                     hole1Value,
@@ -160,7 +160,7 @@ class Validator {
             }
 
             const isButtons = validFrame.isFold.value === 'True';
-            const playFrame = new PlayFrame(newHandNumber, validFrame.Pot, playPlayers, board, isButtons, this.heroChair);
+            const playFrame = new PlayFrame(newHandNumber, validFrame.Pot, playPlayers, board, isButtons, this.playSetup.heroChair);
             console.log('frameCreator/// playFrame');
             console.log(playFrame);
 
@@ -220,7 +220,7 @@ class Validator {
                 dealersCount++;
             }
             // console.log(`frameCreator/// rawFrame[\`Player${i}_isActive\`].value: ${rawFrame[`Player${i}_isActive`].value}`);
-            if (rawFrame[`Player${i}_isActive`].value === 'y' || i === this.heroChair) {
+            if (rawFrame[`Player${i}_isActive`].value === 'y' || i === this.playSetup.heroChair) {
                 activeCount++;
             }
             console.log(`playerBalances[${i}]: ${playerBalances[player_balance]}, playerBets[${i}]: ${playerBets[player_bet]}`);
@@ -294,7 +294,7 @@ class Validator {
                     let dealerPosition;
                     const playersWasActive = Array(this.playersCount).fill().map((player, i) => {
                         let isGoodCards;
-                        if (i === this.heroChair) {
+                        if (i === this.playSetup.heroChair) {
                             const hole1Value = rawFrame[`Player${i}_hole1_value`].value;
                             const hole2Value = rawFrame[`Player${i}_hole2_value`].value;
                             const hole1Suit = rawFrame[`Player${i}_hole1_suit`].value;
@@ -310,7 +310,7 @@ class Validator {
                         if (isDealer) {
                             dealerPosition = i;
                         }
-                        if ((isActive || (i === this.heroChair && isGoodCards)) || (!isActive && (isDealer || bet > 0))) {
+                        if ((isActive || (i === this.playSetup.heroChair && isGoodCards)) || (!isActive && (isDealer || bet > 0))) {
                             return { bet, isDealer }
                         }
                     });
@@ -904,7 +904,7 @@ class Validator {
         this.playSetup.initPlayers.reduce((isFound, player, i) => {
             if (!isFound) {
                 if (player !== undefined) {
-                    if (!this.playSetup.wasFoldBefore(i) && rawFrame[`Player${i}_isActive`].value === 'n' && i !== this.heroChair) {  // folded between frames
+                    if (!this.playSetup.wasFoldBefore(i) && rawFrame[`Player${i}_isActive`].value === 'n' && i !== this.playSetup.heroChair) {  // folded between frames
                         foldChair = i;
                         return true;
                     }
@@ -985,21 +985,21 @@ class Validator {
         }, 0) === 2; // 2 - one disappeared and another one appeared
 
         let prevHeroHand = {};
-        if (this.playSetup.initPlayers[this.heroChair]) {
-            prevHeroHand = this.playSetup.initPlayers[this.heroChair].cards;
+        if (this.playSetup.initPlayers[this.playSetup.heroChair]) {
+            prevHeroHand = this.playSetup.initPlayers[this.playSetup.heroChair].cards;
         } else {
             return true;
         }
 
         // hero
-        const hole1_suit = rawFrame[`Player${this.heroChair}_hole1_suit`].value;
-        const hole1_suit_prob = rawFrame[`Player${this.heroChair}_hole1_suit`].prob;
-        const hole2_suit = rawFrame[`Player${this.heroChair}_hole2_suit`].value;
-        const hole2_suit_prob = rawFrame[`Player${this.heroChair}_hole2_suit`].prob;
-        const hole1_value = rawFrame[`Player${this.heroChair}_hole1_value`].value;
-        const hole1_value_prob = rawFrame[`Player${this.heroChair}_hole1_value`].prob;
-        const hole2_value = rawFrame[`Player${this.heroChair}_hole2_value`].value;
-        const hole2_value_prob = rawFrame[`Player${this.heroChair}_hole2_value`].prob;
+        const hole1_suit = rawFrame[`Player${this.playSetup.heroChair}_hole1_suit`].value;
+        const hole1_suit_prob = rawFrame[`Player${this.playSetup.heroChair}_hole1_suit`].prob;
+        const hole2_suit = rawFrame[`Player${this.playSetup.heroChair}_hole2_suit`].value;
+        const hole2_suit_prob = rawFrame[`Player${this.playSetup.heroChair}_hole2_suit`].prob;
+        const hole1_value = rawFrame[`Player${this.playSetup.heroChair}_hole1_value`].value;
+        const hole1_value_prob = rawFrame[`Player${this.playSetup.heroChair}_hole1_value`].prob;
+        const hole2_value = rawFrame[`Player${this.playSetup.heroChair}_hole2_value`].value;
+        const hole2_value_prob = rawFrame[`Player${this.playSetup.heroChair}_hole2_value`].prob;
 
         const isHeroHand = hole1_suit !== 'None' && hole1_suit_prob > 0.85
             && hole2_suit !== 'None' && hole2_suit_prob > 0.85

@@ -4,6 +4,8 @@ const enumPoker = require('../enum');
 const enumCommon = require('../enum');
 // const moves = require('./prompterMovesHandler');     // molotok
 const validator = require('./frameCreator');
+const moves = require('../movesHandler');
+const actionToRequest = require('./actionsToRequest');
 
 const REJECT_HAND = enumCommon.enumCommon.REJECT_HAND;
 const STOP_PROMPT = enumCommon.enumCommon.STOP_PROMPT;
@@ -182,6 +184,7 @@ class PlaySetup {
         }
 
         // if (this.needToPrompt && playFrame.isButtons) {
+        console.log(`this.whoIsNextMove(): ${this.whoIsNextMove()}`);
         return PROMPT;
     };
 
@@ -1172,11 +1175,16 @@ class PlaySetup {
             }
         }
 
-        for (let i = this.rawActionList.length - 1; i >= 0; i--) { // добавляем всех игроков
-            if (allPlayers.indexOf(this.rawActionList[i].position) < 0) {
-                allPlayers.push(this.rawActionList[i].position);
-            }
-        }
+        // for (let i = this.rawActionList.length - 1; i >= 0; i--) { // добавляем всех игроков
+        //     if (allPlayers.indexOf(this.rawActionList[i].position) < 0) {
+        //         allPlayers.push(this.rawActionList[i].position);
+        //     }
+        // }
+
+        this.initPlayers.forEach(player => {
+            allPlayers.push(player.enumPosition);
+        });
+
         for (let i = allPlayers.length - 1; i >= 0; i--) { // добавляем только тех кто остался
             if (blackList.indexOf(allPlayers[i]) < 0) {
                 playersInGame.push(allPlayers[i]);
@@ -1268,6 +1276,24 @@ class PlaySetup {
                 }
             } else {
                 return 0;
+            }
+        }
+    }
+
+    // возвращает позицию того кто будет ходить следующим
+    whoIsNextMove() {
+        const nPlayers = this.whoIsInGame();
+        if (this.isTerminalStreetState()) {
+            return Math.max(...nPlayers); // наибольшее число из массива
+        } else {
+            nPlayers.sort((a,b) => a-b);
+            // nPlayers.join(); // посортировали массив        ??????????!!!!!!!!!!
+            for (let i = this.rawActionList.length - 1; i >= 0; i--) {
+                if (nPlayers.indexOf(this.rawActionList[i].position) >= 0) {
+                    if (nPlayers.indexOf(this.rawActionList[i].position) > 0) { // если игрок не в позиции ко всем оставшимся
+                        return nPlayers[nPlayers.indexOf(this.rawActionList[i].position) - 1]; // возвращаем более ближнего к BTN
+                    } else {return nPlayers[nPlayers.length - 1];} // если он ближайший к бтн - ходить будет ближайший к SB
+                }
             }
         }
     }
@@ -1403,23 +1429,45 @@ const prompterListener = (setup, request, gameTypesSettings) => {
             id,
         };
         setTimeout(() => {
-            console.log('send empty prompt inside timeout');
+            console.log('send empty prompt');
             client.emit(PROMPT, promptData);
         }, 0);
-    } else if (result === PROMPT && client !== null) {
+    } else if (result === PROMPT) {
         console.log('шлем подсказку на клиент');
 
-        // 
+        console.log('actionToRequest.actionToRequest(setup.playSetup)');
+        console.log(actionToRequest.actionToRequest(setup.playSetup));
+        const result = moves.movesHandler(actionToRequest.actionToRequest(setup.playSetup), setup.playSetup.bbSize[setup.playSetup.bbSize.length - 1], setup.playSetup, setup.playSetup.rawActionList.length);
+
+        // aggregator functionality!
+        // 1) передаем реквест movesHandler если result === PROMPT
+        // 2) movesHandler должен вызвать коллбек в котором должна быть или рука со стратегией ев ИЛИ спектр рук, где есть рука с ев
+        // 3) movesHandler имеет доступ к сетапу и должен обрабатывать все rawActions согласно политике симуляций прописанной в нем, а именно:
+        //      3.1 всегда кэшировать стратегию хиро и извлекать руку хиро со стратегией и ев
+        //      3.2 начинать агрегатить стратегию всех игроков и кэшировать ее начиная с турна
+        // 4) movesHandler возвращает или стратегию руки хиро мува или пустую стратегию - если ход не хиро для обновления подсказки-ситуации на столе
+        // 5) movesHandler принимает параметры:
+        //      1) setup
+        //      2) heroEnumPosition  (this.initPlayers[this.heroChair].enumPosition)
+        //      3) this.whoIsNextMove()
+        //      4) playFrame.isButtons
+        // 6) movesHandler работает в режиме симуляций или извлечении стратегий. В режиме стратегий он обрабатывает rawActions последовательно
+        // 7) изменение состояние на столе когда ходит хиро - должно произойти отдельно + написать 'waiting for prompt'
+        //      7.1 ЕСЛИ видим кнопки И если последний индекс соответствует индексу подсказки И !this.rejectHand - шлем подсказку из aggregator
 
 
-        const promptData = {
-            prompt: setup.playSetup.createHtmlPrompt([], setup.playSetup.prevPlayFrame[setup.playSetup.prevPlayFrame.length - 1]),
-            id,
-        };
-        setTimeout(() => {
-            console.log('send prompt inside timeout');
-            client.emit(PROMPT, promptData);
-        }, 0);
+        if (client !== null) {
+            const promptData = {
+                prompt: setup.playSetup.createHtmlPrompt([], setup.playSetup.prevPlayFrame[setup.playSetup.prevPlayFrame.length - 1]),
+                promptResult: null,
+                id,
+            };
+
+            setTimeout(() => {
+                console.log('send prompt');
+                client.emit(PROMPT, promptData);
+            }, 0);
+        }
     }
     // client.emit(PROMPT, promptData);
 };
