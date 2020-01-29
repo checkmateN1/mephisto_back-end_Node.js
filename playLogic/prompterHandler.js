@@ -1280,7 +1280,7 @@ class PlaySetup {
         }
     }
 
-    // возвращает позицию того кто будет ходить следующим
+    // возвращает enum позицию того кто будет ходить следующим
     whoIsNextMove() {
         const nPlayers = this.whoIsInGame();
         if (this.isTerminalStreetState()) {
@@ -1437,7 +1437,13 @@ const prompterListener = (setup, request, gameTypesSettings) => {
 
         console.log('actionToRequest.actionToRequest(setup.playSetup)');
         console.log(actionToRequest.actionToRequest(setup.playSetup));
-        const result = moves.movesHandler(actionToRequest.actionToRequest(setup.playSetup), setup.playSetup.bbSize[setup.playSetup.bbSize.length - 1], setup.playSetup, setup.playSetup.rawActionList.length);
+        const result = moves.movesHandler(
+            actionToRequest.actionToRequest(setup.playSetup),
+            setup.playSetup.bbSize[setup.playSetup.bbSize.length - 1],
+            setup.playSetup, setup.playSetup.rawActionList.length,
+            setup.playSetup.isTerminalStreetState(),
+            setup.playSetup.whoIsNextMove()                 // enum position
+        );
 
         // aggregator functionality!
         // 1) передаем реквест movesHandler если result === PROMPT

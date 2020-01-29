@@ -275,7 +275,7 @@ popMoves = (nMove, setup) => {
 };
 
 
-const movesHandler = (request, bbSize, setup, nodeId) => {      // nodeId - начиная с нуля... первый ход префлопа после постов - nodeId === 2. Пуш борд не считаем
+const movesHandler = (request, bbSize, setup, nodeId, isTerminal, enumPosition) => {      // nodeId - начиная с нуля... первый ход префлопа после постов - nodeId === 2. Пуш борд не считаем
     console.log(`enter moves handler!!`);
     // let isCashSteelUseful = !_.isEqual(setup.initCash, setup.movesCash);
     let isCashSteelUseful = true;
@@ -353,9 +353,8 @@ const movesHandler = (request, bbSize, setup, nodeId) => {      // nodeId - на
             action,
         };
 
-        if (!_.isEqual(setup.movesCash.preflop[i], pushHintMoveData)) {      // no using cash
+        if (!_.isEqual(setup.movesCash.preflop[i], pushHintMoveData)) {     // no using cash
             if (isCashSteelUseful) {        // if we used cash before this iteration
-                // console.log('preflop pop moves');
                 popMoves(i, setup);
             }
             isCashSteelUseful = false;
@@ -380,7 +379,6 @@ const movesHandler = (request, bbSize, setup, nodeId) => {      // nodeId - на
         movesCount++;
         playersInvestPreflop[position] = parseInt(Math.round(+request.actions.preflop[i].amount * 100));
     }
-
 
     //////////////////////////////////////// PUSH FLOP BOARD
     if (request.actions.flop || (request.board.c1 && nodeId === movesCount + 1)) {
