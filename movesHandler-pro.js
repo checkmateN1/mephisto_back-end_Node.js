@@ -87,11 +87,11 @@ fillDict();
 // console.log('textHandsArr[656]');
 // console.log(textHandsArr[656]);
 
-getNearestSizing = (strategy, cur) => {     // возвращает ближайший сайзинг к текущему
+getNearestSizing = (strategy, cur) => {     // возвращает ближайший АГРО!!-сайзинг к текущему
     let closedSizing = 100500;
     Object.keys(strategy).reduce((min, current) => {
         const diff = Math.abs(parseInt(cur) - parseInt(current));
-        if (diff < min) {
+        if (diff < min && parseInt(current) > 0) {      // чекаем только агросайзинги в стратегии
             closedSizing = parseInt(current);
             return diff;
         } else {
@@ -195,70 +195,105 @@ hillMultiply = (position, curInvest, movesCount, setup) => {
     });
 };
 
-isCashEqual = (actions, cash, maxIndex) => {
-    if (request.players.length !== setup.movesCash.players.length) {
-        return false;
-    }
-    for (let i = 0; i < request.players.length; i++) {
-        const nickname = request.players[i].name;
-        const stack = parseInt(request.players[i].stack * 100);
-        const position = request.players[i].position;
-
-        const checkCashPlayer = {
-            nickname,
-            stack,
-            position,
-        };
-
-        if (!_.isEqual(checkCashPlayer, setup.movesCash.players[i])) {
+isCashEqual = (rawActionList, cash, indexTo) => {
+    for (let i = 0; i >= indexTo; i++) {
+        if (!_.isEqual(rawActionList[i], cash[i].rawAction)) {
             return false;
         }
     }
     return true;
 };
 
+getBoardDealPosition = (street) => {
+    switch (street) {
+        case 1:
+            return enumPoker.enumPoker.dealPositions.DEALPOS_FLOP;
+        case 2:
+            return enumPoker.enumPoker.dealPositions.DEALPOS_TURN;
+        case 3:
+            return enumPoker.enumPoker.dealPositions.DEALPOS_RIVER;
+    }
+};
+
+getPushBoardCards = (street, board) => {
+    switch (street) {
+        case 1:
+            return [enumPoker.enumPoker.cardsName.indexOf(board[0].value.toUpperCase() + board[0].suit),
+                    enumPoker.enumPoker.cardsName.indexOf(board[1].value.toUpperCase() + board[1].suit),
+                    enumPoker.enumPoker.cardsName.indexOf(board[2].value.toUpperCase() + board[2].suit)];
+        case 2:
+            return [enumPoker.enumPoker.cardsName.indexOf(board[3].value.toUpperCase() + board[3].suit)];
+        case 3:
+            return [enumPoker.enumPoker.cardsName.indexOf(board[4].value.toUpperCase() + board[4].suit)];
+    }
+};
+
+const perfomancePolicy = Object.freeze({
+    oneHandStrategyStreet: [0, 1],
+    prepareCashStrategyStreet: 1,
+    simulationsStreet: [2, 3],
+});
+
 // запрашиваем только реально сделанные мувы
-getHill = (rawActionList, BB, hillsCash, move_id) => {
+/// проследить, чтобы в терминальном состоянии вызывать getHill/strategy только когда появится карта борда
+const getHill = (handNumber, setup, rawActionList, BB, board, hillsCash, move_id, isTerminal, isStrategy, isOneHandStrategy, hand, usePerfomancePolicy, callback, position) => {    // move_id - для стратегии следующий, для горба текущийы
     let hill = {};
-    const addonSetup = new addon.Setup(BB);
+    const addonSetup = new addon.Setup(BB/100);
 
-    const fillCash = () => {
+    const fillCash = (position) => {    // опциональный параметр - можно заполнять всем - можно только конкретному игроку
         for (let move = 2; move <= move_id; move++) {       // 0, 1 - blinds id
-            if (!hillsCash[move] || !isCashEqual(rawActionList, hillsCash, move)) {
-                const getStrategyAsync = (strategy) => {
-                    const { position, invest, amount, action } = rawActionList[move];
-                    addonSetup.push_move(position, invest, action);
+            if ((position !== undefined && rawActionList[move] && position === rawActionList[move].position) || position === undefined) {  // fill all or fill position
+                const { position, invest, amount, action, street } = rawActionList[move];
 
-                    const optimalSizing = getOptimalSizing(rawActionList, strategy, amount, move);
-                    hillsCash[move] = { strategy, rawAction: rawActionList[move], optimalSizing  };     // isCashEqual needs rawAction for comparing
+                if (!hillsCash[move] || !isCashEqual(rawActionList, hillsCash, move)) {
+                    const getStrategyAsync = (strategy) => {
+                        if (isStrategy && move === move_id) {
+                            callback(strategy, handNumber, move_id);
+                            if (!isOneHandStrategy) {       // не кэшируем одну руку
+                                hillsCash[move] = { strategy };
+                            }
+                        } else {
+                            addonSetup.push_move(position, invest, action);
+                            if ((rawActionList[move + 1] && rawActionList[move + 1].street !== street) || (!rawActionList[move + 1] && isTerminal && move < move_id)) {     // street move after push_move
+                                addonSetup.push_move(getBoardDealPosition(street + 1), ...getPushBoardCards(street + 1));
+                            }
 
-                    hill = hillMultiply(hill, strategy, optimalSizing);
-                    if (move !== move_id) {
-                        fillCash();
+                            const optimalSizing = getOptimalSizing(rawActionList, strategy, amount, move);
+                            hillsCash[move] = { strategy, rawAction: rawActionList[move], optimalSizing  };     // isCashEqual needs rawAction for comparing
+
+                            hill = hillMultiply(hill, strategy, optimalSizing);
+                            move === move_id ? callback(hill, handNumber, move_id) : fillCash();
+                        }
+                    };
+
+                    aggregator.aggregate_all(addonSetup, getStrategyAsync);
+                    break;
+
+                } else {        // have cash
+                    const strategy = hillsCash[move].strategy;
+                    if (isStrategy && move === move_id) {
+                        callback(strategy, handNumber, move_id);
+                    } else {
+                        addonSetup.push_move(position, invest, action);
+                        if ((rawActionList[move + 1] && rawActionList[move + 1].street !== street) || (!rawActionList[move + 1] && isTerminal && move < move_id)) {     // street move after push_move
+                            addonSetup.push_move(getBoardDealPosition(street + 1), ...getPushBoardCards(street + 1));
+                        }
+
+                        if (!hillsCash[move].rawAction) {       // cash: { strategy }
+                            hillsCash[move].rawAction = rawActionList[move];
+                            hillsCash[move].optimalSizing = getOptimalSizing(rawActionList, strategy, amount, move);
+                        }
+
+                        hill = hillMultiply(hill, strategy, hillsCash[move].optimalSizing);
+                        if (move === move_id) {
+                            callback(hill, handNumber, move_id);
+                        }
                     }
-                };
-
-                aggregator.aggregate_all(addonSetup, getStrategyAsync);
-                break;
-
-            } else if (!hillsCash[move].rawAction) {        // have cash: { strategy };
-                const { position, invest, amount, action } = rawActionList[move];
-                const strategy = hillsCash[move].strategy;
-                addonSetup.push_move(position, invest, action);
-
-                hillsCash[move].rawAction = rawActionList[move];
-                hillsCash[move].optimalSizing = getOptimalSizing(rawActionList, strategy, amount, move);
-
-                hill = hillMultiply(hill, strategy, hillsCash[move].optimalSizing);
+                }
             }
         }
     };
-    fillCash();
-};
-
-// пушим мувы и борд, получаем стратегию
-const getStrategy = (rawActionList, BB, move_id) => {
-
+    fillCash(position);
 };
 
 
@@ -280,38 +315,13 @@ const movesHandlerPro = (setup) => {
 
     //////////////////////////////////////// PUSH FLOP BOARD
     if (request.actions.flop || (request.board.c1 && nodeId === movesCount + 1)) {
-        const isC1Equal = request.board.c1 === setup.movesCash.c1;
-        const isC2Equal = request.board.c2 === setup.movesCash.c2;
-        const isC3Equal = request.board.c3 === setup.movesCash.c3;
-        if (!(isC1Equal && isC2Equal && isC3Equal)) {
-            if (isCashSteelUseful) {
-                console.log('flop board pop moves');
-                popMoves(setup.movesCash.preflop.length, setup);
-                setup.movesCash.flop = [];
-                setup.movesCash.turn = [];
-                setup.movesCash.river = [];
-                setup.movesCash.c4 = null;
-                setup.movesCash.c5 = null;
-            }
-            isCashSteelUseful = false;
 
-            const flopPush = setup.addonSetup.push_move(
-                enumPoker.enumPoker.dealPositions.DEALPOS_FLOP,
-                enumPoker.enumPoker.cardsName.indexOf(request.board.c1),
-                enumPoker.enumPoker.cardsName.indexOf(request.board.c2),
-                enumPoker.enumPoker.cardsName.indexOf(request.board.c3)
-            );
-
-            console.log('flopPush');
-            console.log(flopPush);
-            // console.log(`c1: ${enumPoker.enumPoker.cardsName.indexOf(request.board.c1)}, c2: ${enumPoker.enumPoker.cardsName.indexOf(request.board.c2)}, c3: ${enumPoker.enumPoker.cardsName.indexOf(request.board.c3)}`);
-
-            setup.movesCash.c1 = request.board.c1;
-            setup.movesCash.c2 = request.board.c2;
-            setup.movesCash.c3 = request.board.c3;
-            setup.movesInEngine++;
-        }
-
+        const flopPush = setup.addonSetup.push_move(
+            enumPoker.enumPoker.dealPositions.DEALPOS_FLOP,
+            enumPoker.enumPoker.cardsName.indexOf(request.board.c1),
+            enumPoker.enumPoker.cardsName.indexOf(request.board.c2),
+            enumPoker.enumPoker.cardsName.indexOf(request.board.c3)
+        );
     }
 
     //////////////////////////////////////// PUSH TURN
