@@ -107,8 +107,8 @@ class ActionString {
 }
 
 class PlaySetup {
-    constructor(gameTypesSettings, client) {            // frame from recognition -> validator.dll -> playFrame
-        this.client = client;
+    constructor(gameTypesSettings) {            // frame from recognition -> validator.dll -> playFrame
+        this.client = null;
         this.initPlayers = [];      // all players who was active in start. Index === recPosition, some indexes == undefined!
         this.playersWasActive = [];   // all players who was active in start without empty chairs or waiting players
         this.positionEnumKeyMap = {};
@@ -120,7 +120,6 @@ class PlaySetup {
         this.prevPlayFrame = [];
         this.prevPlayFrameTime = null;
         this.fantomRawActionsCount = 0;
-        this.lastPromptMoveType = null; // используем для эвристики по поводу того, кто именно ставил, когда это не известно.
         this.isNewHand = true;          // сетим на фолс внутри мувс_хендлер
         this.gameTypesSettings = gameTypesSettings;
         this.validator = validator.validatorCreator(this);
@@ -1396,6 +1395,19 @@ class PlaySetup {
         }
         return arr;
     }
+
+    sendHandPrompt(strategy, handNumber, move_id) {
+        const {
+            client,
+        } = this;
+
+        if (handNumber === this.handNumber && move_id === this.rawActionList.length && !this.rejectHand && client) {
+            setTimeout(() => {
+                console.log('send hand prompt');
+                client.emit(PROMPT, this.creaateHandPrompt(strategy));
+            }, 0);
+        }
+    }
 }
 
 // 1) из реквеста создаем полноценный фрейм
@@ -1413,8 +1425,9 @@ const prompterListener = (setup, request, gameTypesSettings) => {
 
     // check on valid recognition frame
     if (setup.playSetup === undefined) {
-        setup.playSetup = new PlaySetup(gameTypesSettings, client);
+        setup.playSetup = new PlaySetup(gameTypesSettings);
     }
+    setup.playSetup.client = client;
     setup.playSetup.txtFile = txtFile;
     const result = setup.playSetup.frameHandler(data, gameTypesSettings);
 

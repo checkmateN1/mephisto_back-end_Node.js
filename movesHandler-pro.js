@@ -124,75 +124,20 @@ getMaxAmountBeforeMove = (rawActionList, move) => {
     return 0;
 };
 
-hillMultiply = (position, curInvest, movesCount, setup) => {
-    console.log(`start getHill! MovesCount: ${movesCount}, movesInEngine: ${setup.movesInEngine}`);
-    if (setup.hillsCash[movesCount]) {      // есть, но без optimalSizing
-        // strategy = setup.hillsCash[movesCount].cash;
-    }
-    const strategy = aggregator.aggregate_all(setup.addonSetup);
-    console.log(`get strategy success!`);
-
-    // if (movesCount === 3) {
-    // console.log(`node bet 2BB with 6h4h`);
-    // console.log(strategy[258]);
-    // console.log(`node bet 2BB with AA`);
-    // console.log(strategy[0]);
-    // console.log(strategy);
-    // }
-
-    // console.log(`strategy after movesCount: ${movesCount}`);
-    // console.log(strategy);
-
-    // ищем есть ли в setup.hillsCash совпадение по позициям и если да - берем горб из объекта с самым высоким индексом
-    const index = setup.hillsCash.reduceRight((index, cur, i) => {
-        if (index === -1) {
-            if (cur.position === position && movesCount > i) {
-                return i;
-            }
-        }
-        return index;
-    }, -1);
-
-    const example = strategy[Object.keys(strategy)[0]];
-    const optimalSizing = getSizing(example, curInvest);
-
-    // console.log('example');
-    // console.log(example);
-    // console.log(`optimalSizing: ${optimalSizing}, prevIndexInCash: ${index}`);
-
-    return textHandsArr.map((hand, i) => {
-        let weight;
-        let strat;
-        if (!(i in strategy)) {
-            weight = -1;
-            strat = {};
-        } else {
-            // console.log(`setup.engineID: ${setup.engineID}, nIdMove: ${nIdMove}`);
-            // console.log(hand);
-            // strategy = {                                 // test strategy example
-            //     '1325': {
-            //         '0': 0.0011505433459377008,
-            //         '100': 0.0478785282734064,
-            //         '133': 0,
-            //         '200': 0.000045384682651174424,
-            //         '300': 0,
-            //         '2400': 0,
-            //         '-1': 0.9509255436980047
-            //     }
-            // };
-            // текущий вес ноды руки!
-            weight = (index !== -1 && index > 1) ? setup.hillsCash[index].cash[i].weight * setup.hillsCash[index].cash[i].strategy[setup.hillsCash[index].cash[i].optimalSizing] : 1;
-            strat = strategy[i];
-            // if (i === 0) {      // 258 - 64, 0 - AA
-            //     console.log(`prev AA weight: ${weight}`);
-            // }
-            // if (i === 656) {      // 258 - 64, 0 - AA
-            //     console.log(`prev A4 stragegy`);
-            //     console.log(strat);
-            // }
-        }
-        return { hand, weight, strategy: strat, optimalSizing };
+hillMultiply = (hill, strategy, optimalSizing) => {
+    let hillNew = {};
+    Object.keys(strategy).forEach(key => {
+        hillNew[key] = hill[key] * strategy[key][optimalSizing];
     });
+    return hillNew;
+};
+
+hillMultiplyParallel = (rawActions, hillCash, strategy, optimalSizing) => {
+    let hillNew = {};
+    Object.keys(strategy).forEach(key => {
+        // get hill from all hillCash, using rawAction.position
+    });
+    return hillNew;
 };
 
 isCashEqual = (rawActionList, cash, indexTo) => {
@@ -234,17 +179,26 @@ const perfomancePolicy = Object.freeze({
     simulationsStreet: [2, 3],
 });
 
-// запрашиваем только реально сделанные мувы
+// 1) Подключить вызов getHill к очередности задач
+// 2) Сделать чтобы возвращалась одна рука при вызове из prompterHandler. И нам не нужно ее переводить в читабельную руку(KhTs)
+
 /// проследить, чтобы в терминальном состоянии вызывать getHill/strategy только когда появится карта борда
-const getHill = (handNumber, setup, rawActionList, BB, board, hillsCash, move_id, isTerminal, isStrategy, isOneHandStrategy, hand, usePerfomancePolicy, callback, position) => {    // move_id - для стратегии следующий, для горба текущийы
+const getHill = (handNumber, setup, rawActionList, initPlayers, BB, board, hillsCash, move_id, move_position,
+                 isTerminal, isStrategy, isOneHandStrategy, hand, usePerfomancePolicy, callback, onlyPosition) => {    // move_id - для стратегии следующий, для горба текущийы
     let hill = {};
     const addonSetup = new addon.Setup(BB/100);
 
-    const fillCash = (position) => {    // опциональный параметр - можно заполнять всем - можно только конкретному игроку
-        for (let move = 2; move <= move_id; move++) {       // 0, 1 - blinds id
-            if ((position !== undefined && rawActionList[move] && position === rawActionList[move].position) || position === undefined) {  // fill all or fill position
-                const { position, invest, amount, action, street } = rawActionList[move];
+    initPlayers.forEach(player => {
+        addonSetup.set_player(player.enumPosition, player.initBalance);
+    });
 
+    const fillCash = (onlyPosition) => {    // опциональный параметр - можно заполнять всем / можно только конкретному игроку
+        for (let move = 0; move <= move_id; move++) {
+            const { position, invest, amount, action, street } = rawActionList[move];
+
+            if (move < 2) {     // 0, 1 - blinds indexes
+                setup.addonSetup.push_move(position, invest, action);
+            } else if ((onlyPosition !== undefined && rawActionList[move] && onlyPosition === rawActionList[move].position) || onlyPosition === undefined) {  // fill all or fill only position
                 if (!hillsCash[move] || !isCashEqual(rawActionList, hillsCash, move)) {
                     const getStrategyAsync = (strategy) => {
                         if (isStrategy && move === move_id) {
@@ -258,7 +212,7 @@ const getHill = (handNumber, setup, rawActionList, BB, board, hillsCash, move_id
                                 addonSetup.push_move(getBoardDealPosition(street + 1), ...getPushBoardCards(street + 1));
                             }
 
-                            const optimalSizing = getOptimalSizing(rawActionList, strategy, amount, move);
+                            const optimalSizing = action < 3 ? getOptimalSizing(rawActionList, strategy, amount, move) : 0;
                             hillsCash[move] = { strategy, rawAction: rawActionList[move], optimalSizing  };     // isCashEqual needs rawAction for comparing
 
                             hill = hillMultiply(hill, strategy, optimalSizing);
@@ -281,7 +235,7 @@ const getHill = (handNumber, setup, rawActionList, BB, board, hillsCash, move_id
 
                         if (!hillsCash[move].rawAction) {       // cash: { strategy }
                             hillsCash[move].rawAction = rawActionList[move];
-                            hillsCash[move].optimalSizing = getOptimalSizing(rawActionList, strategy, amount, move);
+                            hillsCash[move].optimalSizing = action < 3 ? getOptimalSizing(rawActionList, strategy, amount, move) : 0;
                         }
 
                         hill = hillMultiply(hill, strategy, hillsCash[move].optimalSizing);
@@ -293,72 +247,7 @@ const getHill = (handNumber, setup, rawActionList, BB, board, hillsCash, move_id
             }
         }
     };
-    fillCash(position);
+    fillCash(onlyPosition);
 };
 
-
-const movesHandlerPro = (setup) => {
-    console.log(`enter moves handler PRO!!`);
-
-    const {
-        rawActionList,
-        hillsCash,
-        bbSize,
-        initPlayers,
-        heroChair,
-    } = setup;
-
-    const BB = bbSize[bbSize.length - 1];
-    const heroEnumPosition = initPlayers[heroChair].enumPosition;
-
-
-
-    //////////////////////////////////////// PUSH FLOP BOARD
-    if (request.actions.flop || (request.board.c1 && nodeId === movesCount + 1)) {
-
-        const flopPush = setup.addonSetup.push_move(
-            enumPoker.enumPoker.dealPositions.DEALPOS_FLOP,
-            enumPoker.enumPoker.cardsName.indexOf(request.board.c1),
-            enumPoker.enumPoker.cardsName.indexOf(request.board.c2),
-            enumPoker.enumPoker.cardsName.indexOf(request.board.c3)
-        );
-    }
-
-    //////////////////////////////////////// PUSH TURN
-    if (request.actions.turn) {
-        if (request.board.c4 !== setup.movesCash.c4) {
-            if (isCashSteelUseful) {
-                popMoves(setup.movesCash.preflop.length + setup.movesCash.flop.length + 1, setup);
-                setup.movesCash.turn = [];
-                setup.movesCash.river = [];
-                setup.movesCash.c5 = null;
-            }
-            isCashSteelUseful = false;
-            const turnBoard = setup.addonSetup.push_move(enumPoker.enumPoker.dealPositions.DEALPOS_TURN, enumPoker.enumPoker.cardsName.indexOf(request.board.c4));
-            console.log('turnBoard');
-            console.log(turnBoard);
-            setup.movesCash.c4 = request.board.c4;
-            setup.movesInEngine++;
-        }
-
-    }
-
-    //////////////////////////////////////// PUSH RIVER
-    if (request.actions.river) {
-        if (request.board.c5 !== setup.movesCash.c5) {
-            if (isCashSteelUseful) {
-                popMoves(setup.movesCash.preflop.length + setup.movesCash.flop.length + setup.movesCash.turn.length + 2, setup);
-                setup.movesCash.river = [];
-            }
-            isCashSteelUseful = false;
-
-            const riverBoard = setup.addonSetup.push_move(enumPoker.enumPoker.dealPositions.DEALPOS_RIVER, enumPoker.enumPoker.cardsName.indexOf(request.board.c5));
-            console.log('riverBoard');
-            console.log(riverBoard);
-            setup.movesCash.c5 = request.board.c5;
-            setup.movesInEngine++;
-        }
-    }
-};
-
-module.exports.movesHandlerPro = movesHandlerPro;
+module.exports.getHill = getHill;

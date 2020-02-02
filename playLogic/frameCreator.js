@@ -1,3 +1,5 @@
+const uniqid = require('uniqid');
+
 const enumPoker = require('../enum');
 const enumCommon = require('../enum');
 
@@ -128,7 +130,7 @@ class Validator {
                 playPlayers[i] = new PlayPlayer(nickname, i, balance, bet, isActive, isDealer, cards);
             });
             console.log(`frameCreator/// isNewHand: ${isNewHand}, this.playSetup.handNumber: ${this.playSetup.handNumber}`);
-            const newHandNumber = isNewHand ? this.getHandNumber() : this.playSetup.handNumber;
+            const newHandNumber = isNewHand ? uniqid() : this.playSetup.handNumber;
             const board = [];  // если не распознана масть или номинал - присваиваем undefined элементу массива(карте)
                                // так же удаляем все undefined c правого конца
 
@@ -961,8 +963,9 @@ class Validator {
     };
 
     getHandNumber() {
-        const newHandNumber = Math.floor(Math.random()*1000000000000000000000000);
-        return newHandNumber !== this.playSetup.handNumber ? newHandNumber : this.getHandNumber();
+        // const newHandNumber = Math.floor(Math.random()*1000000000000000000000000);
+        // return newHandNumber !== this.playSetup.handNumber ? newHandNumber : this.getHandNumber();
+        return uniqid();
     }
 
     checkNewHand(rawFrame) {

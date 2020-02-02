@@ -1,12 +1,9 @@
 const _ = require('lodash');
 
-
-// const PokerEngine = require('./pokerEngine');
 const prompterHandler = require('./playLogic/prompterHandler');
-// const middleware = require('./engineMiddleware_work');   // molotok
-const moves = require('./movesHandler');
+const movesHandler = require('./movesHandler-pro');
 
-class SimulationsQueue {            /// чинить много аккаунтов - engineID = номер стола.. пересекаются в разных акках, не учитывая уникальный токен
+class SimulationsQueue {
     constructor() {
         this.maxActiveTasks = 2;
         this.activeSimulations = [];
@@ -18,19 +15,20 @@ class SimulationsQueue {            /// чинить много аккаунто
             const task = this.tasksQueue.shift();
             if (task) {
                 this.activeSimulations.push(task);
+
+                const getResult = (strategy, handNumber, move_id) => {
+                    // prompterHandler convert one hand strategy to prompt for client
+
+                    this.activeSimulations = this.activeSimulations.filter(simulation => simulation.handNumber !== task.handNumber);
+                    this.taskHandler();
+                };
+                movesHandler.getHill(task.request, getResult);
             }
-
-            // const result = middleware.getAllHandsStrategy(task.sessionSetup, task.request, [-1,0,1]);   // request need for client and stuff
-            // up molotok
-            // handle result
-
-            this.activeSimulations = this.activeSimulations.filter(simulation => simulation.engineID !== task.engineID);
-            this.taskHandler();
         }
     };
 
-    queueHandler(sessionSetup, request) {
-        this.tasksQueue.push({ engineID: sessionSetup.engineID, sessionSetup, request });
+    queueHandler(handNumber, request) {
+        this.tasksQueue.push({ handNumber, request });
         this.taskHandler();
     };
 }
@@ -133,19 +131,10 @@ class SessionSetup {
             }
         }
     }
-
-    releaseSetup() {
-        // return PokerEngine.ReleaseSetup(this.engineID);
-    }
-    setPlayer(stack, position, adaptation) {
-        // return PokerEngine.SetPlayer(this.engineID, stack, position, adaptation);
-    }
 }
 
 // calls every time when request comes to the server
 const sessionsListener = (token, setupID, request) => {
-    const { requestType } = request.request;
-
     if (token in sessions) {
         console.log('token in sessions!');
         sessions[token].timeout = sessionTimeout;                              // reset timer to destroy session
