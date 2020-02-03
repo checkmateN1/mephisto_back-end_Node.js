@@ -10,6 +10,7 @@ const actionToRequest = require('./actionsToRequest');
 const REJECT_HAND = enumCommon.enumCommon.REJECT_HAND;
 const STOP_PROMPT = enumCommon.enumCommon.STOP_PROMPT;
 const PROMPT = enumCommon.enumCommon.PROMPT;
+const HAND_PROMPT = enumCommon.enumCommon.PROMPT;
 const INVALID_FRAME = enumCommon.enumCommon.INVALID_FRAME;
 
 class PlayersHandler {
@@ -115,8 +116,10 @@ class PlaySetup {
         this.handNumber = -1;
         this.bbSize = [];           // chronology of bb sizes
         this.rawActionList = [];
+        this.heroChair = -1;
         this.board = [];
         this.rejectHand = false;
+        this.stopPrompt = false;
         this.prevPlayFrame = [];
         this.prevPlayFrameTime = null;
         this.fantomRawActionsCount = 0;
@@ -153,6 +156,7 @@ class PlaySetup {
             this.prevPlayFrame = [];
             this.prevPlayFrameTime = null;
             this.rejectHand = false;
+            this.stopPrompt = false;
             this.rejectCount = 0;
 
             this.setInitPlayers(playFrame);
@@ -179,6 +183,7 @@ class PlaySetup {
         console.log(`playFrame.isButtons: ${playFrame.isButtons}, this.rejectHand: ${this.rejectHand}`);
 
         if (!playFrame.playPlayers[playFrame.heroRecPosition].isActive || this.wasFoldBefore(playFrame.heroRecPosition)) {
+            this.stopPrompt = true;
             return STOP_PROMPT;
         }
 
@@ -774,7 +779,21 @@ class PlaySetup {
         }
     }
 
-    createHtmlPrompt(prompt, playFrame) {
+    getHeroHand() {
+        this.initPlayers.forEach((player, i) => {
+            if (player.cards && i === this.heroChair) {
+                const {
+                    hole1Value,
+                    hole2Value,
+                    hole1Suit,
+                    hole2Suit,
+                } = player.cards;
+                return hole1Value.toUpperCase() + hole1Suit + hole2Value.toUpperCase() + hole2Suit;
+            }
+        });
+    }
+
+    createMainPrompt(playFrame) {
         if (!this.rawActionList.length) {
             return `<div class="main-container spins party-poker">A new hand has not yet begun</div>`
         }
@@ -1396,15 +1415,23 @@ class PlaySetup {
         return arr;
     }
 
-    sendHandPrompt(strategy, handNumber, move_id) {
+    handPrompt(strategy, handNumber, move_id, id) {
         const {
             client,
         } = this;
 
-        if (handNumber === this.handNumber && move_id === this.rawActionList.length && !this.rejectHand && client) {
+        const promptData = {
+            prompt: strategy,
+            id,
+        };
+
+        console.log('promptData before sending client HAND_PROMPT');
+        console.log(promptData);
+
+        if (handNumber === this.handNumber && move_id === this.rawActionList.length && !this.rejectHand && !this.stopPrompt && client) {
             setTimeout(() => {
                 console.log('send hand prompt');
-                client.emit(PROMPT, this.creaateHandPrompt(strategy));
+                client.emit(HAND_PROMPT, promptData);
             }, 0);
         }
     }
@@ -1447,38 +1474,43 @@ const prompterListener = (setup, request, gameTypesSettings) => {
         }, 0);
     } else if (result === PROMPT) {
         console.log('шлем подсказку на клиент');
-
         console.log('actionToRequest.actionToRequest(setup.playSetup)');
         console.log(actionToRequest.actionToRequest(setup.playSetup));
-        const result = moves.movesHandler(
-            actionToRequest.actionToRequest(setup.playSetup),
-            setup.playSetup.bbSize[setup.playSetup.bbSize.length - 1],
-            setup.playSetup, setup.playSetup.rawActionList.length,
-            setup.playSetup.isTerminalStreetState(),
-            setup.playSetup.whoIsNextMove()                 // enum position
-        );
 
-        // aggregator functionality!
-        // 1) передаем реквест movesHandler если result === PROMPT
-        // 2) movesHandler должен вызвать коллбек в котором должна быть или рука со стратегией ев ИЛИ спектр рук, где есть рука с ев
-        // 3) movesHandler имеет доступ к сетапу и должен обрабатывать все rawActions согласно политике симуляций прописанной в нем, а именно:
-        //      3.1 всегда кэшировать стратегию хиро и извлекать руку хиро со стратегией и ев
-        //      3.2 начинать агрегатить стратегию всех игроков и кэшировать ее начиная с турна
-        // 4) movesHandler возвращает или стратегию руки хиро мува или пустую стратегию - если ход не хиро для обновления подсказки-ситуации на столе
-        // 5) movesHandler принимает параметры:
-        //      1) setup
-        //      2) heroEnumPosition  (this.initPlayers[this.heroChair].enumPosition)
-        //      3) this.whoIsNextMove()
-        //      4) playFrame.isButtons
-        // 6) movesHandler работает в режиме симуляций или извлечении стратегий. В режиме стратегий он обрабатывает rawActions последовательно
-        // 7) изменение состояние на столе когда ходит хиро - должно произойти отдельно + написать 'waiting for prompt'
-        //      7.1 ЕСЛИ видим кнопки И если последний индекс соответствует индексу подсказки И !this.rejectHand - шлем подсказку из aggregator
+        const {
+            handNumber,
+            rawActionList,
+            initPlayers,
+            bbSize,
+            board,
+            whoIsNextMove,
+            isTerminalStreetState,
+            getHeroHand,
+        } = setup.playSetup;
 
+        const request = {
+            requestPrompter: PROMPT,
+            handNumber,
+            setup,      // sessionSetup
+            rawActionList,
+            initPlayers,
+            BB: bbSize[bbSize.length - 1],
+            board,
+            hillsCash: setup.hillsCash,
+            move_id: rawActionList.length,
+            move_position: whoIsNextMove(),
+            isTerminal: isTerminalStreetState(),
+            isStrategy: true,
+            isOneHandStrategy: true,
+            hand: getHeroHand(),
+            onlyPosition: false,
+        };
+
+        setup.playSetup.simulationsQueue.queueHandler(handNumber, setup, request);
 
         if (client !== null) {
             const promptData = {
-                prompt: setup.playSetup.createHtmlPrompt([], setup.playSetup.prevPlayFrame[setup.playSetup.prevPlayFrame.length - 1]),
-                promptResult: null,
+                prompt: setup.playSetup.createMainPrompt(setup.playSetup.prevPlayFrame[setup.playSetup.prevPlayFrame.length - 1]),
                 id,
             };
 
@@ -1488,7 +1520,6 @@ const prompterListener = (setup, request, gameTypesSettings) => {
             }, 0);
         }
     }
-    // client.emit(PROMPT, promptData);
 };
 
 module.exports.prompterListener = prompterListener;

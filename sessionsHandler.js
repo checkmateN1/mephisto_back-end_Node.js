@@ -16,19 +16,20 @@ class SimulationsQueue {
             if (task) {
                 this.activeSimulations.push(task);
 
-                const getResult = (strategy, handNumber, move_id) => {
+                const getResult = (strategy, handNumber, move_id, sessionSetup) => {
                     // prompterHandler convert one hand strategy to prompt for client
+                    sessionSetup.playSetup.handPrompt(strategy, handNumber, move_id, sessionSetup.setupID);
 
                     this.activeSimulations = this.activeSimulations.filter(simulation => simulation.handNumber !== task.handNumber);
                     this.taskHandler();
                 };
-                movesHandler.getHill(task.request, getResult);
+                movesHandler.getHill(task.request, task.sessionSetup, getResult);
             }
         }
     };
 
-    queueHandler(handNumber, request) {
-        this.tasksQueue.push({ handNumber, request });
+    queueHandler(handNumber, sessionSetup, request) {
+        this.tasksQueue.push({ handNumber, sessionSetup, request });
         this.taskHandler();
     };
 }
@@ -71,8 +72,10 @@ class SessionSetup {
         this.setupID = setupID;
         this.token = token;
         this.addonSetup = null;  // setup
+        this.playSetup = {};
         this.timeout = setupTimeout;
         this.movesInEngine = 0;
+        this.simulationsQueue = simulationsQueue;
         this.hillsCash = [];     // index === nIdMove.. board nIdMove === undefined. Value = { position, hill }
         this.initCash = Object.freeze({
             players: [],
@@ -125,15 +128,16 @@ class SessionSetup {
             const gameTypesSettings = 'Spin&Go';   // config
 
             // должен записать в себя(this.playSetup = new PlaySetup, в котором записан текущий rawActionList, а так же нужно ли ресетить сетап
-            const requestPrompter = prompterHandler.prompterListener(this, request, gameTypesSettings);
-            if (requestPrompter === 'prompt') {
-                simulationsQueue.queueHandler(this, request);
+            const result = prompterHandler.prompterListener(this, request, gameTypesSettings);
+            if (result && result.requestPrompter === 'prompt') {
+                simulationsQueue.queueHandler(result.handNumber, this, result);
             }
         }
     }
 }
 
 // calls every time when request comes to the server
+// setupID === table id
 const sessionsListener = (token, setupID, request) => {
     if (token in sessions) {
         console.log('token in sessions!');

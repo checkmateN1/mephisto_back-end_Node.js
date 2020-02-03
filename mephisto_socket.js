@@ -229,8 +229,8 @@ io.on('connection', client => {
                     console.log('token in sequencePrompterClients');
                     console.log(token in sequencePrompterClients);
 
-                    console.log('prompterData.client');
-                    console.log(prompterData.client);
+                    // console.log('prompterData.client');
+                    // console.log(prompterData.client);
 
                     console.log('data.id');
                     console.log(data.id);

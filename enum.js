@@ -41,6 +41,7 @@ const enumCommon = Object.freeze({
     STOP_PROMPT: 'STOP_PROMPT',
     REJECT_HAND: 'REJECT_HAND',
     PROMPT: 'prompt',
+    HAND_PROMPT: 'hand_prompt',
 });
 
 module.exports.enumPoker = enumPoker;

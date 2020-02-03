@@ -180,7 +180,7 @@ const perfomancePolicy = Object.freeze({
 });
 
 // 1) Подключить вызов getHill к очередности задач
-// 2) Сделать чтобы возвращалась одна рука при вызове из prompterHandler. И нам не нужно ее переводить в читабельную руку(KhTs)
+// 2) Сделать чтобы возвращалась одна рука при вызове из prompterHandler. И нам не нужно ее переводить в читабельную руку(KhTs) -только для логирования в базу
 
 /// проследить, чтобы в терминальном состоянии вызывать getHill/strategy только когда появится карта борда
 const getHill = (handNumber, setup, rawActionList, initPlayers, BB, board, hillsCash, move_id, move_position,
@@ -199,11 +199,11 @@ const getHill = (handNumber, setup, rawActionList, initPlayers, BB, board, hills
             if (move < 2) {     // 0, 1 - blinds indexes
                 setup.addonSetup.push_move(position, invest, action);
             } else if ((onlyPosition !== undefined && rawActionList[move] && onlyPosition === rawActionList[move].position) || onlyPosition === undefined) {  // fill all or fill only position
-                if (!hillsCash[move] || !isCashEqual(rawActionList, hillsCash, move)) {
+                if (!hillsCash[move] || !hillsCash[move].lockMove || !isCashEqual(rawActionList, hillsCash, move)) {
                     const getStrategyAsync = (strategy) => {
                         if (isStrategy && move === move_id) {
                             callback(strategy, handNumber, move_id);
-                            if (!isOneHandStrategy) {       // не кэшируем одну руку
+                            if (!isOneHandStrategy) {       // dont cash one hand
                                 hillsCash[move] = { strategy };
                             }
                         } else {
