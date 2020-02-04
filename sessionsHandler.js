@@ -16,22 +16,26 @@ class SimulationsQueue {
             if (task) {
                 this.activeSimulations.push(task);
 
-                const getResult = (strategy, handNumber, move_id, sessionSetup) => {
+                const getResult = (strategy, handNumber, move_id, playSetup) => {
                     // prompterHandler convert one hand strategy to prompt for client
-                    sessionSetup.playSetup.handPrompt(strategy, handNumber, move_id, sessionSetup.setupID);
+                    playSetup.handPrompt(strategy, handNumber, move_id, playSetup.id);
 
                     this.activeSimulations = this.activeSimulations.filter(simulation => simulation.handNumber !== task.handNumber);
                     this.taskHandler();
                 };
-                movesHandler.getHill(task.request, task.sessionSetup, getResult);
+                movesHandler.getHill(task.request, getResult);
             }
         }
     };
 
-    queueHandler(handNumber, sessionSetup, request) {
-        this.tasksQueue.push({ handNumber, sessionSetup, request });
+    queueHandler(handNumber, request) {
+        this.tasksQueue.push({ handNumber, request });
         this.taskHandler();
     };
+
+    clearIrrelevantTasks(oldHandNumber) {
+        this.tasksQueue = this.tasksQueue.filter(task => task.handNumber !== oldHandNumber);
+    }
 }
 
 const simulationsQueue = new SimulationsQueue();

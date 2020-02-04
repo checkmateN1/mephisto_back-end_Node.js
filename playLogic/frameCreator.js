@@ -962,12 +962,6 @@ class Validator {
         }
     };
 
-    getHandNumber() {
-        // const newHandNumber = Math.floor(Math.random()*1000000000000000000000000);
-        // return newHandNumber !== this.playSetup.handNumber ? newHandNumber : this.getHandNumber();
-        return uniqid();
-    }
-
     checkNewHand(rawFrame) {
         if (this.prevFrame === null) {
             console.log(`frameCreator/// checkNewHand// this.prevFrame === null: ${this.prevFrame === null}`);

@@ -1,5 +1,5 @@
-// const PokerEngine = require('./pokerEngine');  // molotok
-// const middleware = require('./engineMiddleware_work');   // molotok
+const uniqid = require('uniqid');
+
 const enumPoker = require('./enum');
 
 const _ = require('lodash');
@@ -76,14 +76,12 @@ const fillDict = () => {
 };
 fillDict();
 
-// const getHandIndex = (handTxt) => {
-//     let index = textHandsArr.indexOf(handTxt);
-//     return index > -1 ? index : textHandsArr.indexOf(handTxt.slice(2) + handTxt.slice(0, 2))
-// };
-
+const getHandIndex = (handTxt) => {
+    let index = textHandsArr.indexOf(handTxt);
+    return index > -1 ? index : textHandsArr.indexOf(handTxt.slice(2) + handTxt.slice(0, 2))
+};
 // console.log(`6h4h: ${getHandIndex('6h4h')}`);       // 258
 // console.log(`AhAd: ${getHandIndex('AhAd')}`);       // 0
-
 // console.log('textHandsArr[656]');
 // console.log(textHandsArr[656]);
 
@@ -124,15 +122,7 @@ getMaxAmountBeforeMove = (rawActionList, move) => {
     return 0;
 };
 
-hillMultiply = (hill, strategy, optimalSizing) => {
-    let hillNew = {};
-    Object.keys(strategy).forEach(key => {
-        hillNew[key] = hill[key] * strategy[key][optimalSizing];
-    });
-    return hillNew;
-};
-
-hillMultiplyParallel = (rawActions, hillCash, strategy, optimalSizing) => {
+hillMultiply = (rawActions, cash, position) => {
     let hillNew = {};
     Object.keys(strategy).forEach(key => {
         // get hill from all hillCash, using rawAction.position
@@ -140,10 +130,13 @@ hillMultiplyParallel = (rawActions, hillCash, strategy, optimalSizing) => {
     return hillNew;
 };
 
-isCashEqual = (rawActionList, cash, indexTo) => {
-    for (let i = 0; i >= indexTo; i++) {
-        if (!_.isEqual(rawActionList[i], cash[i].rawAction)) {
-            return false;
+// функция которая возвращает труолс - заполнен ли весь кэш по конкретной позиции до конкретного индекса включительно
+isCashReady = (rawActions, cash, position, move_id) => {
+    for (let i = 2; i <= move_id; i++) {
+        if ((rawActions[i] && rawActions[i].poosition === position) || i === move_id) {
+            if (!cash[i]) {
+                return false;
+            }
         }
     }
     return true;
@@ -173,81 +166,166 @@ getPushBoardCards = (street, board) => {
     }
 };
 
+class SimulationsQueue {
+    constructor() {
+        this.activeSimulations = {};        // handNumber key: [hillRequest1, hillRequest2, ...]
+    }
+
+    queueHandler(handNumber, callback, simulationArguments) {
+        if (!this.activeSimulations[handNumber]) {
+            this.activeSimulations[handNumber] = {};
+        }
+        this.activeSimulations[handNumber][uniqid()] = { callback, simulationArguments };
+    };
+
+    deleteTask(handNumber, taskID) {
+        if (this.activeSimulations[handNumber]) {
+            delete this.activeSimulations[handNumber][taskID];
+            if (!Object.keys(this.activeSimulations[handNumber]).length) {
+                delete this.activeSimulations[handNumber];
+            }
+        }
+    }
+
+    checkCallBacks(handNumber, newHandNumber) {
+        if (handNumber !== newHandNumber) {
+            delete this.activeSimulations[handNumber];
+        } else if (Object.keys(this.activeSimulations[handNumber]).length) {
+            Object.keys(this.activeSimulations[handNumber]).forEach(key => {
+                const {
+                    move_id,
+                    playSetup,
+                    rawActions,
+                    cash,
+                    move_position,
+                    isStrategy,
+                    isOneHandStrategy,
+                } = this.activeSimulations[handNumber][key].simulationArguments;
+
+                if (isStrategy && cash[move_id]) {      // need to have all hills for all players
+                    callback(cash[move_id], handNumber, move_id, playSetup);
+                }
+                if(isCashReady(rawActions, cash, move_position, move_id)) {
+                    if (!isStrategy) {
+                        callback(hillMultiply(rawActions, cash, move_position), handNumber, move_id, playSetup);
+                    }
+                    callback(strategy, handNumber, move_id, playSetup);
+                    this.deleteTask(handNumber, key);
+                }
+            });
+        }
+    }
+}
+
+const simulationsQueue = new SimulationsQueue();
+
+// 2) Сделать чтобы возвращалась одна рука при вызове из prompterHandler. И нам не нужно ее переводить в читабельную руку(KhTs) -только для логирования в базу
+// 3) Не забываем проверять что новый номер руки !== старый
+
 const perfomancePolicy = Object.freeze({
-    oneHandStrategyStreet: [0, 1],
+    oneHandStrategyStreet: 1,
     prepareCashStrategyStreet: 1,
     simulationsStreet: [2, 3],
 });
 
-// 1) Подключить вызов getHill к очередности задач
-// 2) Сделать чтобы возвращалась одна рука при вызове из prompterHandler. И нам не нужно ее переводить в читабельную руку(KhTs) -только для логирования в базу
+const needCash = (isStrategy, rawActionList) => {
+    return rawActionList[rawActionList.length - 1].street >= perfomancePolicy.prepareCashStrategyStree;
+};
+const isOneHandStrategy = (isStrategy, rawActionList) => {
+    return rawActionList[rawActionList.length - 1].street <= perfomancePolicy.oneHandStrategyStreet;
+};
 
 /// проследить, чтобы в терминальном состоянии вызывать getHill/strategy только когда появится карта борда
-const getHill = (handNumber, setup, rawActionList, initPlayers, BB, board, hillsCash, move_id, move_position,
-                 isTerminal, isStrategy, isOneHandStrategy, hand, usePerfomancePolicy, callback, onlyPosition) => {    // move_id - для стратегии следующий, для горба текущийы
-    let hill = {};
+const getHill = (request, callback) => {    // move_id - для стратегии следующий, для горба текущийы
+    const {
+        handNumber,
+        playSetup,
+        rawActionList,
+        initPlayers,
+        BB,
+        board,
+        cash,
+        move_id,
+        move_position,
+        isTerminal,
+        isStrategy,
+        hand,
+    } = request;
+
+    const isOneHandStrategy = isOneHandStrategy(isStrategy, rawActionList);
+    if (!isOneHandStrategy) {
+        const simArguments = {
+            move_id,
+            playSetup,
+            rawActions,
+            cash,
+            move_position,
+            isStrategy,
+            isOneHandStrategy,
+        };
+
+        simulationsQueue.queueHandler(handNumber, callback, simArguments);
+    }
+
     const addonSetup = new addon.Setup(BB/100);
 
     initPlayers.forEach(player => {
         addonSetup.set_player(player.enumPosition, player.initBalance);
     });
 
-    const fillCash = (onlyPosition) => {    // опциональный параметр - можно заполнять всем / можно только конкретному игроку
+    const fillCash = () => {    // опциональный параметр - можно заполнять всем / можно только конкретному игроку
         for (let move = 0; move <= move_id; move++) {
             const { position, invest, amount, action, street } = rawActionList[move];
 
             if (move < 2) {     // 0, 1 - blinds indexes
-                setup.addonSetup.push_move(position, invest, action);
-            } else if ((onlyPosition !== undefined && rawActionList[move] && onlyPosition === rawActionList[move].position) || onlyPosition === undefined) {  // fill all or fill only position
-                if (!hillsCash[move] || !hillsCash[move].lockMove || !isCashEqual(rawActionList, hillsCash, move)) {
-                    const getStrategyAsync = (strategy) => {
-                        if (isStrategy && move === move_id) {
-                            callback(strategy, handNumber, move_id);
-                            if (!isOneHandStrategy) {       // dont cash one hand
-                                hillsCash[move] = { strategy };
+                addonSetup.push_move(position, invest, action);
+            } else {
+                if (!cash[move]) {
+                    if (needCash(isStrategy, rawActionList)) {
+                        const getStrategyAsync = (strategy) => {
+                            cash[move] = { strategy };
+                            if (rawActionList[move]) {
+                                cash[move].optimalSizing = action < 3 ? getOptimalSizing(rawActionList, strategy, amount, move) : 0;
                             }
+
+                            simulationsQueue.checkCallBacks(handNumber, playSetup.handNumber);
+                        };
+                        aggregator.aggregate_all(addonSetup, getStrategyAsync);
+                    }
+
+                    if (move === move_id && isOneHandStrategy) {
+                        const getOneStrategyAsync = (strategy) => {
+                            callback(strategy[Object.keys(strategy)[0]], handNumber, move_id, playSetup);
+                        };
+                        aggregator.aggregate_one(addonSetup, getOneStrategyAsync, getHandIndex(hand), 'cpu');
+                    }
+
+                } else {
+                    if (move === move_id) {
+                        if (isOneHandStrategy) {
+                            const strategy = cash[move].strategy[getHandIndex(hand)];
+                            callback(strategy, handNumber, move_id, playSetup);
                         } else {
-                            addonSetup.push_move(position, invest, action);
-                            if ((rawActionList[move + 1] && rawActionList[move + 1].street !== street) || (!rawActionList[move + 1] && isTerminal && move < move_id)) {     // street move after push_move
-                                addonSetup.push_move(getBoardDealPosition(street + 1), ...getPushBoardCards(street + 1));
-                            }
-
-                            const optimalSizing = action < 3 ? getOptimalSizing(rawActionList, strategy, amount, move) : 0;
-                            hillsCash[move] = { strategy, rawAction: rawActionList[move], optimalSizing  };     // isCashEqual needs rawAction for comparing
-
-                            hill = hillMultiply(hill, strategy, optimalSizing);
-                            move === move_id ? callback(hill, handNumber, move_id) : fillCash();
+                            simulationsQueue.checkCallBacks(handNumber, playSetup.handNumber);
                         }
-                    };
-
-                    aggregator.aggregate_all(addonSetup, getStrategyAsync);
-                    break;
-
-                } else {        // have cash
-                    const strategy = hillsCash[move].strategy;
-                    if (isStrategy && move === move_id) {
-                        callback(strategy, handNumber, move_id);
                     } else {
-                        addonSetup.push_move(position, invest, action);
-                        if ((rawActionList[move + 1] && rawActionList[move + 1].street !== street) || (!rawActionList[move + 1] && isTerminal && move < move_id)) {     // street move after push_move
-                            addonSetup.push_move(getBoardDealPosition(street + 1), ...getPushBoardCards(street + 1));
-                        }
-
-                        if (!hillsCash[move].rawAction) {       // cash: { strategy }
-                            hillsCash[move].rawAction = rawActionList[move];
-                            hillsCash[move].optimalSizing = action < 3 ? getOptimalSizing(rawActionList, strategy, amount, move) : 0;
-                        }
-
-                        hill = hillMultiply(hill, strategy, hillsCash[move].optimalSizing);
-                        if (move === move_id) {
-                            callback(hill, handNumber, move_id);
+                        if (cash[move].optimalSizing === undefined) {       // cash: { strategy }
+                            cash[move].optimalSizing = action < 3 ? getOptimalSizing(rawActionList, strategy, amount, move) : 0;
                         }
                     }
+                }
+
+                if (rawActionList[move]) {
+                    addonSetup.push_move(position, invest, action);
+                }
+                if ((rawActionList[move + 1] && rawActionList[move + 1].street !== street)
+                    || (!rawActionList[move + 1] && isTerminal && move < move_id)) {     // street move after push_move
+                    addonSetup.push_move(getBoardDealPosition(street + 1), ...getPushBoardCards(street + 1), board);
                 }
             }
         }
     };
-    fillCash(onlyPosition);
+    fillCash();
 };
 
 module.exports.getHill = getHill;

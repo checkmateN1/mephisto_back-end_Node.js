@@ -110,6 +110,7 @@ class ActionString {
 class PlaySetup {
     constructor(gameTypesSettings) {            // frame from recognition -> validator.dll -> playFrame
         this.client = null;
+        this.cash = [];
         this.initPlayers = [];      // all players who was active in start. Index === recPosition, some indexes == undefined!
         this.playersWasActive = [];   // all players who was active in start without empty chairs or waiting players
         this.positionEnumKeyMap = {};
@@ -123,11 +124,11 @@ class PlaySetup {
         this.prevPlayFrame = [];
         this.prevPlayFrameTime = null;
         this.fantomRawActionsCount = 0;
-        this.isNewHand = true;          // сетим на фолс внутри мувс_хендлер
         this.gameTypesSettings = gameTypesSettings;
         this.validator = validator.validatorCreator(this);
         this.selfRestart = 0;
         this.rejectCount = 0;
+
         // debug info
         this.txtFile = '';
         // this.frameHandlerCount = 0;
@@ -148,6 +149,7 @@ class PlaySetup {
         if (playFrame.handNumber !== this.handNumber) {         // new hand
             console.log(`frameHandler/// new hand!  playFrame.handNumber: ${playFrame.handNumber}, this.handNumber: ${this.handNumber}`);
             this.handNumber = playFrame.handNumber;
+            this.cash = [];
             this.initPlayers = [];
             this.positionEnumKeyMap = {};
             this.rawActionList = [];
@@ -1455,6 +1457,7 @@ const prompterListener = (setup, request, gameTypesSettings) => {
         setup.playSetup = new PlaySetup(gameTypesSettings);
     }
     setup.playSetup.client = client;
+    setup.playSetup.id = id;
     setup.playSetup.txtFile = txtFile;
     const result = setup.playSetup.frameHandler(data, gameTypesSettings);
 
@@ -1478,6 +1481,7 @@ const prompterListener = (setup, request, gameTypesSettings) => {
         console.log(actionToRequest.actionToRequest(setup.playSetup));
 
         const {
+            cash,
             handNumber,
             rawActionList,
             initPlayers,
@@ -1489,24 +1493,21 @@ const prompterListener = (setup, request, gameTypesSettings) => {
         } = setup.playSetup;
 
         const request = {
-            requestPrompter: PROMPT,
             handNumber,
-            setup,      // sessionSetup
+            playSetup: setup.playSetup,      // sessionSetup
             rawActionList,
             initPlayers,
             BB: bbSize[bbSize.length - 1],
             board,
-            hillsCash: setup.hillsCash,
+            cash,
             move_id: rawActionList.length,
             move_position: whoIsNextMove(),
             isTerminal: isTerminalStreetState(),
             isStrategy: true,
-            isOneHandStrategy: true,
             hand: getHeroHand(),
-            onlyPosition: false,
         };
 
-        setup.playSetup.simulationsQueue.queueHandler(handNumber, setup, request);
+        setup.simulationsQueue.queueHandler(handNumber, request);
 
         if (client !== null) {
             const promptData = {
