@@ -2,6 +2,7 @@ const _ = require('lodash');
 
 const prompterHandler = require('./playLogic/prompterHandler');
 const movesHandler = require('./movesHandler-pro');
+const moves = require('./movesHandler');
 
 class SimulationsQueue {
     constructor() {
@@ -16,11 +17,12 @@ class SimulationsQueue {
             if (task) {
                 this.activeSimulations.push(task);
 
-                const getResult = (strategy, handNumber, move_id, playSetup) => {
-                    // prompterHandler convert one hand strategy to prompt for client
-                    playSetup.handPrompt(strategy, handNumber, move_id, playSetup.id);
+                const getResult = (strategy, handNumber, move_id, playSetup) => {   // sometimes we can get empty callback
+                    if (strategy) {
+                        playSetup.handPrompt(strategy, handNumber, move_id, playSetup.id);
+                    }
 
-                    this.activeSimulations = this.activeSimulations.filter(simulation => simulation.handNumber !== task.handNumber);
+                    this.activeSimulations = this.activeSimulations.filter(simulation => simulation.handNumber !== tssk.handNumber || simulation.move_id !== task.move_id);
                     this.taskHandler();
                 };
                 movesHandler.getHill(task.request, getResult);
@@ -28,13 +30,13 @@ class SimulationsQueue {
         }
     };
 
-    queueHandler(handNumber, request) {
-        this.tasksQueue.push({ handNumber, request });
+    queueHandler(handNumber, move_id, request) {
+        this.tasksQueue.push({ handNumber, move_id, request });
         this.taskHandler();
     };
 
-    clearIrrelevantTasks(oldHandNumber) {
-        this.tasksQueue = this.tasksQueue.filter(task => task.handNumber !== oldHandNumber);
+    clearIrrelevantTasks(irrelevantHandNumber) {
+        this.tasksQueue = this.tasksQueue.filter(task => task.handNumber !== irrelevantHandNumber);
     }
 }
 

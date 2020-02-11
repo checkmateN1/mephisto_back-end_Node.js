@@ -8,7 +8,7 @@ const adapt_size = 10;
 addon = require('C:\\projects\\mephisto_back-end_Node.js\\custom_module\\PokerEngine\\pokerengine_addon');
 addon.SetDefaultDevice('cpu');
 // addon.DeserializeBucketingType('C:\\projects\\mephisto_back-end_Node.js\\custom_module\\buckets\\', 0);
-modelsPool = new addon.ModelsPool('C:\\projects\\mephisto_back-end_Node.js\\custom_module\\models\\regret_model', 'trained_RN');
+modelsPool = new addon.ModelsPool('C:\\projects\\mephisto_back-end_Node.js\\custom_module\\models\\regret_model', 'trained_RA');
 aggregator = new addon.RegretPoolToStrategyAggregator( modelsPool );
 // const setup = new addon.Setup(1);
 // setup.set_player(0,2500);
@@ -76,12 +76,13 @@ const fillDict = () => {
 };
 fillDict();
 
-// const getHandIndex = (handTxt) => {
-//     let index = textHandsArr.indexOf(handTxt);
-//     return index > -1 ? index : textHandsArr.indexOf(handTxt.slice(2) + handTxt.slice(0, 2))
-// };
+const getHandIndex = (handTxt) => {
+    let index = textHandsArr.indexOf(handTxt);
+    return index > -1 ? index : textHandsArr.indexOf(handTxt.slice(2) + handTxt.slice(0, 2))
+};
 
-// console.log(`6h4h: ${getHandIndex('6h4h')}`);       // 258
+console.log('Ks5s index');
+console.log(`Ks5s: ${getHandIndex('Ks5s')}`);       //  333
 // console.log(`AhAd: ${getHandIndex('AhAd')}`);       // 0
 
 // console.log('textHandsArr[656]');
@@ -105,13 +106,17 @@ getSizing = (strategy, cur) => {     // возвращает ближайший 
 getMaxAmount = (arr, maxIndex) => arr.reduce((max, cur, i) => (i <= maxIndex && cur.amount > max) ? cur.amount : max, 0);
 
 getHill = (position, curInvest, movesCount, setup) => {
-    console.log(`start getHill! MovesCount: ${movesCount}, movesInEngine: ${setup.movesInEngine}`);
+    // console.log(`start getHill! MovesCount: ${movesCount}, movesInEngine: ${setup.movesInEngine}`);
     const strategy = aggregator.aggregate_all(setup.addonSetup);
-    console.log(`get strategy success!`);
+    // console.log(`get strategy success!`);
 
     // if (movesCount === 3) {
     // console.log(`node bet 2BB with 6h4h`);
-    // console.log(strategy[258]);
+    if (position === 0) {
+        console.log(`Got strategy, move: ${movesCount}, strategy[333]:`);
+        console.log(strategy[333]);
+    }
+
     // console.log(`node bet 2BB with AA`);
     // console.log(strategy[0]);
     // console.log(strategy);
