@@ -49,7 +49,7 @@ class Validator {
         this.prevFrame = null;
     }
 
-    createFrame(rawFrame) {
+    createFrame(rawFrame, playFrameId) {
         console.log('frameCreator/// enter createFrame in validator. rawFrame:');
         console.log(rawFrame);
 
@@ -130,7 +130,7 @@ class Validator {
                 playPlayers[i] = new PlayPlayer(nickname, i, balance, bet, isActive, isDealer, cards);
             });
             console.log(`frameCreator/// isNewHand: ${isNewHand}, this.playSetup.handNumber: ${this.playSetup.handNumber}`);
-            const newHandNumber = isNewHand ? uniqid() : this.playSetup.handNumber;
+            const newHandNumber = isNewHand ? uniqid('', playFrameId) : this.playSetup.handNumber;
             const board = [];  // если не распознана масть или номинал - присваиваем undefined элементу массива(карте)
                                // так же удаляем все undefined c правого конца
 

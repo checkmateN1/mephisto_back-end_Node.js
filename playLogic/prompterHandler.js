@@ -11,7 +11,7 @@ const actionToRequest = require('./actionsToRequest');
 const REJECT_HAND = enumCommon.enumCommon.REJECT_HAND;
 const STOP_PROMPT = enumCommon.enumCommon.STOP_PROMPT;
 const PROMPT = enumCommon.enumCommon.PROMPT;
-const HAND_PROMPT = enumCommon.enumCommon.PROMPT;
+const HAND_PROMPT = enumCommon.enumCommon.HAND_PROMPT;
 const INVALID_FRAME = enumCommon.enumCommon.INVALID_FRAME;
 
 class PlayersHandler {
@@ -134,14 +134,12 @@ class PlaySetup {
 
         // debug info
         this.txtFile = '';
-        // this.frameHandlerCount = 0;
     }
 
     frameHandler(rawFrame, gameTypesSettings) {
-        // this.frameHandlerCount += 1;
         console.log(`start frameHandler/// this.txtFile: ${this.txtFile}`);
         this.gameTypesSettings = gameTypesSettings;
-        const playFrame = this.validator.createFrame(rawFrame);
+        const playFrame = this.validator.createFrame(rawFrame, this.uniqid);
         if (playFrame === INVALID_FRAME) {
             console.log('INVALID FRAME from validator');
             return REJECT_HAND;
@@ -787,6 +785,7 @@ class PlaySetup {
     }
 
     getHeroHand() {
+        let hand;
         this.initPlayers.forEach((player, i) => {
             if (player.cards && i === this.heroChair) {
                 const {
@@ -795,9 +794,10 @@ class PlaySetup {
                     hole1Suit,
                     hole2Suit,
                 } = player.cards;
-                return hole1Value.toUpperCase() + hole1Suit + hole2Value.toUpperCase() + hole2Suit;
+                hand = hole1Value.toUpperCase() + hole1Suit + hole2Value.toUpperCase() + hole2Suit;
             }
         });
+        return hand;
     }
 
     createMainPrompt(playFrame) {
@@ -1320,8 +1320,8 @@ class PlaySetup {
 
     isValidTerminalBoardState(isTerminal) {
         if (!isTerminal) {return true;}
-
-        return this.getStreetNumber() > this.rawActionList[this.rawActionList.length - 1].street;
+        const boardStreet = this.getStreetNumber();
+        return boardStreet > this.rawActionList[this.rawActionList.length - 1].street;
     }
 
     setInitPlayers(firstPlayFrame) {
@@ -1429,7 +1429,7 @@ class PlaySetup {
         } = this;
 
         const promptData = {
-            prompt: strategy,
+            hand_prompt: strategy,
             id,
         };
 
@@ -1459,7 +1459,7 @@ const prompterListener = (setup, request, gameTypesSettings) => {
     const { id } = data;
 
     // check on valid recognition frame
-    if (setup.playSetup === undefined) {
+    if (setup.playSetup === null) {
         setup.playSetup = new PlaySetup(gameTypesSettings);
         setup.playSetup.sessionSetup = setup;
     }
@@ -1468,7 +1468,6 @@ const prompterListener = (setup, request, gameTypesSettings) => {
     setup.playSetup.txtFile = txtFile;
 
     const result = setup.playSetup.frameHandler(data, gameTypesSettings);
-
 
     console.log(`inside prompterListener!`);
     if (result === REJECT_HAND) {
@@ -1487,51 +1486,46 @@ const prompterListener = (setup, request, gameTypesSettings) => {
         setTimeout(() => {
             console.log('send empty prompt');
             client.emit(PROMPT, promptData);
-        }, 0);
-        setTimeout(() => {
-            console.log('send hand prompt');
+            console.log('send empty hand prompt');
             client.emit(HAND_PROMPT, promptData);
         }, 0);
-    } else if (result === PROMPT && !this.simulationsRequests[this.rawActionList.length]) {
-        this.simulationsRequests[this.rawActionList.length] = true;
+    } else if (result === PROMPT && !setup.playSetup.simulationsRequests[setup.playSetup.rawActionList.length]) {
 
         const {
             cash,
             handNumber,
             rawActionList,
             initPlayers,
+            heroChair,
             bbSize,
-            board,
-            whoIsNextMove,
-            getHeroHand,
-            isTerminalStreetState,
-            whoIsInGame,
-            isValidTerminalBoardState,
         } = setup.playSetup;
 
-        const isTerminal = isTerminalStreetState();
-        const isActivePlayers = whoIsInGame().length > 1;
-
-        if (isValidTerminalBoardState(isTerminal) && isActivePlayers) {
+        const isTerminal = setup.playSetup.isTerminalStreetState();
+        const isActivePlayers = setup.playSetup.whoIsInGame().length > 1;
+        const isValidStreetTerminal = setup.playSetup.isValidTerminalBoardState(isTerminal);
+        if (isValidStreetTerminal && isActivePlayers) {
+            setup.playSetup.simulationsRequests[setup.playSetup.rawActionList.length] = true;
             console.log('send prompt to client');
 
+            const hand = setup.playSetup.getHeroHand();
+            const board = setup.playSetup.board.slice();
             const request = {
                 handNumber,
                 playSetup: setup.playSetup,
                 rawActionList: rawActionList.slice(),
                 initPlayers: initPlayers.slice(),
                 BB: bbSize[bbSize.length - 1],
-                board: board.slice(),
+                board,
                 cash,
                 move_id: rawActionList.length,
-                move_position: whoIsNextMove(isTerminal),
-                heroPosition: setup.playSetup.heroChair,
+                move_position: setup.playSetup.whoIsNextMove(isTerminal),
+                heroPosition: initPlayers[heroChair].enumPosition,
                 isTerminal,
                 isStrategy: true,
-                hand: getHeroHand(),
+                hand,
             };
 
-            setup.simulationsQueue.queueHandler(handNumber, move_id, request);
+            setup.simulationsQueue.queueHandler(handNumber, rawActionList.length, request);
 
             if (client !== null) {
                 const promptData = {

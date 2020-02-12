@@ -18,11 +18,14 @@ class SimulationsQueue {
                 this.activeSimulations.push(task);
 
                 const getResult = (strategy, handNumber, move_id, playSetup) => {   // sometimes we can get empty callback
+                    console.log(`enter callback in sessionsHandler`);
+                    console.log(`strategy`);
+                    console.log(strategy);
                     if (strategy) {
                         playSetup.handPrompt(strategy, handNumber, move_id, playSetup.id);
                     }
 
-                    this.activeSimulations = this.activeSimulations.filter(simulation => simulation.handNumber !== tssk.handNumber || simulation.move_id !== task.move_id);
+                    this.activeSimulations = this.activeSimulations.filter(simulation => simulation.handNumber !== task.handNumber || simulation.move_id !== task.move_id);
                     this.taskHandler();
                 };
                 movesHandler.getHill(task.request, getResult);
@@ -45,8 +48,8 @@ const simulationsQueue = new SimulationsQueue();
 // all users sessions.. 1 token = 1 session
 const sessions = {};
 
-const sessionTimeout = 200;
-const setupTimeout = 100;
+const sessionTimeout = 2000;
+const setupTimeout = 1000;
 const timeoutStep = 50000;
 
 // one specific user with many SessionSetups
@@ -78,7 +81,7 @@ class SessionSetup {
         this.setupID = setupID;
         this.token = token;
         this.addonSetup = null;  // setup
-        this.playSetup = {};
+        this.playSetup = null;
         this.timeout = setupTimeout;
         this.movesInEngine = 0;
         this.simulationsQueue = simulationsQueue;
