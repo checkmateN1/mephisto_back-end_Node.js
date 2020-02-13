@@ -2,12 +2,13 @@ const moment = require('moment');
 
 const enumPoker = require('../enum');
 const enumCommon = require('../enum');
-// const moves = require('./prompterMovesHandler');     // molotok
 const validator = require('./frameCreator');
+
 
 const REJECT_HAND = enumCommon.enumCommon.REJECT_HAND;
 const STOP_PROMPT = enumCommon.enumCommon.STOP_PROMPT;
 const PROMPT = enumCommon.enumCommon.PROMPT;
+const HAND_PROMPT = enumCommon.enumCommon.HAND_PROMPT;
 const INVALID_FRAME = enumCommon.enumCommon.INVALID_FRAME;
 
 class PlayersHandler {
@@ -105,35 +106,36 @@ class ActionString {
 }
 
 class PlaySetup {
-    constructor(gameTypesSettings, client) {            // frame from recognition -> validator.dll -> playFrame
-        this.client = client;
+    constructor(gameTypesSettings) {            // frame from recognition -> validator.dll -> playFrame
+        this.client = null;
+        this.cash = [];
         this.initPlayers = [];      // all players who was active in start. Index === recPosition, some indexes == undefined!
         this.playersWasActive = [];   // all players who was active in start without empty chairs or waiting players
         this.positionEnumKeyMap = {};
         this.handNumber = -1;
         this.bbSize = [];           // chronology of bb sizes
         this.rawActionList = [];
+        this.heroChair = -1;
         this.board = [];
         this.rejectHand = false;
+        this.stopPrompt = false;
         this.prevPlayFrame = [];
+        this.simulationsRequests = [];  // lock nodes we already created simulations requests. 1 action has only 1 request
         this.prevPlayFrameTime = null;
         this.fantomRawActionsCount = 0;
-        this.lastPromptMoveType = null; // используем для эвристики по поводу того, кто именно ставил, когда это не известно.
-        this.isNewHand = true;          // сетим на фолс внутри мувс_хендлер
         this.gameTypesSettings = gameTypesSettings;
         this.validator = validator.validatorCreator(this);
         this.selfRestart = 0;
         this.rejectCount = 0;
+
         // debug info
         this.txtFile = '';
-        // this.frameHandlerCount = 0;
     }
 
     frameHandler(rawFrame, gameTypesSettings) {
-        // this.frameHandlerCount += 1;
         console.log(`start frameHandler/// this.txtFile: ${this.txtFile}`);
         this.gameTypesSettings = gameTypesSettings;
-        const playFrame = this.validator.createFrame(rawFrame);
+        const playFrame = this.validator.createFrame(rawFrame, this.uniqid);
         if (playFrame === INVALID_FRAME) {
             console.log('INVALID FRAME from validator');
             return REJECT_HAND;
@@ -143,7 +145,10 @@ class PlaySetup {
         }
         if (playFrame.handNumber !== this.handNumber) {         // new hand
             console.log(`frameHandler/// new hand!  playFrame.handNumber: ${playFrame.handNumber}, this.handNumber: ${this.handNumber}`);
+            this.sessionSetup.simulationsQueue.clearIrrelevantTasks(this.handNumber);
+            this.simulationsRequests = [];      // clear locked actions for simulations requests
             this.handNumber = playFrame.handNumber;
+            this.cash = [];
             this.initPlayers = [];
             this.positionEnumKeyMap = {};
             this.rawActionList = [];
@@ -152,6 +157,7 @@ class PlaySetup {
             this.prevPlayFrame = [];
             this.prevPlayFrameTime = null;
             this.rejectHand = false;
+            this.stopPrompt = false;
             this.rejectCount = 0;
 
             this.setInitPlayers(playFrame);
@@ -178,10 +184,12 @@ class PlaySetup {
         console.log(`playFrame.isButtons: ${playFrame.isButtons}, this.rejectHand: ${this.rejectHand}`);
 
         if (!playFrame.playPlayers[playFrame.heroRecPosition].isActive || this.wasFoldBefore(playFrame.heroRecPosition)) {
+            this.stopPrompt = true;
             return STOP_PROMPT;
         }
 
         // if (this.needToPrompt && playFrame.isButtons) {
+        console.log(`this.whoIsNextMove(): ${this.whoIsNextMove()}`);
         return PROMPT;
     };
 
@@ -772,7 +780,23 @@ class PlaySetup {
         }
     }
 
-    createHtmlPrompt(prompt, playFrame) {
+    getHeroHand() {
+        let hand;
+        this.initPlayers.forEach((player, i) => {
+            if (player.cards && i === this.heroChair) {
+                const {
+                    hole1Value,
+                    hole2Value,
+                    hole1Suit,
+                    hole2Suit,
+                } = player.cards;
+                hand = hole1Value.toUpperCase() + hole1Suit + hole2Value.toUpperCase() + hole2Suit;
+            }
+        });
+        return hand;
+    }
+
+    createMainPrompt(playFrame) {
         if (!this.rawActionList.length) {
             return `<div class="main-container spins party-poker">A new hand has not yet begun</div>`
         }
@@ -805,6 +829,7 @@ class PlaySetup {
             heroCards,
             enumPoker,
             board: this.board,
+            status: 'wait prompt',
         };
     }
 
@@ -1163,7 +1188,7 @@ class PlaySetup {
     }
 
     whoIsInGame() {
-        const playersInGame = []; //добавляем всех у кого УМНЫЙ баланc больше нуля и кто не делал фолд
+        const playersInGame = [];       //добавляем всех у кого УМНЫЙ баланc больше нуля и кто не делал фолд
         const blackList = [];
         const allPlayers = [];
         for (let i = this.rawActionList.length - 1; i >= 0; i--) { //добавляем всех кто сфолдил или баланс = 0
@@ -1172,11 +1197,10 @@ class PlaySetup {
             }
         }
 
-        for (let i = this.rawActionList.length - 1; i >= 0; i--) { // добавляем всех игроков
-            if (allPlayers.indexOf(this.rawActionList[i].position) < 0) {
-                allPlayers.push(this.rawActionList[i].position);
-            }
-        }
+        this.initPlayers.forEach(player => {
+            allPlayers.push(player.enumPosition);
+        });
+
         for (let i = allPlayers.length - 1; i >= 0; i--) { // добавляем только тех кто остался
             if (blackList.indexOf(allPlayers[i]) < 0) {
                 playersInGame.push(allPlayers[i]);
@@ -1270,6 +1294,30 @@ class PlaySetup {
                 return 0;
             }
         }
+    }
+
+    // возвращает enum позицию того кто будет ходить следующим
+    whoIsNextMove(isTerminal) {
+        const nPlayers = this.whoIsInGame();
+        if (isTerminal !== undefined ? isTerminal : this.isTerminalStreetState()) {
+            return Math.max(...nPlayers); // наибольшее число из массива
+        } else {
+            nPlayers.sort((a,b) => a-b);
+            for (let i = this.rawActionList.length - 1; i >= 0; i--) {
+                if (nPlayers.indexOf(this.rawActionList[i].position) >= 0) {
+                    if (nPlayers.indexOf(this.rawActionList[i].position) > 0) { // если игрок не в позиции ко всем оставшимся
+                        return nPlayers[nPlayers.indexOf(this.rawActionList[i].position) - 1]; // возвращаем более ближнего к BTN
+                    } else {return nPlayers[nPlayers.length - 1];} // если он ближайший к бтн - ходить будет ближайший к SB
+                }
+            }
+        }
+    }
+
+
+    isValidTerminalBoardState(isTerminal) {
+        if (!isTerminal) {return true;}
+        const boardStreet = this.getStreetNumber();
+        return boardStreet > this.rawActionList[this.rawActionList.length - 1].street;
     }
 
     setInitPlayers(firstPlayFrame) {
@@ -1370,6 +1418,27 @@ class PlaySetup {
         }
         return arr;
     }
+
+    handPrompt(strategy, handNumber, move_id, id) {
+        const {
+            client,
+        } = this;
+
+        const promptData = {
+            hand_prompt: strategy,
+            id,
+        };
+
+        console.log('promptData before sending client HAND_PROMPT');
+        console.log(promptData);
+
+        if (handNumber === this.handNumber && move_id === this.rawActionList.length && !this.rejectHand && !this.stopPrompt && client) {
+            setTimeout(() => {
+                console.log('send hand prompt');
+                client.emit(HAND_PROMPT, promptData);
+            }, 0);
+        }
+    }
 }
 
 // 1) из реквеста создаем полноценный фрейм
@@ -1386,42 +1455,87 @@ const prompterListener = (setup, request, gameTypesSettings) => {
     const { id } = data;
 
     // check on valid recognition frame
-    if (setup.playSetup === undefined) {
-        setup.playSetup = new PlaySetup(gameTypesSettings, client);
+    if (setup.playSetup === null) {
+        setup.playSetup = new PlaySetup(gameTypesSettings);
+        setup.playSetup.sessionSetup = setup;
     }
+    setup.playSetup.client = client;
+    setup.playSetup.id = id;
     setup.playSetup.txtFile = txtFile;
+
     const result = setup.playSetup.frameHandler(data, gameTypesSettings);
 
-
-    console.log(`!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!inside prompterListener`);
+    console.log(`inside prompterListener!`);
     if (result === REJECT_HAND) {
         console.log(REJECT_HAND + ' prompterListener');
     } else if (result === STOP_PROMPT) {
-        console.log(`останавливаем подсказывание для данной руки: result === STOP_PROMPT`);
+        console.log(`stoped prompt: result === STOP_PROMPT`);
+
+        if (setup.playSetup.stopPrompt) {
+            setup.simulationsQueue.clearIrrelevantTasks(setup.playSetup.handNumber);
+        }
+
         const promptData = {
             prompt: {},
             id,
         };
         setTimeout(() => {
-            console.log('send empty prompt inside timeout');
+            console.log('send empty prompt');
             client.emit(PROMPT, promptData);
+            console.log('send empty hand prompt');
+            client.emit(HAND_PROMPT, promptData);
         }, 0);
-    } else if (result === PROMPT && client !== null) {
-        console.log('шлем подсказку на клиент');
+    } else if (result === PROMPT && !setup.playSetup.simulationsRequests[setup.playSetup.rawActionList.length]) {
 
-        // 
+        const {
+            cash,
+            handNumber,
+            rawActionList,
+            initPlayers,
+            heroChair,
+            bbSize,
+        } = setup.playSetup;
 
+        const isTerminal = setup.playSetup.isTerminalStreetState();
+        const isActivePlayers = setup.playSetup.whoIsInGame().length > 1;
+        const isValidStreetTerminal = setup.playSetup.isValidTerminalBoardState(isTerminal);
+        if (isValidStreetTerminal && isActivePlayers) {
+            setup.playSetup.simulationsRequests[setup.playSetup.rawActionList.length] = true;
+            console.log('send prompt to client');
 
-        const promptData = {
-            prompt: setup.playSetup.createHtmlPrompt([], setup.playSetup.prevPlayFrame[setup.playSetup.prevPlayFrame.length - 1]),
-            id,
-        };
-        setTimeout(() => {
-            console.log('send prompt inside timeout');
-            client.emit(PROMPT, promptData);
-        }, 0);
+            const hand = setup.playSetup.getHeroHand();
+            const board = setup.playSetup.board.slice();
+            const request = {
+                handNumber,
+                playSetup: setup.playSetup,
+                rawActionList: rawActionList.slice(),
+                initPlayers: initPlayers.slice(),
+                BB: bbSize[bbSize.length - 1],
+                board,
+                cash,
+                move_id: rawActionList.length,
+                move_position: setup.playSetup.whoIsNextMove(isTerminal),
+                heroPosition: initPlayers[heroChair].enumPosition,
+                isTerminal,
+                isStrategy: true,
+                hand,
+            };
+
+            setup.simulationsQueue.queueHandler(handNumber, rawActionList.length, request);
+
+            if (client !== null) {
+                const promptData = {
+                    prompt: setup.playSetup.createMainPrompt(setup.playSetup.prevPlayFrame[setup.playSetup.prevPlayFrame.length - 1]),
+                    id,
+                };
+
+                setTimeout(() => {
+                    console.log('send prompt');
+                    client.emit(PROMPT, promptData);
+                }, 0);
+            }
+        }
     }
-    // client.emit(PROMPT, promptData);
 };
 
 module.exports.prompterListener = prompterListener;

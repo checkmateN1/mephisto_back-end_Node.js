@@ -1,12 +1,10 @@
 const _ = require('lodash');
 
-
-// const PokerEngine = require('./pokerEngine');
 const prompterHandler = require('./playLogic/prompterHandler');
-// const middleware = require('./engineMiddleware_work');   // molotok
-const moves = require('./movesHandler');     // molotok
+const movesHandler = require('./movesHandler-pro');
+const moves = require('./movesHandler');
 
-class SimulationsQueue {            /// чинить много аккаунтов - engineID = номер стола.. пересекаются в разных акках, не учитывая уникальный токен
+class SimulationsQueue {
     constructor() {
         this.maxActiveTasks = 2;
         this.activeSimulations = [];
@@ -18,21 +16,31 @@ class SimulationsQueue {            /// чинить много аккаунто
             const task = this.tasksQueue.shift();
             if (task) {
                 this.activeSimulations.push(task);
+
+                const getResult = (strategy, handNumber, move_id, playSetup) => {   // sometimes we can get empty callback
+                    console.log(`enter callback in sessionsHandler`);
+                    console.log(`strategy`);
+                    console.log(strategy);
+                    if (strategy) {
+                        playSetup.handPrompt(strategy, handNumber, move_id, playSetup.id);
+                    }
+
+                    this.activeSimulations = this.activeSimulations.filter(simulation => simulation.handNumber !== task.handNumber || simulation.move_id !== task.move_id);
+                    this.taskHandler();
+                };
+                movesHandler.getHill(task.request, getResult);
             }
-
-            // const result = middleware.getAllHandsStrategy(task.sessionSetup, task.request, [-1,0,1]);   // request need for client and stuff
-            // up molotok
-            // handle result
-
-            this.activeSimulations = this.activeSimulations.filter(simulation => simulation.engineID !== task.engineID);
-            this.taskHandler();
         }
     };
 
-    queueHandler(sessionSetup, request) {
-        this.tasksQueue.push({ engineID: sessionSetup.engineID, sessionSetup, request });
+    queueHandler(handNumber, move_id, request) {
+        this.tasksQueue.push({ handNumber, move_id, request });
         this.taskHandler();
     };
+
+    clearIrrelevantTasks(irrelevantHandNumber) {
+        this.tasksQueue = this.tasksQueue.filter(task => task.handNumber !== irrelevantHandNumber);
+    }
 }
 
 const simulationsQueue = new SimulationsQueue();
@@ -40,8 +48,8 @@ const simulationsQueue = new SimulationsQueue();
 // all users sessions.. 1 token = 1 session
 const sessions = {};
 
-const sessionTimeout = 200;
-const setupTimeout = 100;
+const sessionTimeout = 2000;
+const setupTimeout = 1000;
 const timeoutStep = 50000;
 
 // one specific user with many SessionSetups
@@ -73,9 +81,10 @@ class SessionSetup {
         this.setupID = setupID;
         this.token = token;
         this.addonSetup = null;  // setup
+        this.playSetup = null;
         this.timeout = setupTimeout;
         this.movesInEngine = 0;
-        this.playersHills = [];     // index === player position
+        this.simulationsQueue = simulationsQueue;
         this.hillsCash = [];     // index === nIdMove.. board nIdMove === undefined. Value = { position, hill }
         this.initCash = Object.freeze({
             players: [],
@@ -128,25 +137,17 @@ class SessionSetup {
             const gameTypesSettings = 'Spin&Go';   // config
 
             // должен записать в себя(this.playSetup = new PlaySetup, в котором записан текущий rawActionList, а так же нужно ли ресетить сетап
-            const requestPrompter = prompterHandler.prompterListener(this, request, gameTypesSettings);
-            if (requestPrompter === 'prompt') {
-                simulationsQueue.queueHandler(this, request);
+            const result = prompterHandler.prompterListener(this, request, gameTypesSettings);
+            if (result && result.requestPrompter === 'prompt') {
+                simulationsQueue.queueHandler(result.handNumber, this, result);
             }
         }
-    }
-
-    releaseSetup() {
-        // return PokerEngine.ReleaseSetup(this.engineID);
-    }
-    setPlayer(stack, position, adaptation) {
-        // return PokerEngine.SetPlayer(this.engineID, stack, position, adaptation);
     }
 }
 
 // calls every time when request comes to the server
+// setupID === table id
 const sessionsListener = (token, setupID, request) => {
-    const { requestType } = request.request;
-
     if (token in sessions) {
         console.log('token in sessions!');
         sessions[token].timeout = sessionTimeout;                              // reset timer to destroy session

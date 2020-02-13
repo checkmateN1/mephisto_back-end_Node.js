@@ -1,8 +1,10 @@
 // const io = require("socket.io");
 const server = require('http').createServer();
 const io = require('socket.io')(server, {
-    timeout: 60000,
-    pingTimeout: 60000,
+    // timeout: 60000,
+    // pingTimeout: 60000,
+    timeout: 6000000,       // debug mode with huge freeze timeout
+    pingTimeout: 6000000,
 });
 // const server = io.listen(3001);
 
@@ -160,18 +162,9 @@ io.on('connection', client => {
 
                             console.log(frameData);
 
-                            // console.log('token in sequencePrompterClients');
-                            // console.log(token in sequencePrompterClients);
-                            //
-                            // console.log('prompterData.client');
-                            // console.log(prompterData.client);
-                            //
-                            // console.log('prompterData.data.id');
-                            // console.log(prompterData.data.id);
-
                             setTimeout(() => {
                                 sessionsHandler.sessionsListener(token, frameData.id, prompterData);     // data.id == table id from recognition
-                            }, 100);
+                            }, 300);
                         }
                     });
                 }
@@ -229,8 +222,8 @@ io.on('connection', client => {
                     console.log('token in sequencePrompterClients');
                     console.log(token in sequencePrompterClients);
 
-                    console.log('prompterData.client');
-                    console.log(prompterData.client);
+                    // console.log('prompterData.client');
+                    // console.log(prompterData.client);
 
                     console.log('data.id');
                     console.log(data.id);
