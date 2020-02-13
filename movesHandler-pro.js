@@ -154,7 +154,7 @@ setHills = (addonSetup, initPlayers, rawActionList, cash, move) => {
 
 // mock strategy function
 mockStrategy = (callBack) => {
-    strategy = {                                 // test strategy example
+    const strategy = {                                 // test strategy example
         '1': {
             '0': 0.0011505433459377008,
             '100': 0.0478785282734064,
@@ -185,10 +185,10 @@ mockStrategy = (callBack) => {
     };
     setTimeout(() => {
         callBack(strategy);
-    }, 1000);
+    }, 1500);
 };
 mockStrategyOne = (callBack) => {
-    strategy = {                                 // test strategy example
+    const strategy = {                                 // test strategy example
         '1': {
             '0': 0.0011505433459377008,
             '100': 0.0478785282734064,
@@ -202,7 +202,7 @@ mockStrategyOne = (callBack) => {
     setTimeout(() => {
         console.log(`inside timeout mockStrategyOne`);
         callBack(strategy);
-    }, 1000);
+    }, 300);
 };
 
 isCashReady = (rawActionList, cash, move_id) => {
@@ -239,76 +239,74 @@ getPushBoardCards = (street, board) => {
 };
 
 class SimulationsQueue {
-    constructor() {
-        this.activeSimulations = {};        // handNumber key: [hillRequest1, hillRequest2, ...]
-    }
-
-    queueHandler(id, handNumber, callback, simulationArguments) {
-        if (!this.activeSimulations[id]) {
-            this.activeSimulations[id] = {};
-        }
-        if (!this.activeSimulations[id][handNumber]) {
-            this.activeSimulations[id][handNumber] = {};
-            this.activeSimulations[id][handNumber].lockIndexes = [];    // when some simulation/aggregate starts - we lock same index
-        }
-        if (simulationArguments.needSimulation) {
-            this.activeSimulations[id][handNumber][uniqid()] = { callback, simulationArguments };
+    queueHandler(playSetup, handNumber, callback, simulationArguments) {
+        if (playSetup) {
+            if (!playSetup.activeSimulations) {
+                playSetup.activeSimulations = {};
+            }
+            if (!playSetup.activeSimulations[handNumber]) {
+                playSetup.activeSimulations[handNumber] = {};
+                playSetup.activeSimulations[handNumber].lockIndexes = [];    // when some simulation/aggregate starts - we lock same index
+            }
+            if (simulationArguments.needSimulation) {
+                playSetup.activeSimulations[handNumber][uniqid()] = { callback, simulationArguments };
+            }
         }
     };
 
-    lockMove(uniqid, handNumber, move) {
-        if (this.activeSimulations[uniqid] && this.activeSimulations[uniqid][handNumber]) {
-            this.activeSimulations[uniqid][handNumber].lockIndexes[move] = true;
+    lockMove(playSetup, handNumber, move) {
+        if (playSetup && playSetup.activeSimulations && playSetup.activeSimulations[handNumber]) {
+            playSetup.activeSimulations[handNumber].lockIndexes[move] = true;
         }
     }
 
-    isMoveLock(uniqid, handNumber, move) {
-        if (this.activeSimulations[uniqid] && this.activeSimulations[uniqid][handNumber]) {
-            return this.activeSimulations[uniqid][handNumber].lockIndexes[move];
+    isMoveLock(playSetup, handNumber, move) {
+        if (playSetup && playSetup.activeSimulations && playSetup.activeSimulations[handNumber]) {
+            return playSetup.activeSimulations[handNumber].lockIndexes[move];
         }
     }
 
-    deleteTask(uniqid, handNumber, taskID) {
-        if (this.activeSimulations[uniqid] && this.activeSimulations[uniqid][handNumber]) {
-            delete this.activeSimulations[uniqid][handNumber][taskID];
+    deleteTask(playSetup, handNumber, taskID) {
+        if (playSetup && playSetup.activeSimulations && playSetup.activeSimulations[handNumber]) {
+            delete playSetup.activeSimulations[handNumber][taskID];
         }
     }
 
-    checkCallBacks(uniqid, handNumber, playSetup) {
-        if (this.activeSimulations[uniqid] && this.activeSimulations[uniqid][handNumber] && Object.keys(this.activeSimulations[uniqid][handNumber]).length > 1) {
-
+    checkCallBacks(playSetup, handNumber) {
+        if (playSetup && playSetup.activeSimulations && playSetup.activeSimulations[handNumber]) {
             const isIrrelevant = handNumber !== playSetup.handNumber || playSetup.stopPrompt;
-            Object.keys(this.activeSimulations[uniqid][handNumber]).forEach(key => {
+            Object.keys(playSetup.activeSimulations[handNumber]).forEach(key => {
                 if (isIrrelevant) {
-                    this.activeSimulations[uniqid][handNumber][key].callback();
+                    playSetup.activeSimulations[handNumber][key].callback();
                 } else if (key !== 'lockIndexes') {
-                    const task = this.activeSimulations[uniqid][handNumber][key];
+                    const task = playSetup.activeSimulations[handNumber][key];
                     const {
                         hand,
                         move_id,
-                        playSetup,
                         rawActionList,
                         cash,
                         isNodeSimulation,
                         isHeroTurn,
                     } = task.simulationArguments;
 
-                    if(isCashReady(rawActionList, cash, move_id)) {     // all cash ready before this move
-                        if (isNodeSimulation) {task.callback();}        // start callback with simulation waiting - not main callback!
-
-                        if (cash[move_id]) {    // main task finished
+                    if(isCashReady(rawActionList, cash, move_id)) {     // all cash ready before main request move
+                        if (isNodeSimulation) {     // start callback with simulation - not main callback!
+                            task.callback();
+                        } else if (cash[move_id]) {    // main task finished
                             isHeroTurn ? task.callback(cash[move_id].strategy[getHandIndex(hand)], handNumber, move_id, playSetup) : task.callback();
-                            this.deleteTask(uniqid, handNumber, key);
+                            this.deleteTask(playSetup, handNumber, key);
                         }
                     }
                 }
             });
+
             if (isIrrelevant) {
-                delete this.activeSimulations[uniqid][handNumber];
+                delete playSetup.activeSimulations[handNumber];
             }
-            if (Object.keys(this.activeSimulations[uniqid]).length > 1) {
-                Object.keys(this.activeSimulations[uniqid]).filter(handNum => handNum !== playSetup.handNumber).forEach(handNumb => {
-                    this.checkCallBacks(uniqid, handNumb, playSetup);
+
+            if (Object.keys(playSetup.activeSimulations).length > 1) {       // если у стола есть еще нерелевантные руки с запросами
+                Object.keys(playSetup.activeSimulations).filter(handNum => handNum !== playSetup.handNumber).forEach(handNumb => {
+                    this.checkCallBacks(playSetup, handNumb);
                 });
             }
         }
@@ -356,8 +354,6 @@ const getHill = (request, callback) => {
         hand,
     } = request;
 
-    const { uniqid } = playSetup;
-
     const needCash = isNeedCash(isStrategy, rawActionList, isTerminal);
     const needSimulation = isNeedSimulation(isStrategy, rawActionList, isTerminal);
     if (heroPosition !== move_position && !needCash) {      // preflop and not hero's turn
@@ -371,7 +367,6 @@ const getHill = (request, callback) => {
     const simArguments = {
         hand,
         move_id,
-        playSetup,
         rawActionList,
         cash,
         needSimulation,
@@ -379,7 +374,7 @@ const getHill = (request, callback) => {
     };
 
 
-    simulationsQueue.queueHandler(uniqid, handNumber, callback, simArguments);
+    simulationsQueue.queueHandler(playSetup, handNumber, callback, simArguments);
 
     const addonSetup = new addon.Setup(BB/100);
 
@@ -396,12 +391,12 @@ const getHill = (request, callback) => {
             } else {
                 const isNodeSimulation = nodeSimulation(rawActionList, isTerminal, move);
                 if (!cash[move]) {
-                    if (needCash && !simulationsQueue.isMoveLock(uniqid, handNumber, move)) {
-                        simulationsQueue.lockMove(uniqid, handNumber, move);
+                    if (needCash && !simulationsQueue.isMoveLock(playSetup, handNumber, move)) {
+                        simulationsQueue.lockMove(playSetup, handNumber, move);
                         const getStrategyAsync = (strategy) => {
                             cash[move] = { strategy };
 
-                            simulationsQueue.checkCallBacks(uniqid, handNumber, playSetup);
+                            simulationsQueue.checkCallBacks(playSetup, handNumber);
                             if (isNodeSimulation && move < move_id) {
                                 movesHandler();
                             }
@@ -432,7 +427,7 @@ const getHill = (request, callback) => {
                                     needSimulation: true,
                                     isNodeSimulation,
                                 };
-                                simulationsQueue.queueHandler(uniqid, handNumber, simulateCallback, simArguments);
+                                simulationsQueue.queueHandler(playSetup, handNumber, simulateCallback, simArguments);
                             }
                             break;      // sync mode
                         } else {
@@ -462,7 +457,7 @@ const getHill = (request, callback) => {
                     }
                 }
 
-                // push moves
+                // push moves and board
                 if (rawActionList[move]) {
                     const { position, invest, action, street } = rawActionList[move];
                     addonSetup.push_move(position, invest, action);

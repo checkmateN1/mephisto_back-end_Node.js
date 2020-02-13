@@ -1,12 +1,9 @@
 const moment = require('moment');
-const uniqid = require('uniqid');
 
 const enumPoker = require('../enum');
 const enumCommon = require('../enum');
-// const moves = require('./prompterMovesHandler');     // molotok
 const validator = require('./frameCreator');
-const moves = require('../movesHandler');
-const actionToRequest = require('./actionsToRequest');
+
 
 const REJECT_HAND = enumCommon.enumCommon.REJECT_HAND;
 const STOP_PROMPT = enumCommon.enumCommon.STOP_PROMPT;
@@ -112,7 +109,6 @@ class PlaySetup {
     constructor(gameTypesSettings) {            // frame from recognition -> validator.dll -> playFrame
         this.client = null;
         this.cash = [];
-        this.uniqid = uniqid();
         this.initPlayers = [];      // all players who was active in start. Index === recPosition, some indexes == undefined!
         this.playersWasActive = [];   // all players who was active in start without empty chairs or waiting players
         this.positionEnumKeyMap = {};
