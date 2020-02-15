@@ -1,3 +1,4 @@
+const { performance } = require('perf_hooks');
 // const io = require("socket.io");
 const server = require('http').createServer();
 const io = require('socket.io')(server, {
@@ -160,8 +161,8 @@ io.on('connection', client => {
                                 client,                                                                                    // test frame debugger
                             };
 
-                            console.log(frameData);
-
+                            // console.log(`Enter /// performance.now(): ${performance.now()}`);
+                            // sessionsHandler.sessionsListener(token, frameData.id, prompterData);
                             setTimeout(() => {
                                 sessionsHandler.sessionsListener(token, frameData.id, prompterData);     // data.id == table id from recognition
                             }, 300);

@@ -34,6 +34,10 @@ const enumPoker = Object.freeze({
     cardsSuits: ['c', 's', 'd', 'h'],
     cardsSuitsName: ['clubs', 'spades', 'diamonds', 'hearts'],
     cardsSuitsCode: ['♣', '♠', '♦', '♥'],
+    perfomancePolicy: {
+        prepareCashStrategyStreet: 1,
+        startSimulationStreet: 2
+    },
 });
 
 const enumCommon = Object.freeze({

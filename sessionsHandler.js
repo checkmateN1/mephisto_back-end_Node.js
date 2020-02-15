@@ -13,14 +13,14 @@ class SimulationsQueue {
 
     taskHandler() {
         if (this.activeSimulations.length < this.maxActiveTasks) {
+            if (this.tasksQueue.filter(task => task.request.isHeroTurn).length) {
+
+            }
             const task = this.tasksQueue.shift();
             if (task) {
                 this.activeSimulations.push(task);
 
                 const getResult = (strategy, handNumber, move_id, playSetup) => {   // sometimes we can get empty callback
-                    console.log(`enter callback in sessionsHandler`);
-                    console.log(`strategy`);
-                    console.log(strategy);
                     if (strategy) {
                         playSetup.handPrompt(strategy, handNumber, move_id, playSetup.id);
                     }

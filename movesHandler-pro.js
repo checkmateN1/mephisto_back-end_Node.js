@@ -20,9 +20,7 @@ aggregator = new addon.RegretPoolToStrategyAggregator( modelsPool );
 
 const handsDict = addon.GetHandsDict();
 
-// console.log(handsDict);
-
-const allHandsCount = 1326;
+const allHandsCount = enumPoker.enumPoker.allHandsCount;
 
 const getCardText = (cardNumber) => {
     let cardText = '';
@@ -83,7 +81,7 @@ const getHandIndex = (handTxt) => {
 // console.log('textHandsArr[656]');
 // console.log(textHandsArr[656]);
 
-getNearestSizing = (strategy, cur) => {     // возвращает ближайший АГРО!!-сайзинг к текущему
+const getNearestSizing = (strategy, cur) => {     // возвращает ближайший АГРО!!-сайзинг к текущему
     let closedSizing = 100500;
     Object.keys(strategy).reduce((min, current) => {
         const diff = Math.abs(parseInt(cur) - parseInt(current));
@@ -98,7 +96,7 @@ getNearestSizing = (strategy, cur) => {     // возвращает ближай
     return closedSizing;
 };
 
-getOptimalSizing = (rawActionList, strategy, amount, move) => {
+const getOptimalSizing = (rawActionList, strategy, amount, move) => {
     const maxAmount = getMaxAmountBeforeMove(rawActionList, move);
     const sizing = amount > maxAmount ? amount - maxAmount : 0;     // превышение над максимальной ставкой
     const example = strategy[Object.keys(strategy)[0]];
@@ -106,7 +104,7 @@ getOptimalSizing = (rawActionList, strategy, amount, move) => {
     return getNearestSizing(example, sizing);
 };
 
-getMaxAmountBeforeMove = (rawActionList, move) => {
+const getMaxAmountBeforeMove = (rawActionList, move) => {
     const currentStreet = rawActionList[move].street;
     for (let i = move - 1; i > 0; i--) {
         if (rawActionList[i].street === currentStreet) {
@@ -120,8 +118,7 @@ getMaxAmountBeforeMove = (rawActionList, move) => {
     return 0;
 };
 
-// move_id === мув который хотим симулевать - стратегия.. горбы перемножаем ДО этого мува, поэтому i < maxMove
-hillMultiply = (rawActionList, cash, position, move_id) => {
+const hillMultiply = (rawActionList, cash, position, move_id) => {
     return rawActionList.reduceRight((hill, move, i) => {
         if (i > 1 && i < move_id && move.position === position) {
             const optimalSizing = move.action < 3 ? getOptimalSizing(rawActionList, cash[i].strategy, move.amount, i) : (move.action === 5 ? -1 : 0);
@@ -135,7 +132,7 @@ hillMultiply = (rawActionList, cash, position, move_id) => {
     }, null);
 };
 
-wasFoldBefore = (position, rawActionList, move) => {
+const wasFoldBefore = (position, rawActionList, move) => {
     for (let i = move - 1; i >= 0; i--) {
         if (rawActionList[i].position === position) {
             return rawActionList[i].action === 5;  // fold
@@ -144,7 +141,7 @@ wasFoldBefore = (position, rawActionList, move) => {
     return false;
 };
 
-setHills = (addonSetup, initPlayers, rawActionList, cash, move) => {
+const setHills = (addonSetup, initPlayers, rawActionList, cash, move) => {
     initPlayers.forEach(player => {
         if (!wasFoldBefore(player.enumPosition, rawActionList, move)) {
             addonSetup.setHill(position, hillMultiply(rawActionList, cash, player.enumPosition, move));
@@ -153,7 +150,7 @@ setHills = (addonSetup, initPlayers, rawActionList, cash, move) => {
 };
 
 // mock strategy function
-mockStrategy = (callBack) => {
+const mockStrategy = (callBack) => {
     const strategy = {                                 // test strategy example
         '1': {
             '0': 0.0011505433459377008,
@@ -185,9 +182,9 @@ mockStrategy = (callBack) => {
     };
     setTimeout(() => {
         callBack(strategy);
-    }, 1500);
+    }, 1000);
 };
-mockStrategyOne = (callBack) => {
+const mockStrategyOne = (callBack) => {
     const strategy = {                                 // test strategy example
         '1': {
             '0': 0.0011505433459377008,
@@ -200,9 +197,9 @@ mockStrategyOne = (callBack) => {
         }
     };
     setTimeout(() => {
-        console.log(`inside timeout mockStrategyOne`);
+        // console.log(`inside timeout mockStrategyOne`);
         callBack(strategy);
-    }, 300);
+    }, 100);
 };
 
 isCashReady = (rawActionList, cash, move_id) => {
@@ -238,8 +235,8 @@ getPushBoardCards = (street, board) => {
     }
 };
 
-class SimulationsQueue {
-    queueHandler(playSetup, handNumber, callback, simulationArguments) {
+class SimulationsHandler {
+    static queueHandler(playSetup, handNumber, callback, simulationArguments) {
         if (playSetup) {
             if (!playSetup.activeSimulations) {
                 playSetup.activeSimulations = {};
@@ -254,25 +251,19 @@ class SimulationsQueue {
         }
     };
 
-    lockMove(playSetup, handNumber, move) {
+    static lockMove(playSetup, handNumber, move) {
         if (playSetup && playSetup.activeSimulations && playSetup.activeSimulations[handNumber]) {
             playSetup.activeSimulations[handNumber].lockIndexes[move] = true;
         }
     }
 
-    isMoveLock(playSetup, handNumber, move) {
+    static isMoveLock(playSetup, handNumber, move) {
         if (playSetup && playSetup.activeSimulations && playSetup.activeSimulations[handNumber]) {
             return playSetup.activeSimulations[handNumber].lockIndexes[move];
         }
     }
 
-    deleteTask(playSetup, handNumber, taskID) {
-        if (playSetup && playSetup.activeSimulations && playSetup.activeSimulations[handNumber]) {
-            delete playSetup.activeSimulations[handNumber][taskID];
-        }
-    }
-
-    checkCallBacks(playSetup, handNumber) {
+    static checkCallBacks(playSetup, handNumber, isMockStrategy) {
         if (playSetup && playSetup.activeSimulations && playSetup.activeSimulations[handNumber]) {
             const isIrrelevant = handNumber !== playSetup.handNumber || playSetup.stopPrompt;
             Object.keys(playSetup.activeSimulations[handNumber]).forEach(key => {
@@ -292,9 +283,10 @@ class SimulationsQueue {
                     if(isCashReady(rawActionList, cash, move_id)) {     // all cash ready before main request move
                         if (isNodeSimulation) {     // start callback with simulation - not main callback!
                             task.callback();
+                            delete playSetup.activeSimulations[handNumber][key];
                         } else if (cash[move_id]) {    // main task finished
-                            isHeroTurn ? task.callback(cash[move_id].strategy[getHandIndex(hand)], handNumber, move_id, playSetup) : task.callback();
-                            this.deleteTask(playSetup, handNumber, key);
+                            isHeroTurn ? task.callback((isMockStrategy ? cash[move_id].strategy[Object.keys(cash[move_id].strategy)[0]] : cash[move_id].strategy[getHandIndex(hand)]), handNumber, move_id, playSetup) : task.callback();
+                            delete playSetup.activeSimulations[handNumber][key];
                         }
                     }
                 }
@@ -304,34 +296,26 @@ class SimulationsQueue {
                 delete playSetup.activeSimulations[handNumber];
             }
 
-            if (Object.keys(playSetup.activeSimulations).length > 1) {       // если у стола есть еще нерелевантные руки с запросами
+            if (Object.keys(playSetup.activeSimulations).length > 1) {       // if table has irrelevant hand numbers with requests
                 Object.keys(playSetup.activeSimulations).filter(handNum => handNum !== playSetup.handNumber).forEach(handNumb => {
-                    this.checkCallBacks(playSetup, handNumb);
+                    SimulationsHandler.checkCallBacks(playSetup, handNumb);
                 });
             }
         }
     }
 }
 
-simulationsQueue = new SimulationsQueue();
-
-
-perfomancePolicy = Object.freeze({
-    prepareCashStrategyStreet: 1,
-    startSimulationStreet: 2
-});
-
 getCurStreet = (isStrategy, rawActionList, isTerminal) => {
     const lastStreet = rawActionList[rawActionList.length - 1].street;
     return (isStrategy && isTerminal && lastStreet < 3) ? lastStreet + 1 : lastStreet;
 };
-isNeedCash = (isStrategy, rawActionList, isTerminal) => getCurStreet(isStrategy, rawActionList, isTerminal) >= perfomancePolicy.prepareCashStrategyStreet;
-isNeedSimulation = (isStrategy, rawActionList, isTerminal) => getCurStreet(isStrategy, rawActionList, isTerminal) >= perfomancePolicy.startSimulationStreet;
+isNeedCash = (isStrategy, rawActionList, isTerminal) => getCurStreet(isStrategy, rawActionList, isTerminal) >= enumPoker.enumPoker.perfomancePolicy.prepareCashStrategyStreet;
+isNeedSimulation = (isStrategy, rawActionList, isTerminal) => getCurStreet(isStrategy, rawActionList, isTerminal) >= enumPoker.enumPoker.perfomancePolicy.startSimulationStreet;
 nodeSimulation = (rawActionList, isTerminal, move) => {
     if (rawActionList[move]) {
-        return rawActionList[move].street >= perfomancePolicy.startSimulationStreet;
+        return rawActionList[move].street >= enumPoker.enumPoker.perfomancePolicy.startSimulationStreet;
     }
-    return rawActionList[move - 1].street + (isTerminal ? 1 : 0) >= perfomancePolicy.startSimulationStreet;
+    return rawActionList[move - 1].street + (isTerminal ? 1 : 0) >= enumPoker.enumPoker.perfomancePolicy.startSimulationStreet;
 };
 
 // test without aggregator !
@@ -349,6 +333,7 @@ const getHill = (request, callback) => {
         move_id,
         move_position,
         heroPosition,
+        isHeroTurn,
         isTerminal,
         isStrategy,
         hand,
@@ -356,14 +341,11 @@ const getHill = (request, callback) => {
 
     const needCash = isNeedCash(isStrategy, rawActionList, isTerminal);
     const needSimulation = isNeedSimulation(isStrategy, rawActionList, isTerminal);
-    if (heroPosition !== move_position && !needCash) {      // preflop and not hero's turn
-        console.log(`inside getHill/// preflop and not hero's turn - send empty callback`);
-        console.log(`heroPosition: ${heroPosition}, move_position: ${move_position}`);
+    if (heroPosition !== move_position && !needCash) {
         callback();
         return false;
     }
 
-    const isHeroTurn = heroPosition === move_position;
     const simArguments = {
         hand,
         move_id,
@@ -374,7 +356,7 @@ const getHill = (request, callback) => {
     };
 
 
-    simulationsQueue.queueHandler(playSetup, handNumber, callback, simArguments);
+    SimulationsHandler.queueHandler(playSetup, handNumber, callback, simArguments);
 
     const addonSetup = new addon.Setup(BB/100);
 
@@ -391,18 +373,17 @@ const getHill = (request, callback) => {
             } else {
                 const isNodeSimulation = nodeSimulation(rawActionList, isTerminal, move);
                 if (!cash[move]) {
-                    if (needCash && !simulationsQueue.isMoveLock(playSetup, handNumber, move)) {
-                        simulationsQueue.lockMove(playSetup, handNumber, move);
+                    if (needCash && !SimulationsHandler.isMoveLock(playSetup, handNumber, move)) {
+                        SimulationsHandler.lockMove(playSetup, handNumber, move);
                         const getStrategyAsync = (strategy) => {
                             cash[move] = { strategy };
 
-                            simulationsQueue.checkCallBacks(playSetup, handNumber);
+                            SimulationsHandler.checkCallBacks(playSetup, handNumber, isMockStrategy);
                             if (isNodeSimulation && move < move_id) {
                                 movesHandler();
                             }
                         };
 
-                        // проверить перед отправкой основного коллбека, что
                         if (isNodeSimulation) {
                             if (isCashReady(rawActionList, cash, move)) {
                                 if (!isMockStrategy) {
@@ -421,13 +402,13 @@ const getHill = (request, callback) => {
                                     }
                                 };
                                 const simArguments = {
-                                    move_id: move,          // продумать логически когда move_id === move
+                                    move_id: move,
                                     rawActionList,
                                     cash,
                                     needSimulation: true,
                                     isNodeSimulation,
                                 };
-                                simulationsQueue.queueHandler(playSetup, handNumber, simulateCallback, simArguments);
+                                SimulationsHandler.queueHandler(playSetup, handNumber, simulateCallback, simArguments);
                             }
                             break;      // sync mode
                         } else {
@@ -443,6 +424,7 @@ const getHill = (request, callback) => {
                         const getOneStrategyAsync = (strategy) => {
                             callback(strategy[Object.keys(strategy)[0]], handNumber, move_id, playSetup);
                         };
+
                         if (!isMockStrategy) {
                             aggregator.aggregate_one(addonSetup, getOneStrategyAsync, getHandIndex(hand), 'cpu');
                         } else {
