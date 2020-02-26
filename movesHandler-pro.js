@@ -124,7 +124,7 @@ const hillMultiply = (rawActionList, cash, position, move_id) => {
             const optimalSizing = move.action < 3 ? getOptimalSizing(rawActionList, cash[i].strategy, move.amount, i) : (move.action === 5 ? -1 : 0);
             const newHill = {};
             Object.keys(hill || cash[i].strategy).forEach(key => {
-                newHill[key] = cash[i].strategy[key][optimalSizing] * (hill ? hill[key] : 1);
+                newHill[key] = cash[i].strategy[key][optimalSizing].probab * (hill ? hill[key] : 1);
             });
             return newHill;
         }
@@ -153,31 +153,31 @@ const setHills = (addonSetup, initPlayers, rawActionList, cash, move) => {
 const mockStrategy = (callBack) => {
     const strategy = {                                 // test strategy example
         '1': {
-            '0': 0.0011505433459377008,
-            '100': 0.0478785282734064,
-            '133': 0,
-            '200': 0.000045384682651174424,
-            '300': 0,
-            '2400': 0,
-            '-1': 0.9509255436980047
+            '0': { probab: 0.0011505433459377008, regret: 20 },
+            '100': { probab: 0.0478785282734064, regret: 10 },
+            '133': { probab: 0, regret: 40 },
+            '200': { probab: 0.000045384682651174424, regret: 35 },
+            '300': { probab: 0, regret: 14 },
+            '2400': { probab: 0, regret: -40 },
+            '-1': { probab: 0.9509255436980047, regret: 10 }
         },
         '2': {
-            '0': 0.0011505433459377008,
-            '100': 0.0478785282734064,
-            '133': 0,
-            '200': 0.000045384682651174424,
-            '300': 0,
-            '2400': 0,
-            '-1': 0.9509255436980047
+            '0': { probab: 0.0011505433459377008, regret: 20 },
+            '100': { probab: 0.0478785282734064, regret: 10 },
+            '133': { probab: 0, regret: 40 },
+            '200': { probab: 0.000045384682651174424, regret: 35 },
+            '300': { probab: 0, regret: 14 },
+            '2400': { probab: 0, regret: -40 },
+            '-1': { probab: 0.9509255436980047, regret: 10 }
         },
         '3': {
-            '0': 0.0011505433459377008,
-            '100': 0.0478785282734064,
-            '133': 0,
-            '200': 0.000045384682651174424,
-            '300': 0,
-            '2400': 0,
-            '-1': 0.9509255436980047
+            '0': { probab: 0.0011505433459377008, regret: 20 },
+            '100': { probab: 0.0478785282734064, regret: 10 },
+            '133': { probab: 0, regret: 40 },
+            '200': { probab: 0.000045384682651174424, regret: 35 },
+            '300': { probab: 0, regret: 14 },
+            '2400': { probab: 0, regret: -40 },
+            '-1': { probab: 0.9509255436980047, regret: 10 }
         }
     };
     setTimeout(() => {
@@ -187,17 +187,16 @@ const mockStrategy = (callBack) => {
 const mockStrategyOne = (callBack) => {
     const strategy = {                                 // test strategy example
         '1': {
-            '0': 0.0011505433459377008,
-            '100': 0.0478785282734064,
-            '133': 0,
-            '200': 0.000045384682651174424,
-            '300': 0,
-            '2400': 0,
-            '-1': 0.9509255436980047
+            '0': { probab: 0.0511505433459377008, regret: 79 },
+            '100': { probab: 0.0008785282734064, regret: 10 },
+            '133': { probab: 0, regret: 73 },
+            '200': { probab: 0.000045384682651174424, regret: 35 },
+            '300': { probab: 0, regret: 14 },
+            '2400': { probab: 0.0001, regret: 15 },
+            '-1': { probab: 0.9509255436980047, regret: 80 }
         }
     };
     setTimeout(() => {
-        // console.log(`inside timeout mockStrategyOne`);
         callBack(strategy);
     }, 100);
 };

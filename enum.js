@@ -36,7 +36,8 @@ const enumPoker = Object.freeze({
     cardsSuitsCode: ['♣', '♠', '♦', '♥'],
     perfomancePolicy: {
         prepareCashStrategyStreet: 1,
-        startSimulationStreet: 2
+        startSimulationStreet: 2,
+        maxActiveTasks: 2,
     },
 });
 

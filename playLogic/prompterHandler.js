@@ -800,7 +800,7 @@ class PlaySetup {
 
     createMainPrompt(playFrame) {
         if (!this.rawActionList.length) {
-            return `<div class="main-container spins party-poker">A new hand has not yet begun</div>`
+            return {};
         }
 
         const currentStreet = this.rawActionList[this.rawActionList.length - 1].street;
@@ -1426,17 +1426,25 @@ class PlaySetup {
             client,
         } = this;
 
-        const promptData = {
-            hand_prompt: strategy,
-            id,
-        };
-
         // console.log('promptData before sending client HAND_PROMPT');
         // console.log(promptData);
 
-        console.log(`Exit /// performance.now(): ${performance.now()}`);
+        // console.log(`Exit /// performance.now(): ${performance.now()}`);
 
         if (handNumber === this.handNumber && move_id === this.rawActionList.length && !this.rejectHand && !this.stopPrompt && client) {
+            const wasBet = this.wasBet((this.rawActionList.length - 1));
+            const maxAmount = this.maxAmountAtCurrentStreet();
+            const promptData = {
+                hand_prompt: {
+                    strategy,
+                    wasBet,
+                    maxAmount,
+                    hand_move_id: move_id,
+                    hand_handNumber: handNumber,
+                },
+                id,
+            };
+
             setTimeout(() => {
                 // console.log('send hand prompt');
                 client.emit(HAND_PROMPT, promptData);
@@ -1483,11 +1491,15 @@ const prompterListener = (setup, request, gameTypesSettings) => {
             prompt: {},
             id,
         };
+        const handPromptData = {
+            hand_prompt: {},
+            id,
+        };
         setTimeout(() => {
             // console.log('send empty prompt');
             client.emit(PROMPT, promptData);
             // console.log('send empty hand prompt');
-            client.emit(HAND_PROMPT, promptData);
+            client.emit(HAND_PROMPT, handPromptData);
         }, 0);
     } else if (result === PROMPT && !setup.playSetup.simulationsRequests[setup.playSetup.rawActionList.length]) {
 
@@ -1512,6 +1524,7 @@ const prompterListener = (setup, request, gameTypesSettings) => {
             const move_position = setup.playSetup.whoIsNextMove(isTerminal);
             const heroPosition = initPlayers[heroChair].enumPosition;
             const isHeroTurn = move_position === heroPosition;
+            const move_id = rawActionList.length;
             const request = {
                 handNumber,
                 playSetup: setup.playSetup,
@@ -1520,7 +1533,7 @@ const prompterListener = (setup, request, gameTypesSettings) => {
                 BB: bbSize[bbSize.length - 1],
                 board,
                 cash,
-                move_id: rawActionList.length,
+                move_id,
                 move_position,
                 heroPosition,
                 isHeroTurn,
@@ -1532,8 +1545,9 @@ const prompterListener = (setup, request, gameTypesSettings) => {
             setup.simulationsQueue.queueHandler(handNumber, rawActionList.length, request);
 
             if (client !== null) {
+                const prompt = Object.assign({ handNumber, move_id }, setup.playSetup.createMainPrompt(setup.playSetup.prevPlayFrame[setup.playSetup.prevPlayFrame.length - 1]));
                 const promptData = {
-                    prompt: setup.playSetup.createMainPrompt(setup.playSetup.prevPlayFrame[setup.playSetup.prevPlayFrame.length - 1]),
+                    prompt,
                     id,
                 };
 
