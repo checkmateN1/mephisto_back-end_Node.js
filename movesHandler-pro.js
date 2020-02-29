@@ -8,6 +8,7 @@ addon.SetDefaultDevice('cpu');
 // addon.DeserializeBucketingType('C:\\projects\\mephisto_back-end_Node.js\\custom_module\\buckets\\', 0);
 modelsPool = new addon.ModelsPool('C:\\projects\\mephisto_back-end_Node.js\\custom_module\\models\\regret_model', 'trained_RA');
 aggregator = new addon.RegretPoolToStrategyAggregator( modelsPool );
+aggregatorSync = new addon.RegretPoolToStrategyAggregator( modelsPool );
 // const setup = new addon.Setup(1);
 // setup.set_player(0,2500);
 // setup.set_player(8,2500);
@@ -201,6 +202,23 @@ const mockStrategyOne = (callBack) => {
     }, 100);
 };
 
+// возвращаем стратегию одной руки с сожалениями
+const strategyOne = (setup, hand) => {
+    const callCount = enumPoker.enumPoker.perfomancePolicy.oneHandCallRegretCount;
+    const regret = {};
+    const strategy = {};
+    for (let i = 0; i < callCount; i++) {
+        const reg = aggregatorSync.random_model_regret(setup, hand);
+        const maxKey = Object.keys(reg).reduce(() => {(max, cur) => +cur > max ? cur : max}, -100500);
+        strategy[maxKey] = i === 0 ? 1 : strategy[maxKey] + 1;
+        for (const key in regret) {
+            regret[key] = i === 0 ? regret[key] : (regret[key] + regret[key]);
+        }
+    }
+
+
+};
+
 isCashReady = (rawActionList, cash, move_id) => {
     for (let i = 2; i < move_id; i++) {
         if (!cash[i]) {
@@ -260,6 +278,14 @@ class SimulationsHandler {
         if (playSetup && playSetup.activeSimulations && playSetup.activeSimulations[handNumber]) {
             return playSetup.activeSimulations[handNumber].lockIndexes[move];
         }
+        return false;
+    }
+
+    static lockMovesCount(playSetup, handNumber) {
+        if (playSetup && playSetup.activeSimulations && playSetup.activeSimulations[handNumber]) {
+            return playSetup.activeSimulations[handNumber].lockIndexes.filter(i => i).length;
+        }
+        return 0;
     }
 
     static checkCallBacks(playSetup, handNumber, isMockStrategy) {
@@ -304,12 +330,6 @@ class SimulationsHandler {
     }
 }
 
-getCurStreet = (isStrategy, rawActionList, isTerminal) => {
-    const lastStreet = rawActionList[rawActionList.length - 1].street;
-    return (isStrategy && isTerminal && lastStreet < 3) ? lastStreet + 1 : lastStreet;
-};
-isNeedCash = (isStrategy, rawActionList, isTerminal) => getCurStreet(isStrategy, rawActionList, isTerminal) >= enumPoker.enumPoker.perfomancePolicy.prepareCashStrategyStreet;
-isNeedSimulation = (isStrategy, rawActionList, isTerminal) => getCurStreet(isStrategy, rawActionList, isTerminal) >= enumPoker.enumPoker.perfomancePolicy.startSimulationStreet;
 nodeSimulation = (rawActionList, isTerminal, move) => {
     if (rawActionList[move]) {
         return rawActionList[move].street >= enumPoker.enumPoker.perfomancePolicy.startSimulationStreet;
@@ -317,10 +337,12 @@ nodeSimulation = (rawActionList, isTerminal, move) => {
     return rawActionList[move - 1].street + (isTerminal ? 1 : 0) >= enumPoker.enumPoker.perfomancePolicy.startSimulationStreet;
 };
 
+cashMovesCount = (cash) => cash.filter(obj => obj).length;
+
 // test without aggregator !
 const isMockStrategy = true;
 
-const getHill = (request, callback) => {
+const getHill = (request, callback, isOneHand) => {
     const {
         handNumber,
         playSetup,
@@ -331,16 +353,15 @@ const getHill = (request, callback) => {
         cash,
         move_id,
         move_position,
-        heroPosition,
+        needCash,
+        needSimulation,
         isHeroTurn,
         isTerminal,
         isStrategy,
         hand,
     } = request;
 
-    const needCash = isNeedCash(isStrategy, rawActionList, isTerminal);
-    const needSimulation = isNeedSimulation(isStrategy, rawActionList, isTerminal);
-    if (heroPosition !== move_position && !needCash) {
+    if (!isHeroTurn && !needCash) {
         callback();
         return false;
     }
@@ -349,94 +370,88 @@ const getHill = (request, callback) => {
         hand,
         move_id,
         rawActionList,
-        cash,
+        cash,           // []
         needSimulation,
         isHeroTurn,
     };
 
-
     SimulationsHandler.queueHandler(playSetup, handNumber, callback, simArguments);
 
-    const addonSetup = new addon.Setup(BB/100);
+    const movesHandler = (isOneHand) => {
+        if (playSetup.handNumber !== handNumber) {
+            SimulationsHandler.checkCallBacks(playSetup, handNumber, isMockStrategy);
+            return false;
+        }
+        const addonSetup = new addon.Setup(BB/100);
 
-    initPlayers.forEach(player => {
-        addonSetup.set_player(player.enumPosition, player.initBalance);
-    });
+        initPlayers.forEach(player => {
+            addonSetup.set_player(player.enumPosition, player.initBalance);
+        });
 
-
-    const movesHandler = () => {
         for (let move = 0; move <= move_id; move++) {
             if (move < 2) {     // 0, 1 - blinds indexes
                 const { position, invest, action } = rawActionList[move];
                 addonSetup.push_move(position, invest, action);
             } else {
-                const isNodeSimulation = nodeSimulation(rawActionList, isTerminal, move);
-                if (!cash[move]) {
-                    if (needCash && !SimulationsHandler.isMoveLock(playSetup, handNumber, move)) {
-                        SimulationsHandler.lockMove(playSetup, handNumber, move);
-                        const getStrategyAsync = (strategy) => {
-                            cash[move] = { strategy };
+                if (isOneHand) {
+                    if (move === move_id) {
+                        playSetup.handPrompt(strategyOne(addonSetup, getHandIndex(hand)), handNumber, move_id, playSetup.id);
+                        break;
+                    }
+                } else {
+                    const isNodeSimulation = nodeSimulation(rawActionList, isTerminal, move);
+                    if (!cash[move]) {
+                        const canSimulate = (SimulationsHandler.lockMovesCount(playSetup, handNumber) - cashMovesCount(cash)) < enumPoker.enumPoker.perfomancePolicy.maxActiveSimulation;
+                        if (needCash && !SimulationsHandler.isMoveLock(playSetup, handNumber, move) && canSimulate) {
+                            SimulationsHandler.lockMove(playSetup, handNumber, move);
+                            const getStrategyAsync = (strategy) => {
+                                cash[move] = { strategy };
 
-                            SimulationsHandler.checkCallBacks(playSetup, handNumber, isMockStrategy);
-                            if (isNodeSimulation && move < move_id) {
-                                movesHandler();
-                            }
-                        };
-
-                        if (isNodeSimulation) {
-                            if (isCashReady(rawActionList, cash, move)) {
-                                if (!isMockStrategy) {
-                                    setHills(addonSetup, initPlayers, rawActionList, cash, move);
-                                    aggregator.simulate(addonSetup, getStrategyAsync);
-                                } else {
-                                    mockStrategy(getStrategyAsync);
+                                SimulationsHandler.checkCallBacks(playSetup, handNumber, isMockStrategy);
+                                if (isNodeSimulation && move < move_id) {
+                                    movesHandler();
                                 }
-                            } else {
-                                const simulateCallback = () => {
+                            };
+
+                            if (isNodeSimulation) {
+                                if (isCashReady(rawActionList, cash, move)) {
                                     if (!isMockStrategy) {
                                         setHills(addonSetup, initPlayers, rawActionList, cash, move);
                                         aggregator.simulate(addonSetup, getStrategyAsync);
                                     } else {
                                         mockStrategy(getStrategyAsync);
                                     }
-                                };
-                                const simArguments = {
-                                    move_id: move,
-                                    rawActionList,
-                                    cash,
-                                    needSimulation: true,
-                                    isNodeSimulation,
-                                };
-                                SimulationsHandler.queueHandler(playSetup, handNumber, simulateCallback, simArguments);
-                            }
-                            break;      // sync mode
-                        } else {
-                            if (!isMockStrategy) {
-                                aggregator.aggregate_all(addonSetup, getStrategyAsync);
+                                } else {
+                                    const simulateCallback = () => {
+                                        if (!isMockStrategy) {
+                                            setHills(addonSetup, initPlayers, rawActionList, cash, move);
+                                            aggregator.simulate(addonSetup, getStrategyAsync);
+                                        } else {
+                                            mockStrategy(getStrategyAsync);
+                                        }
+                                    };
+                                    const simArguments = {
+                                        move_id: move,
+                                        rawActionList,
+                                        cash,
+                                        needSimulation: true,
+                                        isNodeSimulation,
+                                    };
+                                    SimulationsHandler.queueHandler(playSetup, handNumber, simulateCallback, simArguments);
+                                }
+                                break;      // sync mode
                             } else {
-                                mockStrategy(getStrategyAsync);
+                                if (!isMockStrategy) {
+                                    aggregator.aggregate_all(addonSetup, getStrategyAsync);
+                                } else {
+                                    mockStrategy(getStrategyAsync);
+                                }
                             }
                         }
-                    }
 
-                    if (move === move_id && !needSimulation && isHeroTurn) {
-                        const getOneStrategyAsync = (strategy) => {
-                            callback(strategy[Object.keys(strategy)[0]], handNumber, move_id, playSetup);
-                        };
-
-                        if (!isMockStrategy) {
-                            aggregator.aggregate_one(addonSetup, getOneStrategyAsync, getHandIndex(hand), 'cpu');
-                        } else {
-                            mockStrategyOne(getOneStrategyAsync);
-                        }
-                    }
-
-                } else {
-                    if (move === move_id && !needSimulation) {
-                        const strategy = cash[move].strategy[getHandIndex(hand)];
-                        callback(strategy, handNumber, move_id, playSetup);
                     }
                 }
+
 
                 // push moves and board
                 if (rawActionList[move]) {
@@ -451,7 +466,7 @@ const getHill = (request, callback) => {
             }
         }
     };
-    movesHandler();
+    movesHandler(isOneHand);
 };
 
 module.exports.getHill = getHill;

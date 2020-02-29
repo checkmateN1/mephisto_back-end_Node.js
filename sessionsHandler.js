@@ -111,10 +111,10 @@ class Oracle {
 }
 
 // test
-const oracle = new Oracle();
-setTimeout(() => {
-    oracle.addHand();
-}, 2000);
+// const oracle = new Oracle();
+// setTimeout(() => {
+//     oracle.addHand();
+// }, 2000);
 
 
 class SimulationsQueue {
@@ -194,7 +194,7 @@ class SessionSetup {
         this.token = token;
         this.addonSetup = null;  // setup
         this.playSetup = null;
-        this.oracle = new Oracle();
+        // this.oracle = new Oracle();
         this.timeout = setupTimeout;
         this.movesInEngine = 0;
         this.simulationsQueue = simulationsQueue;

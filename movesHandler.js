@@ -107,15 +107,15 @@ getMaxAmount = (arr, maxIndex) => arr.reduce((max, cur, i) => (i <= maxIndex && 
 
 getHill = (position, curInvest, movesCount, setup) => {
     // console.log(`start getHill! MovesCount: ${movesCount}, movesInEngine: ${setup.movesInEngine}`);
-    const strategy = aggregator.aggregate_all(setup.addonSetup);
-    // console.log(`get strategy success!`);
+    const strategy = aggregator.aggregate_all(setup.addonSetup, true);
+    console.log(`get strategy success!`);
 
     // if (movesCount === 3) {
     // console.log(`node bet 2BB with 6h4h`);
-    if (position === 0) {
-        console.log(`Got strategy, move: ${movesCount}, strategy[333]:`);
-        console.log(strategy[333]);
-    }
+    // if (position === 0) {
+    //     console.log(`Got strategy, move: ${movesCount}, strategy[333]:`);
+    //     console.log(strategy[333]);
+    // }
 
     // console.log(`node bet 2BB with AA`);
     // console.log(strategy[0]);

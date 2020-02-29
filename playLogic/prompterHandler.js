@@ -3,6 +3,8 @@ const moment = require('moment');
 const enumPoker = require('../enum');
 const enumCommon = require('../enum');
 const validator = require('./frameCreator');
+const movesHandler = require('../movesHandler-pro');
+
 
 
 const REJECT_HAND = enumCommon.enumCommon.REJECT_HAND;
@@ -1455,6 +1457,13 @@ class PlaySetup {
 
 // 1) из реквеста создаем полноценный фрейм
 // 2) в setup записываем setup.playSetup = new PlaySetup(если его там не было), и дальше всегда работаем с ним при поступлении реквестов.
+getCurStreet = (isStrategy, rawActionList, isTerminal) => {
+    const lastStreet = rawActionList[rawActionList.length - 1].street;
+    return (isStrategy && isTerminal && lastStreet < 3) ? lastStreet + 1 : lastStreet;
+};
+isNeedCash = (isStrategy, rawActionList, isTerminal) => getCurStreet(isStrategy, rawActionList, isTerminal) >= enumPoker.enumPoker.perfomancePolicy.prepareCashStrategyStreet;
+isNeedSimulation = (isStrategy, rawActionList, isTerminal) => getCurStreet(isStrategy, rawActionList, isTerminal) >= enumPoker.enumPoker.perfomancePolicy.startSimulationStreet;
+
 const prompterListener = (setup, request, gameTypesSettings) => {
     // console.log('enter prompter listener');
 
@@ -1525,6 +1534,8 @@ const prompterListener = (setup, request, gameTypesSettings) => {
             const heroPosition = initPlayers[heroChair].enumPosition;
             const isHeroTurn = move_position === heroPosition;
             const move_id = rawActionList.length;
+            const needCash = isNeedCash(true, rawActionList, isTerminal);
+            const needSimulation = isNeedSimulation(true, rawActionList, isTerminal);
             const request = {
                 handNumber,
                 playSetup: setup.playSetup,
@@ -1535,14 +1546,21 @@ const prompterListener = (setup, request, gameTypesSettings) => {
                 cash,
                 move_id,
                 move_position,
-                heroPosition,
                 isHeroTurn,
                 isTerminal,
+                needCash,
+                needSimulation,
                 isStrategy: true,
                 hand,
             };
 
-            setup.simulationsQueue.queueHandler(handNumber, rawActionList.length, request);
+            if (!needSimulation && isHeroTurn) {
+                movesHandler.getHill(task.request, getResult, true);
+            }
+
+            if (needCash) {
+                setup.simulationsQueue.queueHandler(handNumber, rawActionList.length, request);
+            }
 
             if (client !== null) {
                 const prompt = Object.assign({ handNumber, move_id }, setup.playSetup.createMainPrompt(setup.playSetup.prevPlayFrame[setup.playSetup.prevPlayFrame.length - 1]));

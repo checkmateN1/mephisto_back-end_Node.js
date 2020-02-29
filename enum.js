@@ -37,7 +37,9 @@ const enumPoker = Object.freeze({
     perfomancePolicy: {
         prepareCashStrategyStreet: 1,
         startSimulationStreet: 2,
-        maxActiveTasks: 2,
+        maxActiveTasks: 1,
+        maxActiveSimulation: 1,
+        oneHandCallRegretCount: 5,
     },
 });
 
