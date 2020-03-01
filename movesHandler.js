@@ -107,8 +107,23 @@ getMaxAmount = (arr, maxIndex) => arr.reduce((max, cur, i) => (i <= maxIndex && 
 
 getHill = (position, curInvest, movesCount, setup) => {
     // console.log(`start getHill! MovesCount: ${movesCount}, movesInEngine: ${setup.movesInEngine}`);
-    const strategy = aggregator.aggregate_all(setup.addonSetup, true);
+    let strategy = aggregator.aggregate_all(setup.addonSetup, true);
     console.log(`get strategy success!`);
+
+    // new strategy
+    // '1325': {
+    //     '0': { strategy: 0.033762784413862316, regret: -16.843776710828145 },
+    //     '305': { strategy: 0.17991322669270343, regret: 91.02318106179203 },
+    //     '450': { strategy: 0.2281473734378813, regret: 83.27340037027994 },
+    //     '675': { strategy: 0.01580099600391464, regret: -128.2929660320282 },
+    //     '1080': { strategy: 0, regret: -427.39461053212483 },
+    //     '2050': { strategy: 0.10904228611830498, regret: -7.733266099294027 },
+    //     '-1': { strategy: 0.43333333333333335, regret: 30.33111974784794 }
+    // }
+
+    // strategy = Object.keys(strategy).map(hand => {
+    //
+    // });
 
     // if (movesCount === 3) {
     // console.log(`node bet 2BB with 6h4h`);
@@ -163,7 +178,7 @@ getHill = (position, curInvest, movesCount, setup) => {
             //     }
             // };
             // текущий вес ноды руки!
-            weight = (index !== -1 && index > 1) ? setup.hillsCash[index].cash[i].weight * setup.hillsCash[index].cash[i].strategy[setup.hillsCash[index].cash[i].optimalSizing] : 1;
+            weight = (index !== -1 && index > 1) ? setup.hillsCash[index].cash[i].weight * setup.hillsCash[index].cash[i].strategy[setup.hillsCash[index].cash[i].optimalSizing].strategy : 1;
             strat = strategy[i];
             // if (i === 0) {      // 258 - 64, 0 - AA
             //     console.log(`prev AA weight: ${weight}`);
@@ -206,8 +221,8 @@ getAllHandStrategy = (cash, position, setup) => {            // cash = [{ hand, 
             if (Object.keys(strategy).length) {
                 Object.keys(strategy).forEach(key => {
                     strat[key == -1 ? -1 : parseInt(key)/100] = {
-                        strategy: strategy[key],
-                        ev: 0
+                        strategy: strategy[key].strategy,
+                        ev: (strategy[key].regret/100).toFixed(2),
                     };
                 })
             }
@@ -215,7 +230,7 @@ getAllHandStrategy = (cash, position, setup) => {            // cash = [{ hand, 
             return {
                 hand,
                 weight,
-                preflopWeight: preflopCash ? preflopCash[i].weight * preflopCash[i].strategy[preflopCash[i].optimalSizing] : 1,
+                preflopWeight: preflopCash ? preflopCash[i].weight * preflopCash[i].strategy[preflopCash[i].optimalSizing].strategy : 1,
                 moves: strat,
             };
         })
