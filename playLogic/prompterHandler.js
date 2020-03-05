@@ -1486,30 +1486,30 @@ const prompterListener = (setup, request, gameTypesSettings) => {
 
     const result = setup.playSetup.frameHandler(data, gameTypesSettings);
 
-    // console.log(`inside prompterListener!`);
-    if (result === REJECT_HAND) {
-        // console.log(REJECT_HAND + ' prompterListener');
-    } else if (result === STOP_PROMPT) {
+    if (result === STOP_PROMPT || result === REJECT_HAND) {
         // console.log(`stoped prompt: result === STOP_PROMPT`);
 
         if (setup.playSetup.stopPrompt) {
             setup.simulationsQueue.clearIrrelevantTasks(setup.playSetup.handNumber);
         }
 
-        const promptData = {
-            prompt: {},
-            id,
-        };
-        const handPromptData = {
-            hand_prompt: {},
-            id,
-        };
-        setTimeout(() => {
-            // console.log('send empty prompt');
-            client.emit(PROMPT, promptData);
-            // console.log('send empty hand prompt');
-            client.emit(HAND_PROMPT, handPromptData);
-        }, 0);
+        if (client !== null) {
+            const promptData = {
+                prompt: {},
+                id,
+            };
+            const handPromptData = {
+                hand_prompt: {},
+                id,
+            };
+            setTimeout(() => {
+                // console.log('send empty prompt');
+                client.emit(PROMPT, promptData);
+                // console.log('send empty hand prompt');
+                client.emit(HAND_PROMPT, handPromptData);
+            }, 0);
+        }
+
     } else if (result === PROMPT && !setup.playSetup.simulationsRequests[setup.playSetup.rawActionList.length]) {
 
         const {
@@ -1550,12 +1550,11 @@ const prompterListener = (setup, request, gameTypesSettings) => {
                 isTerminal,
                 needCash,
                 needSimulation,
-                isStrategy: true,
                 hand,
             };
 
             if (!needSimulation && isHeroTurn) {
-                movesHandler.getHill(task.request, getResult, true);
+                movesHandler.getHill(request, undefined, true);
             }
 
             if (needCash) {

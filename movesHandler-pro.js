@@ -6,9 +6,39 @@ const enumPoker = require('./enum');
 addon = require('C:\\projects\\mephisto_back-end_Node.js\\custom_module\\PokerEngine\\pokerengine_addon');
 addon.SetDefaultDevice('cpu');
 // addon.DeserializeBucketingType('C:\\projects\\mephisto_back-end_Node.js\\custom_module\\buckets\\', 0);
-modelsPool = new addon.ModelsPool('C:\\projects\\mephisto_back-end_Node.js\\custom_module\\models\\regret_model', 'trained_RA');
-aggregator = new addon.RegretPoolToStrategyAggregator( modelsPool );
-aggregatorSync = new addon.RegretPoolToStrategyAggregator( modelsPool );
+// modelsPool = new addon.ModelsPool('C:\\projects\\mephisto_back-end_Node.js\\custom_module\\models\\regret_model', 'trained_RA');
+modelsPoolSync = new addon.ModelsPool('C:\\projects\\mephisto_back-end_Node.js\\custom_module\\models\\regret_model', 'trained_RA');
+// aggregator = new addon.RegretPoolToStrategyAggregator( modelsPool );
+aggregatorSync = new addon.RegretPoolToStrategyAggregator( modelsPoolSync );
+
+class AggregatorPool {
+    constructor() {
+        this.pool = {};
+        Array(enumPoker.enumPoker.perfomancePolicy.maxActiveTasks).fill().map((cur, index) => {
+            const modelsPool = new addon.ModelsPool('C:\\projects\\mephisto_back-end_Node.js\\custom_module\\models\\regret_model', 'trained_RA');
+            this.pool[index] = {
+                modelsPool,
+                aggregator: new addon.RegretPoolToStrategyAggregator( modelsPool ),
+                isLock: false,
+            }
+        });
+    }
+
+    getFreeKey() {
+        for (let key in this.pool) {
+            if (!this.pool[key].isLock) {
+                this.pool[key].isLock = true;
+                return key;
+            }
+        }
+    }
+
+    unlock(key) {
+        this.pool[key].isLock = false;
+    }
+}
+const aggregatorPool = new AggregatorPool();
+
 // const setup = new addon.Setup(1);
 // setup.set_player(0,2500);
 // setup.set_player(8,2500);
@@ -203,20 +233,39 @@ const mockStrategyOne = (callBack) => {
 };
 
 // возвращаем стратегию одной руки с сожалениями
-const strategyOne = (setup, hand) => {
+const strategyOne = (addonSetup, hand) => {
     const callCount = enumPoker.enumPoker.perfomancePolicy.oneHandCallRegretCount;
     const regret = {};
     const strategy = {};
+
     for (let i = 0; i < callCount; i++) {
-        const reg = aggregatorSync.random_model_regret(setup, hand);
-        const maxKey = Object.keys(reg).reduce(() => {(max, cur) => +cur > max ? cur : max}, -100500);
-        strategy[maxKey] = i === 0 ? 1 : strategy[maxKey] + 1;
-        for (const key in regret) {
-            regret[key] = i === 0 ? regret[key] : (regret[key] + regret[key]);
+        console.log('bom');
+        const reg = aggregatorSync.random_model_regret(addonSetup, hand);
+        console.log('!!!!bom bom');
+        console.log(`random regret`);
+        console.log(reg);
+        let maxKey = 0;
+
+        Object.keys(reg).reduce((max, key) => {
+            if (reg[key] > max) {
+                maxKey = key;
+                return reg[key];
+            }
+            return max;
+        }, -100500);
+
+        strategy[maxKey] = strategy[maxKey] ? (strategy[maxKey] + 1) : 1;
+        for (const key in reg) {
+            regret[key] = i === 0 ? reg[key] : (regret[key] + reg[key]);
         }
     }
 
-
+    return Object.keys(regret).reduce((result, key) => Object.assign(result, {
+        [key]: {
+            strategy: strategy[key] ? (strategy[key]/callCount) : 0,
+            regret: regret[key]/callCount,
+        }
+    }), {});
 };
 
 isCashReady = (rawActionList, cash, move_id) => {
@@ -281,14 +330,7 @@ class SimulationsHandler {
         return false;
     }
 
-    static lockMovesCount(playSetup, handNumber) {
-        if (playSetup && playSetup.activeSimulations && playSetup.activeSimulations[handNumber]) {
-            return playSetup.activeSimulations[handNumber].lockIndexes.filter(i => i).length;
-        }
-        return 0;
-    }
-
-    static checkCallBacks(playSetup, handNumber, isMockStrategy) {
+    static checkCallBacks(playSetup, handNumber, isMockStrategy, aggregatorKey) {
         if (playSetup && playSetup.activeSimulations && playSetup.activeSimulations[handNumber]) {
             const isIrrelevant = handNumber !== playSetup.handNumber || playSetup.stopPrompt;
             Object.keys(playSetup.activeSimulations[handNumber]).forEach(key => {
@@ -310,6 +352,7 @@ class SimulationsHandler {
                             task.callback();
                             delete playSetup.activeSimulations[handNumber][key];
                         } else if (cash[move_id]) {    // main task finished
+                            aggregatorPool.unlock(aggregatorKey);
                             isHeroTurn ? task.callback((isMockStrategy ? cash[move_id].strategy[Object.keys(cash[move_id].strategy)[0]] : cash[move_id].strategy[getHandIndex(hand)]), handNumber, move_id, playSetup) : task.callback();
                             delete playSetup.activeSimulations[handNumber][key];
                         }
@@ -337,8 +380,6 @@ nodeSimulation = (rawActionList, isTerminal, move) => {
     return rawActionList[move - 1].street + (isTerminal ? 1 : 0) >= enumPoker.enumPoker.perfomancePolicy.startSimulationStreet;
 };
 
-cashMovesCount = (cash) => cash.filter(obj => obj).length;
-
 // test without aggregator !
 const isMockStrategy = true;
 
@@ -357,12 +398,11 @@ const getHill = (request, callback, isOneHand) => {
         needSimulation,
         isHeroTurn,
         isTerminal,
-        isStrategy,
         hand,
     } = request;
 
     if (!isHeroTurn && !needCash) {
-        callback();
+        callback ? callback() : '';
         return false;
     }
 
@@ -376,6 +416,13 @@ const getHill = (request, callback, isOneHand) => {
     };
 
     SimulationsHandler.queueHandler(playSetup, handNumber, callback, simArguments);
+
+    let aggregatorKey = null;
+    let aggregator = null;
+    if (!isOneHand) {
+        aggregatorKey = aggregatorPool.getFreeKey();
+        aggregator = aggregatorPool.pool[aggregatorKey].aggregator;
+    }
 
     const movesHandler = (isOneHand) => {
         if (playSetup.handNumber !== handNumber) {
@@ -401,13 +448,12 @@ const getHill = (request, callback, isOneHand) => {
                 } else {
                     const isNodeSimulation = nodeSimulation(rawActionList, isTerminal, move);
                     if (!cash[move]) {
-                        const canSimulate = (SimulationsHandler.lockMovesCount(playSetup, handNumber) - cashMovesCount(cash)) < enumPoker.enumPoker.perfomancePolicy.maxActiveSimulation;
-                        if (needCash && !SimulationsHandler.isMoveLock(playSetup, handNumber, move) && canSimulate) {
+                        if (needCash && !SimulationsHandler.isMoveLock(playSetup, handNumber, move) && !aggregatorPool.pool[aggregatorKey].isLock) {
                             SimulationsHandler.lockMove(playSetup, handNumber, move);
                             const getStrategyAsync = (strategy) => {
                                 cash[move] = { strategy };
 
-                                SimulationsHandler.checkCallBacks(playSetup, handNumber, isMockStrategy);
+                                SimulationsHandler.checkCallBacks(playSetup, handNumber, isMockStrategy, aggregatorKey);
                                 if (isNodeSimulation && move < move_id) {
                                     movesHandler();
                                 }
@@ -448,7 +494,6 @@ const getHill = (request, callback, isOneHand) => {
                                 }
                             }
                         }
-
                     }
                 }
 

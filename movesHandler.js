@@ -81,8 +81,8 @@ const getHandIndex = (handTxt) => {
     return index > -1 ? index : textHandsArr.indexOf(handTxt.slice(2) + handTxt.slice(0, 2))
 };
 
-console.log('Ks5s index');
-console.log(`Ks5s: ${getHandIndex('Ks5s')}`);       //  333
+console.log('7s2c index');
+console.log(`7s2c: ${getHandIndex('7s2c')}`);       //  1325
 // console.log(`AhAd: ${getHandIndex('AhAd')}`);       // 0
 
 // console.log('textHandsArr[656]');
@@ -109,6 +109,9 @@ getHill = (position, curInvest, movesCount, setup) => {
     // console.log(`start getHill! MovesCount: ${movesCount}, movesInEngine: ${setup.movesInEngine}`);
     let strategy = aggregator.aggregate_all(setup.addonSetup, true);
     console.log(`get strategy success!`);
+
+    // console.log('strategy[1325]');
+    // console.log(strategy[1325]);
 
     // new strategy
     // '1325': {
@@ -183,10 +186,10 @@ getHill = (position, curInvest, movesCount, setup) => {
             // if (i === 0) {      // 258 - 64, 0 - AA
             //     console.log(`prev AA weight: ${weight}`);
             // }
-            // if (i === 656) {      // 258 - 64, 0 - AA
-            //     console.log(`prev A4 stragegy`);
-            //     console.log(strat);
-            // }
+            if (i === 1325) {      // 1325 - 72, 258 - 64, 0 - AA
+                console.log(`72 weight: ${weight}`);
+                console.log(strat);
+            }
         }
         return { hand, weight, strategy: strat, optimalSizing };
     });
