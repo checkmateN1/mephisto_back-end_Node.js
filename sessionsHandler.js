@@ -117,27 +117,24 @@ class Oracle {
 // }, 2000);
 
 
-class SimulationsQueue {
+class TasksQueue {
     constructor() {
-        this.activeSimulations = [];
+        this.activeTasks = [];
         this.tasksQueue = [];
     }
 
     tasksHandler() {
-        if (this.activeSimulations.length < enumPoker.enumPoker.perfomancePolicy.maxActiveTasks) {
-            if (this.tasksQueue.filter(task => task.request.isHeroTurn).length) {
-
-            }
+        if (this.activeTasks.length < enumPoker.enumPoker.perfomancePolicy.maxActiveTasks) {
             const task = this.tasksQueue.shift();
             if (task) {
-                this.activeSimulations.push(task);
+                this.activeTasks.push(task);
 
                 const getResult = (strategy, handNumber, move_id, playSetup) => {   // sometimes we can get empty callback
                     if (strategy) {
                         playSetup.handPrompt(strategy, handNumber, move_id, playSetup.id);
                     }
 
-                    this.activeSimulations = this.activeSimulations.filter(simulation => simulation.handNumber !== task.handNumber || simulation.move_id !== task.move_id);
+                    this.activeTasks = this.activeTasks.filter(sim => sim.handNumber !== task.handNumber || sim.move_id !== task.move_id);
                     this.tasksHandler();
                 };
                 movesHandler.getHill(task.request, getResult);
@@ -155,7 +152,7 @@ class SimulationsQueue {
     }
 }
 
-const simulationsQueue = new SimulationsQueue();
+const tasksQueue = new TasksQueue();
 
 // all users sessions.. 1 token = 1 session
 const sessions = {};
@@ -197,7 +194,7 @@ class SessionSetup {
         // this.oracle = new Oracle();
         this.timeout = setupTimeout;
         this.movesInEngine = 0;
-        this.simulationsQueue = simulationsQueue;
+        this.tasksQueue = tasksQueue;
         this.hillsCash = [];     // index === nIdMove.. board nIdMove === undefined. Value = { position, hill }
         this.initCash = Object.freeze({
             players: [],
@@ -253,10 +250,10 @@ class SessionSetup {
             const gameTypesSettings = 'Spin&Go';   // config
 
             // должен записать в себя(this.playSetup = new PlaySetup, в котором записан текущий rawActionList, а так же нужно ли ресетить сетап
-            const result = prompterHandler.prompterListener(this, request, gameTypesSettings);
-            if (result && result.requestPrompter === 'prompt') {
-                simulationsQueue.queueHandler(result.handNumber, this, result);
-            }
+            prompterHandler.prompterListener(this, request, gameTypesSettings);
+            // if (result && result.requestPrompter === 'prompt') {
+            //     tasksQueue.queueHandler(result.handNumber, this, result);
+            // }
         }
     }
 }

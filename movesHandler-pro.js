@@ -14,7 +14,7 @@ aggregatorSync = new addon.RegretPoolToStrategyAggregator( modelsPoolSync );
 class AggregatorPool {
     constructor() {
         this.pool = {};
-        Array(enumPoker.enumPoker.perfomancePolicy.maxActiveTasks).fill().map((cur, index) => {
+        Array(enumPoker.enumPoker.perfomancePolicy.maxActiveTasks).fill().forEach((cur, index) => {
             const modelsPool = new addon.ModelsPool('C:\\projects\\mephisto_back-end_Node.js\\custom_module\\models\\regret_model', 'trained_RA');
             this.pool[index] = {
                 modelsPool,
@@ -22,6 +22,15 @@ class AggregatorPool {
                 isLock: false,
             }
         });
+    }
+
+    isFree() {
+        for (let key in this.pool) {
+            if (!this.pool[key].isLock) {
+                return true;
+            }
+            return false;
+        }
     }
 
     getFreeKey() {
@@ -38,6 +47,40 @@ class AggregatorPool {
     }
 }
 const aggregatorPool = new AggregatorPool();
+
+class TasksQueue {
+    constructor(aggregatorPool) {
+        this.activeSimulations = [];
+        this.simulationsQueue = [];
+        this.aggregatorPool = aggregatorPool;
+    }
+
+    tasksHandler() {
+        if (this.aggregatorPool.isFree() && this.activeSimulations.length < enumPoker.enumPoker.perfomancePolicy.maxActiveSimulations) {
+            const task = this.simulationsQueue.shift();
+            if (task) {
+                this.activeSimulations.push(task);
+                task.callback();
+            }
+        }
+    };
+
+    queueHandler(handNumber, move_id, callback) {
+        this.simulationsQueue.push({ handNumber, move_id, callback });
+        this.tasksHandler();
+    };
+
+    clearTask(handNumber, move_id) {
+        this.activeSimulations = this.activeSimulations.filter(sim => sim.handNumber !== handNumber || sim.move_id !== move_id);
+        this.tasksHandler();
+    }
+
+    clearIrrelevantTasks(irrelevantHandNumber) {
+        this.simulationsQueue = this.simulationsQueue.filter(sim => sim.handNumber !== irrelevantHandNumber);
+    }
+}
+
+const tasksQueue = new TasksQueue(aggregatorPool);
 
 // const setup = new addon.Setup(1);
 // setup.set_player(0,2500);
@@ -362,6 +405,7 @@ class SimulationsHandler {
 
             if (isIrrelevant) {
                 delete playSetup.activeSimulations[handNumber];
+                tasksQueue.clearIrrelevantTasks(handNumber);
             }
 
             if (Object.keys(playSetup.activeSimulations).length > 1) {       // if table has irrelevant hand numbers with requests
@@ -406,22 +450,17 @@ const getHill = (request, callback, isOneHand) => {
         return false;
     }
 
-    const simArguments = {
-        hand,
-        move_id,
-        rawActionList,
-        cash,           // []
-        needSimulation,
-        isHeroTurn,
-    };
-
-    SimulationsHandler.queueHandler(playSetup, handNumber, callback, simArguments);
-
-    let aggregatorKey = null;
-    let aggregator = null;
     if (!isOneHand) {
-        aggregatorKey = aggregatorPool.getFreeKey();
-        aggregator = aggregatorPool.pool[aggregatorKey].aggregator;
+        const simArguments = {
+            hand,
+            move_id,
+            rawActionList,
+            cash,           // []
+            needSimulation,
+            isHeroTurn,
+        };
+
+        SimulationsHandler.queueHandler(playSetup, handNumber, callback, simArguments);
     }
 
     const movesHandler = (isOneHand) => {
@@ -446,34 +485,43 @@ const getHill = (request, callback, isOneHand) => {
                         break;
                     }
                 } else {
-                    const isNodeSimulation = nodeSimulation(rawActionList, isTerminal, move);
-                    if (!cash[move]) {
-                        if (needCash && !SimulationsHandler.isMoveLock(playSetup, handNumber, move) && !aggregatorPool.pool[aggregatorKey].isLock) {
-                            SimulationsHandler.lockMove(playSetup, handNumber, move);
+                    if (!SimulationsHandler.isMoveLock(playSetup, handNumber, move)) {
+                        // если нету свободных аггрегаторов - добавляем в очередь
+                        if (aggregatorPool.isFree()) {
+                            const aggregatorKey = aggregatorPool.getFreeKey();
+                            const aggregator = aggregatorPool.pool[aggregatorKey].aggregator;
+                            SimulationsHandler.lockMove(playSetup, handNumber, move);       // lock move for always
+
+                            const isNodeSimulation = nodeSimulation(rawActionList, isTerminal, move);
+
+                            // callback
                             const getStrategyAsync = (strategy) => {
+                                aggregatorPool.unlock(aggregatorKey);       // first
+                                tasksQueue.clearTask(handNumber, move);
+
                                 cash[move] = { strategy };
 
                                 SimulationsHandler.checkCallBacks(playSetup, handNumber, isMockStrategy, aggregatorKey);
-                                if (isNodeSimulation && move < move_id) {
+                                if (move < move_id) {
                                     movesHandler();
                                 }
                             };
 
                             if (isNodeSimulation) {
                                 if (isCashReady(rawActionList, cash, move)) {
-                                    if (!isMockStrategy) {
+                                    if (isMockStrategy) {
+                                        mockStrategy(getStrategyAsync);
+                                    } else {
                                         setHills(addonSetup, initPlayers, rawActionList, cash, move);
                                         aggregator.simulate(addonSetup, getStrategyAsync);
-                                    } else {
-                                        mockStrategy(getStrategyAsync);
                                     }
                                 } else {
                                     const simulateCallback = () => {
-                                        if (!isMockStrategy) {
+                                        if (isMockStrategy) {
+                                            mockStrategy(getStrategyAsync);
+                                        } else {
                                             setHills(addonSetup, initPlayers, rawActionList, cash, move);
                                             aggregator.simulate(addonSetup, getStrategyAsync);
-                                        } else {
-                                            mockStrategy(getStrategyAsync);
                                         }
                                     };
                                     const simArguments = {
@@ -486,14 +534,19 @@ const getHill = (request, callback, isOneHand) => {
                                     SimulationsHandler.queueHandler(playSetup, handNumber, simulateCallback, simArguments);
                                 }
                                 break;      // sync mode
-                            } else {
-                                if (!isMockStrategy) {
-                                    aggregator.aggregate_all(addonSetup, getStrategyAsync);
-                                } else {
+                            } else {    // cash node: we can use parallel according to performance policy
+                                if (isMockStrategy) {
                                     mockStrategy(getStrategyAsync);
+                                } else {
+                                    aggregator.aggregate_all(addonSetup, getStrategyAsync);
                                 }
                             }
+                        } else {
+                            tasksQueue.queueHandler(handNumber, move, () => movesHandler(false));
+                            break;
                         }
+                    } else if (move === move_id || !aggregatorPool.isFree()) {
+                        break;
                     }
                 }
 

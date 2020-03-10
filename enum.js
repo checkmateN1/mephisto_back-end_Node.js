@@ -38,6 +38,7 @@ const enumPoker = Object.freeze({
         prepareCashStrategyStreet: 1,
         startSimulationStreet: 2,
         maxActiveTasks: 1,               // pack moves within one hand number
+        maxActiveSimulations: 1,
         oneHandCallRegretCount: 1,
     },
 });

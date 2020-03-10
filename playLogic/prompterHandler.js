@@ -149,7 +149,7 @@ class PlaySetup {
         }
         if (playFrame.handNumber !== this.handNumber) {         // new hand
             // console.log(`frameHandler/// new hand!  playFrame.handNumber: ${playFrame.handNumber}, this.handNumber: ${this.handNumber}`);
-            this.sessionSetup.simulationsQueue.clearIrrelevantTasks(this.handNumber);
+            this.sessionSetup.tasksQueue.clearIrrelevantTasks(this.handNumber);
             this.simulationsRequests = [];      // clear locked actions for simulations requests
             this.handNumber = playFrame.handNumber;
             this.cash = [];
@@ -1490,7 +1490,7 @@ const prompterListener = (setup, request, gameTypesSettings) => {
         // console.log(`stoped prompt: result === STOP_PROMPT`);
 
         if (setup.playSetup.stopPrompt) {
-            setup.simulationsQueue.clearIrrelevantTasks(setup.playSetup.handNumber);
+            setup.tasksQueue.clearIrrelevantTasks(setup.playSetup.handNumber);
         }
 
         if (client !== null) {
@@ -1558,7 +1558,7 @@ const prompterListener = (setup, request, gameTypesSettings) => {
             }
 
             if (needCash) {
-                setup.simulationsQueue.queueHandler(handNumber, rawActionList.length, request);
+                setup.tasksQueue.queueHandler(handNumber, rawActionList.length, request);
             }
 
             if (client !== null) {
