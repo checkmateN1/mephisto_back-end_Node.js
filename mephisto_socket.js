@@ -152,27 +152,6 @@ io.on('connection', client => {
         } else {
             console.info(`Client connected [${token}], id=${client.id}`);
             client.emit('authorizationSuccess');
-
-            // test sleep connections
-            // function sleep(ms) {
-            //     return new Promise(resolve => setTimeout(resolve, ms));
-            // }
-            //
-            // async function demo() {
-            //     console.log('Taking a break...');
-            //     await sleep(10000);
-            //     console.log('Two seconds later, showing sleep in a loop...');
-            //
-            //     // Sleep in loop
-            //     for (let i = 0; i < 5; i++) {
-            //         if (i === 3)
-            //             await sleep(2000);
-            //         console.log(i);
-            //     }
-            // }
-            //
-            // demo();
-
             // config
             client.on('getConfig', () => {
                 fs.readFile('json_config.txt', 'utf8',
@@ -201,15 +180,15 @@ io.on('connection', client => {
 
             /////////////// debug
             client.on('getDebugImg', (req) => {
-                console.info('req');
-                console.info(req);
+                // console.info('req');
+                // console.info(req);
                 // trying to serve the image file from the server
                 let fileToSend = '';
                 if (req) {
                     if (dirPath !== req.folder) {
                         dirPath = req.folder;
                         const files = fs.readdirSync(req.folder);
-                        filesInDir = files.filter(file => /jpg/.test(file))
+                        filesInDir = files.filter(file => (/jpg/).test(file))
                             .sort((a, b) => +a.match(/(?<=_)\d*(?=\.jpg)/)[0] - +b.match(/(?<=_)\d*(?=\.jpg)/)[0]);
                         fileToSend = req.file;
                         fs.readFile(req.folder + '\\' + req.file, function(err, buf){
@@ -273,6 +252,81 @@ io.on('connection', client => {
                 }
             });
 
+            client.on('autoDebug', (req) => {
+                if (req) {
+                    const dirPath = req.folder;
+                    const fps = req.autoFPS;
+                    const foldersPath = fs.readdirSync(dirPath).map(folder => req.folder + `\\${folder}\\json`);
+                    console.log('autoDebug /// paths arr');
+                    console.log(foldersPath);
+
+                    const intervalFnc = (path, files, fps) => {
+                        console.log('files');
+                        console.log(files);
+                        const generator = function* (arr) {
+                            let i = 0;
+                            while(true) {
+                                yield arr[i];
+                                i++;
+                                if (i === arr.length) { i = 0; }
+                            }
+                        };
+
+                        const arrayLoop = generator(files);
+
+                        const dataHandler = () => {
+                            console.log(path);
+                            console.log(arrayLoop.next());
+                            const txtFile = arrayLoop.next().value;
+
+                            fs.readFile(path + '\\' + txtFile, 'utf8', (err, data) => {
+                                if (err) { throw err; }
+                                let frameData;
+                                try {
+                                    // console.log('data before parse');
+                                    // console.log(data);
+                                    frameData = JSON.parse(data);
+                                } catch (error) {
+                                    console.log(error);
+                                }
+
+                                if (frameData) {
+                                    const prompterData = {
+                                        request: {
+                                            requestType: 'prompter',
+                                        },
+                                        data: frameData,
+                                        txtFile,
+                                        client: (token in sequencePrompterClients) ? sequencePrompterClients[token] : null,     // test react-prompter 4 tables
+                                        // client,                                                                                  // test frame debugger
+                                    };
+
+                                    setTimeout(() => {
+                                        sessionsHandler.sessionsListener(token, frameData.id, prompterData);     // data.id == table id from recognition
+                                    }, 0);
+                                }
+                            });
+                        };
+
+                        (function loop() {
+                            const rand = Math.round(Math.random() * fps * 200) + fps * 900;
+                            setTimeout(function() {
+                                dataHandler();
+                                loop();
+                            }, rand);
+                        }());
+                    };
+
+                    foldersPath.forEach(path => {
+                        const files = fs.readdirSync(path);
+                        const filesInDir = files.filter(file => (/txt/).test(file))
+                            .sort((a, b) => +a.match(/(?<=_)\d*(?=\.txt)/)[0] - +b.match(/(?<=_)\d*(?=\.txt)/)[0]);
+
+                        intervalFnc(path, filesInDir, fps);
+                    });
+                }
+            });
+
             client.on('clearDebug', () => {
                 curFile = '';
             });
@@ -311,7 +365,7 @@ io.on('connection', client => {
                         `got frame at ${moment().format('dddd, MMMM Do YYYY, h:mm:ss a')} \r\n
                         ${data.toString()} \r\n \r\n \r\n`,
                         function(error){
-                        if(error) throw error; // если возникла ошибка
+                        if(error) {throw error;} // если возникла ошибка
                     });
 
                     const prompterData = {
