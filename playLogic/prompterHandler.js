@@ -1470,6 +1470,7 @@ const prompterListener = (setup, request, gameTypesSettings) => {
     const {
         data,
         txtFile,
+        txtPath,
         client,
     } = request;
 
@@ -1483,6 +1484,7 @@ const prompterListener = (setup, request, gameTypesSettings) => {
     setup.playSetup.client = client;
     setup.playSetup.id = id;
     setup.playSetup.txtFile = txtFile;
+    setup.playSetup.txtPath = txtPath;
 
     const result = setup.playSetup.frameHandler(data, gameTypesSettings);
 

@@ -297,6 +297,7 @@ io.on('connection', client => {
                                         },
                                         data: frameData,
                                         txtFile,
+                                        txtPath: path,
                                         client: (token in sequencePrompterClients) ? sequencePrompterClients[token] : null,     // test react-prompter 4 tables
                                         // client,                                                                                  // test frame debugger
                                     };

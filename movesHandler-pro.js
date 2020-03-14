@@ -10,6 +10,18 @@ addon.SetDefaultDevice('cpu');
 modelsPoolSync = new addon.ModelsPool('C:\\projects\\mephisto_back-end_Node.js\\custom_module\\models\\regret_model', 'trained_RA');
 // aggregator = new addon.RegretPoolToStrategyAggregator( modelsPool );
 aggregatorSync = new addon.RegretPoolToStrategyAggregator( modelsPoolSync );
+// setup = new addon.Setup(1.0);
+// setup.set_player(8, 2500)
+// setup.set_player(0, 2500)
+// setup.set_player(9, 2500)
+// setup.push_move(9, 50, 0)
+// setup.push_move(8, 100, 0)
+// setup.push_move(0, 200, 2)
+//
+// regret = aggregatorSync.random_model_regret(setup, 524) // 2nd - hand
+// console.log('test regret');
+// console.log(regret);
+
 
 class AggregatorPool {
     constructor() {
@@ -46,7 +58,8 @@ class AggregatorPool {
         this.pool[key].isLock = false;
     }
 }
-const aggregatorPool = new AggregatorPool();
+
+aggregatorPool = new AggregatorPool();
 
 class TasksQueue {
     constructor(aggregatorPool) {
@@ -80,17 +93,7 @@ class TasksQueue {
     }
 }
 
-const tasksQueue = new TasksQueue(aggregatorPool);
-
-// const setup = new addon.Setup(1);
-// setup.set_player(0,2500);
-// setup.set_player(8,2500);
-// setup.push_move(0, 50, 0);
-// setup.push_move(8, 100, 0);
-// strategy = aggregator.aggregate_all(setup);
-
-// console.log('test strategy');
-// console.log(strategy);
+tasksQueue = new TasksQueue(aggregatorPool);
 
 const handsDict = addon.GetHandsDict();
 
@@ -148,7 +151,7 @@ fillDict();
 
 const getHandIndex = (handTxt) => {
     let index = textHandsArr.indexOf(handTxt);
-    return index > -1 ? index : textHandsArr.indexOf(handTxt.slice(2) + handTxt.slice(0, 2))
+    return index > -1 ? index : textHandsArr.indexOf(handTxt.slice(2) + handTxt.slice(0, 2));
 };
 // console.log(`6h4h: ${getHandIndex('6h4h')}`);       // 258
 // console.log(`AhAd: ${getHandIndex('AhAd')}`);       // 0
@@ -170,14 +173,6 @@ const getNearestSizing = (strategy, cur) => {     // возвращает бли
     return closedSizing;
 };
 
-const getOptimalSizing = (rawActionList, strategy, amount, move) => {
-    const maxAmount = getMaxAmountBeforeMove(rawActionList, move);
-    const sizing = amount > maxAmount ? amount - maxAmount : 0;     // превышение над максимальной ставкой
-    const example = strategy[Object.keys(strategy)[0]];
-
-    return getNearestSizing(example, sizing);
-};
-
 const getMaxAmountBeforeMove = (rawActionList, move) => {
     const currentStreet = rawActionList[move].street;
     for (let i = move - 1; i > 0; i--) {
@@ -190,6 +185,14 @@ const getMaxAmountBeforeMove = (rawActionList, move) => {
         }
     }
     return 0;
+};
+
+const getOptimalSizing = (rawActionList, strategy, amount, move) => {
+    const maxAmount = getMaxAmountBeforeMove(rawActionList, move);
+    const sizing = amount > maxAmount ? amount - maxAmount : 0;     // превышение над максимальной ставкой
+    const example = strategy[Object.keys(strategy)[0]];
+
+    return getNearestSizing(example, sizing);
 };
 
 const hillMultiply = (rawActionList, cash, position, move_id) => {
@@ -276,13 +279,13 @@ const mockStrategyOne = (callBack) => {
 };
 
 // возвращаем стратегию одной руки с сожалениями
-const strategyOne = (addonSetup, hand) => {
+const strategyOne = (addonSetup, hand, handTxt, playSetup) => {
     const callCount = enumPoker.enumPoker.perfomancePolicy.oneHandCallRegretCount;
     const regret = {};
     const strategy = {};
 
     for (let i = 0; i < callCount; i++) {
-        console.log('bom');
+        console.log(`bom/// hand: ${hand}, handTXT: ${handTxt}, textPath: ${playSetup.txtPath + '\\' + playSetup.txtFile}`);
         const reg = aggregatorSync.random_model_regret(addonSetup, hand);
         console.log('!!!!bom bom');
         console.log(`random regret`);
@@ -311,7 +314,7 @@ const strategyOne = (addonSetup, hand) => {
     }), {});
 };
 
-isCashReady = (rawActionList, cash, move_id) => {
+const isCashReady = (rawActionList, cash, move_id) => {
     for (let i = 2; i < move_id; i++) {
         if (!cash[i]) {
             return false;
@@ -320,7 +323,7 @@ isCashReady = (rawActionList, cash, move_id) => {
     return true;
 };
 
-getBoardDealPosition = (street) => {
+const getBoardDealPosition = (street) => {
     switch (street) {
         case 1:
             return enumPoker.enumPoker.dealPositions.DEALPOS_FLOP;
@@ -331,7 +334,7 @@ getBoardDealPosition = (street) => {
     }
 };
 
-getPushBoardCards = (street, board) => {
+const getPushBoardCards = (street, board) => {
     switch (street) {
         case 1:
             return [enumPoker.enumPoker.cardsName.indexOf(board[0].value.toUpperCase() + board[0].suit),
@@ -358,7 +361,7 @@ class SimulationsHandler {
                 playSetup.activeSimulations[handNumber][uniqid()] = { callback, simulationArguments };
             }
         }
-    };
+    }
 
     static lockMove(playSetup, handNumber, move) {
         if (playSetup && playSetup.activeSimulations && playSetup.activeSimulations[handNumber]) {
@@ -417,7 +420,7 @@ class SimulationsHandler {
     }
 }
 
-nodeSimulation = (rawActionList, isTerminal, move) => {
+const nodeSimulation = (rawActionList, isTerminal, move) => {
     if (rawActionList[move]) {
         return rawActionList[move].street >= enumPoker.enumPoker.perfomancePolicy.startSimulationStreet;
     }
@@ -464,6 +467,7 @@ const getHill = (request, callback, isOneHand) => {
     }
 
     const movesHandler = (isOneHand) => {
+        console.log(`start hand: ${hand} request`);
         if (playSetup.handNumber !== handNumber) {
             SimulationsHandler.checkCallBacks(playSetup, handNumber, isMockStrategy);
             return false;
@@ -471,17 +475,19 @@ const getHill = (request, callback, isOneHand) => {
         const addonSetup = new addon.Setup(BB/100);
 
         initPlayers.forEach(player => {
+            console.log(`set_player(${player.enumPosition}, ${player.initBalance})`);
             addonSetup.set_player(player.enumPosition, player.initBalance);
         });
 
         for (let move = 0; move <= move_id; move++) {
             if (move < 2) {     // 0, 1 - blinds indexes
                 const { position, invest, action } = rawActionList[move];
+                console.log(`push_move(${position}, ${invest}, ${action})`);
                 addonSetup.push_move(position, invest, action);
             } else {
                 if (isOneHand) {
                     if (move === move_id) {
-                        playSetup.handPrompt(strategyOne(addonSetup, getHandIndex(hand)), handNumber, move_id, playSetup.id);
+                        playSetup.handPrompt(strategyOne(addonSetup, getHandIndex(hand), hand, playSetup), handNumber, move_id, playSetup.id);
                         break;
                     }
                 } else {
@@ -557,10 +563,11 @@ const getHill = (request, callback, isOneHand) => {
                 // push moves and board
                 if (rawActionList[move]) {
                     const { position, invest, action, street } = rawActionList[move];
+                    console.log(`push_move(${position}, ${invest}, ${action})`);
                     addonSetup.push_move(position, invest, action);
 
-                    if ((rawActionList[move + 1] && rawActionList[move + 1].street !== street)
-                        || (!rawActionList[move + 1] && isTerminal && move < move_id)) {     // street move after push_move
+                    if ((rawActionList[move + 1] && rawActionList[move + 1].street !== street) || (!rawActionList[move + 1] && isTerminal && move < move_id)) {     // street move after push_move
+                        console.log(`push board`);
                         addonSetup.push_move(getBoardDealPosition(street + 1), ...getPushBoardCards((street + 1), board));
                     }
                 }
