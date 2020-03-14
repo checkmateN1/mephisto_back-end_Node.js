@@ -140,19 +140,19 @@ class TasksQueue {
                 movesHandler.getHill(task.request, getResult);
             }
         }
-    };
+    }
 
     queueHandler(handNumber, move_id, request) {
         this.tasksQueue.push({ handNumber, move_id, request });
         this.tasksHandler();
-    };
+    }
 
     clearIrrelevantTasks(irrelevantHandNumber) {
         this.tasksQueue = this.tasksQueue.filter(task => task.handNumber !== irrelevantHandNumber);
     }
 }
 
-const tasksQueue = new TasksQueue();
+tasksQueue = new TasksQueue();
 
 // all users sessions.. 1 token = 1 session
 const sessions = {};

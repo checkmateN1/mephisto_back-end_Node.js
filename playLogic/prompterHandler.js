@@ -486,10 +486,10 @@ class PlaySetup {
                                             if (raisedChair < 0) {
                                                 // console.log(`potIfAllCallFold === potTerminal// raisedChair === -1`);
                                                 raisedChair = chair;
-                                                if (ms < 3500) {    // fast raise and we suppose raiser was first chair
-                                                    // console.log(`time between frames was: ${ms}, and we suppose that chair: ${chair} raised first`);
-                                                    return false;   // isSteelPossible = false;
-                                                }
+                                                // if (ms < 3500) {    // fast raise and we suppose raiser was first chair
+                                                //     // console.log(`time between frames was: ${ms}, and we suppose that chair: ${chair} raised first`);
+                                                //     return false;   // isSteelPossible = false;
+                                                // }
                                             } else {        // 2 or more raisers
                                                 // console.log(`potIfAllCallFold === potTerminal// raisedChair: ${raisedChair}`);
                                                 raisedChair = -1;
@@ -1457,12 +1457,12 @@ class PlaySetup {
 
 // 1) из реквеста создаем полноценный фрейм
 // 2) в setup записываем setup.playSetup = new PlaySetup(если его там не было), и дальше всегда работаем с ним при поступлении реквестов.
-getCurStreet = (isStrategy, rawActionList, isTerminal) => {
+const getCurStreet = (isStrategy, rawActionList, isTerminal) => {
     const lastStreet = rawActionList[rawActionList.length - 1].street;
     return (isStrategy && isTerminal && lastStreet < 3) ? lastStreet + 1 : lastStreet;
 };
-isNeedCash = (isStrategy, rawActionList, isTerminal) => getCurStreet(isStrategy, rawActionList, isTerminal) >= enumPoker.enumPoker.perfomancePolicy.prepareCashStrategyStreet;
-isNeedSimulation = (isStrategy, rawActionList, isTerminal) => getCurStreet(isStrategy, rawActionList, isTerminal) >= enumPoker.enumPoker.perfomancePolicy.startSimulationStreet;
+const isNeedCash = (isStrategy, rawActionList, isTerminal) => getCurStreet(isStrategy, rawActionList, isTerminal) >= enumPoker.enumPoker.perfomancePolicy.prepareCashStrategyStreet;
+const isNeedSimulation = (isStrategy, rawActionList, isTerminal) => getCurStreet(isStrategy, rawActionList, isTerminal) >= enumPoker.enumPoker.perfomancePolicy.startSimulationStreet;
 
 const prompterListener = (setup, request, gameTypesSettings) => {
     // console.log('enter prompter listener');

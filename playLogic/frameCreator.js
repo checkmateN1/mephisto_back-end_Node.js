@@ -100,8 +100,8 @@ class Validator {
             const playPlayers = [];
 
             Array(this.playersCount).fill().forEach((pl, i) => {
-                const hole1Value = validFrame[`Player${i}_hole1_value`].value;
-                const hole2Value = validFrame[`Player${i}_hole2_value`].value;
+                const hole1Value = validFrame[`Player${i}_hole1_value`].value === '10' ? 'T' : validFrame[`Player${i}_hole1_value`].value;
+                const hole2Value = validFrame[`Player${i}_hole2_value`].value === '10' ? 'T' : validFrame[`Player${i}_hole2_value`].value;
                 const hole1Suit = validFrame[`Player${i}_hole1_suit`].value;
                 const hole2Suit = validFrame[`Player${i}_hole2_suit`].value;
 
