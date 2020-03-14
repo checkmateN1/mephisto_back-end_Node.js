@@ -261,7 +261,7 @@ const mockStrategy = (callBack) => {
     };
     setTimeout(() => {
         callBack(strategy);
-    }, 1000);
+    }, 300);
 };
 const mockStrategyOne = (callBack) => {
     const strategy = {                                 // test strategy example
@@ -359,7 +359,7 @@ class SimulationsHandler {
                 playSetup.activeSimulations[handNumber] = {};
                 playSetup.activeSimulations[handNumber].lockIndexes = [];    // when some simulation/aggregate starts - we lock same index
             }
-            if (simulationArguments.needSimulation) {
+            if (simulationArguments.needSimulation || simulationArguments.needCash) {
                 playSetup.activeSimulations[handNumber][uniqid()] = { callback, simulationArguments };
             }
         }
@@ -382,10 +382,10 @@ class SimulationsHandler {
         if (playSetup && playSetup.activeSimulations && playSetup.activeSimulations[handNumber]) {
             const isIrrelevant = handNumber !== playSetup.handNumber || playSetup.stopPrompt;
             Object.keys(playSetup.activeSimulations[handNumber]).forEach(key => {
-                if (playSetup.activeSimulations[handNumber].hasOwnProperty(key)) {
+                if (playSetup.activeSimulations[handNumber].hasOwnProperty(key) && key !== 'lockIndexes') {
                     if (isIrrelevant) {
                         playSetup.activeSimulations[handNumber][key].callback();
-                    } else if (key !== 'lockIndexes') {
+                    } else {
                         const task = playSetup.activeSimulations[handNumber][key];
                         const {
                             hand,
@@ -394,6 +394,7 @@ class SimulationsHandler {
                             cash,
                             isNodeSimulation,
                             isHeroTurn,
+                            needSimulation,
                         } = task.simulationArguments;
 
                         if(isCashReady(rawActionList, cash, move_id)) {     // all cash ready before main request move
@@ -401,7 +402,7 @@ class SimulationsHandler {
                                 task.callback();
                                 delete playSetup.activeSimulations[handNumber][key];
                             } else if (cash[move_id]) {    // main task finished
-                                isHeroTurn ? task.callback((isMockStrategy ? cash[move_id].strategy[Object.keys(cash[move_id].strategy)[0]] : cash[move_id].strategy[getHandIndex(hand)]), handNumber, move_id, playSetup) : task.callback();
+                                (isHeroTurn && needSimulation) ? task.callback((isMockStrategy ? cash[move_id].strategy[Object.keys(cash[move_id].strategy)[0]] : cash[move_id].strategy[getHandIndex(hand)]), handNumber, move_id, playSetup) : task.callback();
                                 delete playSetup.activeSimulations[handNumber][key];
                             }
                         }
@@ -464,6 +465,7 @@ const getHill = (request, callback, isOneHand) => {
             rawActionList,
             cash,           // []
             needSimulation,
+            needCash,
             isHeroTurn,
         };
 
