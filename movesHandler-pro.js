@@ -497,7 +497,7 @@ const getHill = (request, callback, isOneHand) => {
                             // callback
                             const getStrategyAsync = (strategy) => {
                                 aggregatorPool.unlock(aggregatorKey);       // first
-                                tasksQueue.clearTask(handNumber, move);
+                                tasksQueue.clearTask(handNumber, move);     // second
 
                                 cash[move] = { strategy };
 
@@ -516,6 +516,8 @@ const getHill = (request, callback, isOneHand) => {
                                         aggregator.simulate(addonSetup, getStrategyAsync);
                                     }
                                 } else {
+                                    aggregatorPool.unlock(aggregatorKey);
+
                                     const simulateCallback = () => {
                                         if (isMockStrategy) {
                                             mockStrategy(getStrategyAsync);
@@ -531,17 +533,18 @@ const getHill = (request, callback, isOneHand) => {
                                         needSimulation: true,
                                         isNodeSimulation,
                                     };
+
                                     SimulationsHandler.queueHandler(playSetup, handNumber, simulateCallback, simArguments);
                                 }
                                 break;      // sync mode
-                            } else {    // cash node: we can use parallel according to performance policy
+                            } else {                // have an aggregator - doing parallel aggregate
                                 if (isMockStrategy) {
                                     mockStrategy(getStrategyAsync);
                                 } else {
                                     aggregator.aggregate_all(addonSetup, getStrategyAsync);
                                 }
                             }
-                        } else {
+                        } else {        // no free aggregator
                             tasksQueue.queueHandler(handNumber, move, () => movesHandler(false));
                             break;
                         }
