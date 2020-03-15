@@ -232,31 +232,31 @@ const setHills = (addonSetup, initPlayers, rawActionList, cash, move) => {
 const mockStrategy = (callBack) => {
     const strategy = {                                 // test strategy example
         '1': {
-            '0': { probab: 0.0011505433459377008, regret: 20 },
-            '100': { probab: 0.0478785282734064, regret: 10 },
-            '133': { probab: 0, regret: 40 },
-            '200': { probab: 0.000045384682651174424, regret: 35 },
-            '300': { probab: 0, regret: 14 },
-            '2400': { probab: 0, regret: -40 },
-            '-1': { probab: 0.9509255436980047, regret: 10 }
+            '0': { strategy: 0.0011505433459377008, regret: 20 },
+            '100': { strategy: 0.0478785282734064, regret: 10 },
+            '133': { strategy: 0, regret: 40 },
+            '200': { strategy: 0.000045384682651174424, regret: 35 },
+            '300': { strategy: 0, regret: 14 },
+            '2400': { strategy: 0, regret: -40 },
+            '-1': { strategy: 0.9509255436980047, regret: 10 }
         },
         '2': {
-            '0': { probab: 0.0011505433459377008, regret: 20 },
-            '100': { probab: 0.0478785282734064, regret: 10 },
-            '133': { probab: 0, regret: 40 },
-            '200': { probab: 0.000045384682651174424, regret: 35 },
-            '300': { probab: 0, regret: 14 },
-            '2400': { probab: 0, regret: -40 },
-            '-1': { probab: 0.9509255436980047, regret: 10 }
+            '0': { strategy: 0.0011505433459377008, regret: 20 },
+            '100': { strategy: 0.0478785282734064, regret: 10 },
+            '133': { strategy: 0, regret: 40 },
+            '200': { strategy: 0.000045384682651174424, regret: 35 },
+            '300': { strategy: 0, regret: 14 },
+            '2400': { strategy: 0, regret: -40 },
+            '-1': { strategy: 0.9509255436980047, regret: 10 }
         },
         '3': {
-            '0': { probab: 0.0011505433459377008, regret: 20 },
-            '100': { probab: 0.0478785282734064, regret: 10 },
-            '133': { probab: 0, regret: 40 },
-            '200': { probab: 0.000045384682651174424, regret: 35 },
-            '300': { probab: 0, regret: 14 },
-            '2400': { probab: 0, regret: -40 },
-            '-1': { probab: 0.9509255436980047, regret: 10 }
+            '0': { strategy: 0.0011505433459377008, regret: 20 },
+            '100': { strategy: 0.0478785282734064, regret: 10 },
+            '133': { strategy: 0, regret: 40 },
+            '200': { strategy: 0.000045384682651174424, regret: 35 },
+            '300': { strategy: 0, regret: 14 },
+            '2400': { strategy: 0, regret: -40 },
+            '-1': { strategy: 0.9509255436980047, regret: 10 }
         }
     };
     setTimeout(() => {
@@ -266,13 +266,13 @@ const mockStrategy = (callBack) => {
 const mockStrategyOne = (callBack) => {
     const strategy = {                                 // test strategy example
         '1': {
-            '0': { probab: 0.0511505433459377008, regret: 79 },
-            '100': { probab: 0.0008785282734064, regret: 10 },
-            '133': { probab: 0, regret: 73 },
-            '200': { probab: 0.000045384682651174424, regret: 35 },
-            '300': { probab: 0, regret: 14 },
-            '2400': { probab: 0.0001, regret: 15 },
-            '-1': { probab: 0.9509255436980047, regret: 80 }
+            '0': { strategy: 0.0511505433459377008, regret: 79 },
+            '100': { strategy: 0.0008785282734064, regret: 10 },
+            '133': { strategy: 0, regret: 73 },
+            '200': { strategy: 0.000045384682651174424, regret: 35 },
+            '300': { strategy: 0, regret: 14 },
+            '2400': { strategy: 0.0001, regret: 15 },
+            '-1': { strategy: 0.9509255436980047, regret: 80 }
         }
     };
     setTimeout(() => {
@@ -432,7 +432,7 @@ const nodeSimulation = (rawActionList, isTerminal, move) => {
 };
 
 // test without aggregator !
-const isMockStrategy = true;
+const isMockStrategy = false;
 const isSimulationsOn = false;
 
 const getHill = (request, callback, isOneHand) => {
@@ -493,7 +493,7 @@ const getHill = (request, callback, isOneHand) => {
             } else {
                 if (isOneHand) {
                     if (move === move_id) {
-                        // playSetup.handPrompt(strategyOne(addonSetup, getHandIndex(hand), hand, playSetup), handNumber, move_id, playSetup.id);
+                        playSetup.handPrompt(strategyOne(addonSetup, getHandIndex(hand), hand, playSetup), handNumber, move_id, playSetup.id);
                         break;
                     }
                 } else {
@@ -527,7 +527,7 @@ const getHill = (request, callback, isOneHand) => {
                                         setHills(addonSetup, initPlayers, rawActionList, cash, move);
                                         aggregator.simulate(addonSetup, getStrategyAsync);
                                     } else {
-                                        aggregator.aggregate_all(addonSetup, getStrategyAsync);
+                                        aggregator.aggregate_all_async(addonSetup, getStrategyAsync, true);
                                     }
                                 } else {
                                     aggregatorPool.unlock(aggregatorKey);
@@ -539,7 +539,7 @@ const getHill = (request, callback, isOneHand) => {
                                             setHills(addonSetup, initPlayers, rawActionList, cash, move);
                                             aggregator.simulate(addonSetup, getStrategyAsync);
                                         } else {
-                                            aggregator.aggregate_all(addonSetup, getStrategyAsync);
+                                            aggregator.aggregate_all_async(addonSetup, getStrategyAsync, true);
                                         }
                                     };
                                     const simArguments = {
@@ -557,7 +557,7 @@ const getHill = (request, callback, isOneHand) => {
                                 if (isMockStrategy) {
                                     mockStrategy(getStrategyAsync);
                                 } else {
-                                    aggregator.aggregate_all(addonSetup, getStrategyAsync);
+                                    aggregator.aggregate_all_async(addonSetup, getStrategyAsync, true);
                                 }
                             }
                         } else {        // no free aggregator
