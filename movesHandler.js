@@ -81,12 +81,12 @@ const getHandIndex = (handTxt) => {
     return index > -1 ? index : textHandsArr.indexOf(handTxt.slice(2) + handTxt.slice(0, 2))
 };
 
-console.log('7s2c index');
-console.log(`7s2c: ${getHandIndex('7s2c')}`);       //  1325
+// console.log('2sAc index');
+// console.log(`2sAc: ${getHandIndex('2sAc')}`);       //  737
 // console.log(`AhAd: ${getHandIndex('AhAd')}`);       // 0
 
-// console.log('textHandsArr[656]');
-// console.log(textHandsArr[656]);
+// console.log('textHandsArr[734]');
+// console.log(textHandsArr[734]);
 
 getSizing = (strategy, cur) => {     // возвращает ближайший сайзинг к текущему
     let closedSizing = 100500;
