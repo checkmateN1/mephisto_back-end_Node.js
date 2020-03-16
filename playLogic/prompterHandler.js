@@ -800,7 +800,7 @@ class PlaySetup {
         return hand;
     }
 
-    createMainPrompt(playFrame) {
+    createMainPrompt(playFrame, isHeroTurn) {
         if (!this.rawActionList.length) {
             return {};
         }
@@ -833,14 +833,14 @@ class PlaySetup {
             heroCards,
             enumPoker,
             board: this.board,
-            status: 'wait prompt',
+            isHeroTurn,
         };
     }
 
     restoreRawAction(count) {
         while(this.fantomRawActionsCount - (count || 0)) {
             this.rawActionList.pop();
-            this.fantomRawActionsCount--
+            this.fantomRawActionsCount--;
         }
     }
 
@@ -917,8 +917,6 @@ class PlaySetup {
                                 return pot;
                             } else {
                                 // если не уменьшился баланс относительно запушенного И амаунт меньше макс амаунта И баланс > 0 - то игрок сфолдил здесь
-                                // console.log(`test inside potCallFold// found move with position and did not fold before for chair: ${chair}, index: ${i}`);
-                                // console.log(`this.rawActionList[i].balance - this.rawActionList[i].invest: ${this.rawActionList[i].balance - this.rawActionList[i].invest}, playFrame.playPlayers[chair].curBalance: ${playFrame.playPlayers[chair].curBalance}`);
                                 if (this.rawActionList[i].balance - this.rawActionList[i].invest === playFrame.playPlayers[chair].curBalance
                                     && this.rawActionList[i].amount < maxAmount
                                     && this.rawActionList[i].balance - this.rawActionList[i].invest > 0) {     // fold here
@@ -1564,7 +1562,7 @@ const prompterListener = (setup, request, gameTypesSettings) => {
             }
 
             if (client !== null) {
-                const prompt = Object.assign({ handNumber, move_id }, setup.playSetup.createMainPrompt(setup.playSetup.prevPlayFrame[setup.playSetup.prevPlayFrame.length - 1]));
+                const prompt = Object.assign({ handNumber, move_id }, setup.playSetup.createMainPrompt(setup.playSetup.prevPlayFrame[setup.playSetup.prevPlayFrame.length - 1], isHeroTurn));
                 const promptData = {
                     prompt,
                     id,

@@ -36,7 +36,7 @@ class AggregatorPool {
     }
 
     isFree() {
-        for (let key in this.pool) {
+        for (const key in this.pool) {
             if (!this.pool[key].isLock) {
                 return true;
             }
@@ -45,7 +45,7 @@ class AggregatorPool {
     }
 
     getFreeKey() {
-        for (let key in this.pool) {
+        for (const key in this.pool) {
             if (!this.pool[key].isLock) {
                 this.pool[key].isLock = true;
                 return key;
@@ -62,17 +62,14 @@ const aggregatorPool = new AggregatorPool();
 
 class TasksQueue {
     constructor(aggregatorPool) {
-        // this.activeSimulations = [];
         this.simulationsQueue = [];
         this.aggregatorPool = aggregatorPool;
     }
 
     tasksHandler() {
         if (this.aggregatorPool.isFree()) {
-        // && this.activeSimulations.length < enumPoker.enumPoker.perfomancePolicy.maxActiveSimulations
             const task = this.simulationsQueue.shift();
             if (task) {
-                // this.activeSimulations.push(task);
                 task.callback();
             }
         }
@@ -275,7 +272,6 @@ const mockStrategyOne = (callBack) => {
     }, 100);
 };
 
-// возвращаем стратегию одной руки с сожалениями
 const strategyOne = (addonSetup, hand, handTxt, playSetup) => {
     const callCount = enumPoker.enumPoker.perfomancePolicy.oneHandCallRegretCount;
     const regret = {};
@@ -387,20 +383,9 @@ class SimulationsHandler {
                             move_id,
                             rawActionList,
                             cash,
-                            isNodeSimulation,
                             isHeroTurn,
                             needSimulation,
                         } = task.simulationArguments;
-
-                        // if(isCashReady(rawActionList, cash, move_id)) {     // all cash ready before main request move
-                        //     if (isNodeSimulation && aggregatorPool.isFree()) {     // start callback with simulation - not main callback!
-                        //         // task.callback();
-                        //         // delete playSetup.activeSimulations[handNumber][key];
-                        //     } else if (cash[move_id]) {    // main task finished
-                        //         (isHeroTurn && needSimulation) ? task.callback((isMockStrategy ? cash[move_id].strategy[Object.keys(cash[move_id].strategy)[0]] : cash[move_id].strategy[getHandIndex(hand)]), handNumber, move_id, playSetup) : task.callback();
-                        //         delete playSetup.activeSimulations[handNumber][key];
-                        //     }
-                        // }
 
                         if(isCashReady(rawActionList, cash, move_id) && cash[move_id]) {     // all cash ready before main request move
                             const strategy = isMockStrategy ? cash[move_id].strategy[Object.keys(cash[move_id].strategy)[0]] : cash[move_id].strategy[getHandIndex(hand)];
@@ -442,13 +427,12 @@ const debugEmmit = (playSetup, hand, aggregatorLock, move) => {
             aggregatorLock,
             move,
             aggregatorFree: aggregatorPool.isFree(),
-            // tasksActiveSimulations: tasksQueue.activeSimulations.length,
+            sessionsQueue: playSetup.sessionSetup.tasksQueue.tasksQueue.length,
             tasksSimulationsQueue: tasksQueue.simulationsQueue.length,
         });
     }
 };
 
-// test without aggregator !
 const isMockStrategy = false;
 const isSimulationsOn = false;
 const isDebugMode = true;
@@ -516,12 +500,11 @@ const getHill = (request, callback, isOneHand) => {
             } else {
                 if (isOneHand) {
                     if (move === move_id) {
-                        // playSetup.handPrompt(strategyOne(addonSetup, getHandIndex(hand), hand, playSetup), handNumber, move_id, playSetup.id);
+                        playSetup.handPrompt(strategyOne(addonSetup, getHandIndex(hand), hand, playSetup), handNumber, move_id, playSetup.id);
                         break;
                     }
                 } else {
                     if (!SimulationsHandler.isMoveLock(playSetup, handNumber, move)) {
-                        // если нету свободных аггрегаторов - добавляем в очередь
                         if (aggregatorPool.isFree()) {
                             const aggregatorKey = aggregatorPool.getFreeKey();
                             const aggregator = aggregatorPool.pool[aggregatorKey].aggregator;
@@ -557,9 +540,7 @@ const getHill = (request, callback, isOneHand) => {
                                         setHills(addonSetup, initPlayers, rawActionList, cash, move);
                                         aggregator.simulate(addonSetup, getStrategyAsync);
                                     } else {
-                                        console.log(`bom// before call aggregator in nodeSimulation`);
                                         aggregator.aggregate_all_async(addonSetup, getStrategyAsync, true);
-                                        console.log(`bom bom! // after call aggregator in nodeSimulation`);
                                     }
                                 } else {
                                     aggregatorPool.unlock(aggregatorKey);
@@ -568,43 +549,6 @@ const getHill = (request, callback, isOneHand) => {
                                     if (isDebugMode) {
                                         debugEmmit(playSetup, '', false, '');
                                     }
-
-                                    // const simulateCallback = () => {
-                                    //     const aggregatorKey = aggregatorPool.getFreeKey();
-                                    //     const aggregator = aggregatorPool.pool[aggregatorKey].aggregator;
-                                    //
-                                    //     // callback
-                                    //     const getStrategyAsync = (strategy) => {
-                                    //         aggregatorPool.unlock(aggregatorKey);       // first
-                                    //         tasksQueue.clearTask(handNumber, move);     // second
-                                    //
-                                    //         cash[move] = { strategy };
-                                    //
-                                    //         SimulationsHandler.checkCallBacks(playSetup, handNumber, isMockStrategy);
-                                    //         if (move < move_id) {
-                                    //             movesHandler();
-                                    //         }
-                                    //     };
-                                    //
-                                    //     if (isMockStrategy) {
-                                    //         mockStrategy(getStrategyAsync);
-                                    //     } else if (isSimulationsOn) {
-                                    //         setHills(addonSetup, initPlayers, rawActionList, cash, move);
-                                    //         aggregator.simulate(addonSetup, getStrategyAsync);
-                                    //     } else {
-                                    //         console.log(`bom// before call aggregator in nodeSimulation`);
-                                    //         aggregator.aggregate_all_async(addonSetup, getStrategyAsync, true);
-                                    //     }
-                                    // };
-                                    // const simArguments = {
-                                    //     move_id: move,
-                                    //     rawActionList,
-                                    //     cash,
-                                    //     needSimulation: true,
-                                    //     isNodeSimulation,
-                                    // };
-                                    //
-                                    // SimulationsHandler.queueHandler(playSetup, handNumber, simulateCallback, simArguments);
                                 }
                                 break;      // sync mode
                             } else {                // have an aggregator - doing parallel cash aggregate
@@ -616,13 +560,10 @@ const getHill = (request, callback, isOneHand) => {
                                 if (isMockStrategy) {
                                     mockStrategy(getStrategyAsync);
                                 } else {
-                                    console.log(`bom// before call aggregator in cash Simulation`);
                                     aggregator.aggregate_all_async(addonSetup, getStrategyAsync, true);
-                                    console.log(`bom bom! // after call aggregator in cash Simulation`);
                                 }
                             }
                         } else {        // no free aggregator
-                            console.log(`no free aggregator - adding task to tasks queue: hand: ${hand}, move: ${move}`);
                             tasksQueue.queueHandler(handNumber, () => { movesHandler(false); });
                             break;
                         }
