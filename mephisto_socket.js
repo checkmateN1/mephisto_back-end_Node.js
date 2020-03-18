@@ -8,6 +8,8 @@ const io = require('socket.io')(server, {
     // pingTimeout: 60000,
     timeout: 600000,       // debug mode with huge freeze timeout
     pingTimeout: 600000,
+    reconnection: true,
+    reconnectionAttempts: Infinity,
 });
 
 // const server = io.listen(3001);
@@ -479,7 +481,8 @@ io.on('connection', client => {
                             } else {
                                 client.emit('preOpenSetupSuccess', JSON.parse(data).fileDescription);
                             }
-                        });
+                        }
+                    );
                 }
             });
 
