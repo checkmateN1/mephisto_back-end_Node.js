@@ -84,11 +84,6 @@ class Oracle {
                 );
                 console.log('after result');
                 console.log(result);
-
-                // setTimeout(() => {
-                //     console.log('result 5sec');
-                //     console.log(result);
-                // }, 5000);
             } catch (e) {
                 console.error(e.message);
             }

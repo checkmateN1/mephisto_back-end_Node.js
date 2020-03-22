@@ -4,8 +4,6 @@ const oracledb = require('oracledb');
 // const io = require("socket.io");
 const server = require('http').createServer();
 const io = require('socket.io')(server, {
-    // timeout: 60000,
-    // pingTimeout: 60000,
     timeout: 600000,       // debug mode with huge freeze timeout
     pingTimeout: 600000,
     reconnection: true,
