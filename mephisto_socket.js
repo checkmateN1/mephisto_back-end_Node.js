@@ -1,6 +1,4 @@
 const { performance } = require('perf_hooks');
-const oracledb = require('oracledb');
-
 // const io = require("socket.io");
 const server = require('http').createServer();
 const io = require('socket.io')(server, {
@@ -9,6 +7,8 @@ const io = require('socket.io')(server, {
     reconnection: true,
     reconnectionAttempts: Infinity,
 });
+
+const enumPoker = require('./enum');
 
 // const server = io.listen(3001);
 
@@ -20,14 +20,6 @@ const fs = require('fs');
 const _ = require('lodash');
 
 const sessionsHandler = require('./sessionsHandler');
-
-const tokens = Object.freeze({
-    'uidfksicnm730pdemg662oermfyf75jdf9djf': 'simulator Ivan',
-    'uidfksicnm730pdemg662oermfyf75jdf9djk': 'simulator Molot-ok',
-    'uidfksicnm730pdemg662oermfyf75jdf9djj': 'simulator checkmate',
-    'dfioulkdgdlb87jkj53pioifjlwlo8cvjksnj': 'clicker1',    ////// bad token
-    '872k4j2k3mc8uvxoiaklsjfsdfudyjhm45nuu': 'clicker2',
-});
 
 const sequenceRecognitionClients = {};
 const sequencePrompterClients = {};
@@ -145,7 +137,7 @@ let filesInDir = [];
 io.on('connection', client => {
     // authorization
     client.on('authorization', token => {
-        if (!(token in tokens)) {
+        if (!(token in enumPoker.tokens)) {
             console.log('unauthorized access');
             client.emit('unauthorizedAccess');
             client.disconnect();

@@ -1200,7 +1200,9 @@ class PlaySetup {
         }
 
         this.initPlayers.forEach(player => {
-            allPlayers.push(player.enumPosition);
+            if (player !== undefined) {
+                allPlayers.push(player.enumPosition);
+            }
         });
 
         for (let i = allPlayers.length - 1; i >= 0; i--) { // добавляем только тех кто остался

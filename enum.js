@@ -51,8 +51,26 @@ const enumCommon = Object.freeze({
     HAND_PROMPT: 'hand_prompt',
 });
 
+const rooms = Object.freeze({
+    Partypoker: 2,
+});
+
+const tokens = Object.freeze({
+    'uidfksicnm730pdemg662oermfyf75jdf9djf': 'simulator Ivan',
+    'uidfksicnm730pdemg662oermfyf75jdf9djk': 'simulator Molot-ok',
+    'uidfksicnm730pdemg662oermfyf75jdf9djj': 'simulator checkmate',
+    'dfioulkdgdlb87jkj53pioifjlwlo8cvjksnj': {                      // Ivan
+        Partypoker: {
+            'Spin&Go': 101,
+        }
+    },
+    '872k4j2k3mc8uvxoiaklsjfsdfudyjhm45nuu': 'clicker2',
+});
+
 module.exports.enumPoker = enumPoker;
 module.exports.enumCommon = enumCommon;
+module.exports.tokens = tokens;
+module.exports.rooms = rooms;
 
 
 
