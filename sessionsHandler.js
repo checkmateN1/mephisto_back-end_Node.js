@@ -9,18 +9,19 @@ const enumPoker = require('./enum');
 /////////////////////////////////  TEST Oracle
 const oraclePlaySetup = new oracle.oracle();
 setTimeout(async () => {
-    const result = await oraclePlaySetup.addHandHandler({
+    const result = await oraclePlaySetup.loggingHandHistory({
         rawActions: [],
-        id_room: 2,
-        limit: 3,
+        room: 'Partypoker',
+        gameType: 'Spin&Go',
+        limit: 3,           // BB/100
         board: {
             C1: 'Ac',
             C2: '7s',
             C3: 'Kh'
         },
-        plCount: 2,
+        plCount: 2,     // initPlayersLength
         cash: {},
-        token: '123',
+        token: 'dfioulkdgdlb87jkj53pioifjlwlo8cvjksnj',
     });
 }, 3000);
 /////////////////////////////////
@@ -99,7 +100,7 @@ class SessionSetup {
         this.token = token;
         this.addonSetup = null;  // setup
         this.playSetup = null;
-        // this.oracle = new Oracle();
+        this.oracle = new oracle.oracle();
         this.timeout = setupTimeout;
         this.movesInEngine = 0;
         this.tasksQueue = tasksQueue;

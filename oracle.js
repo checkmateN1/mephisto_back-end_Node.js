@@ -2,6 +2,100 @@ const oracledb = require('oracledb');
 
 const enumPoker = require('./enum');
 
+const isAdaptation = false;
+
+///////////////////////////////////////////////////////////////////// PLAYERS
+class PlayersHandler {
+  constructor() {
+    this.cashPlayers = {};      // nickname: id
+    this.players = {};          // id: adaptation
+    this.defaultAdaptation = [1,1,1,1,1,1,1,1,1,1,1,1,1,1];
+  }
+
+  static getPlayerIdFromDB(player, token, room, gameType, isAdaptation) {
+    if (token) {
+      return enumPoker.tokens[token][room][gameType];
+    } else if (isAdaptation) {
+      // db query
+    } else {
+      return 0;
+    }
+  }
+
+  static getAdaptationFromDB(id, room) {
+    return [1,1,1,1,1,1,1,1,1,1,1,1,1,1];        // will implementing
+  }
+
+  static getRoomId(room) {
+    return enumPoker.rooms[room];
+  }
+
+  setPlayer(recognitionNickname) {
+    let playerID = this.getPlayerIdFromDB(recognitionNickname);
+    let adaptation = this.getAdaptationFromDB(playerID);
+
+    if (playerID) {
+      this.cashPlayers[recognitionNickname] = playerID;
+    }
+    if (adaptation && adaptation.length) {
+      this.players.playerID = adaptation;
+    }
+  }
+
+  getAdaptation(recognitionNickname) {
+    let adaptation = this.players[this.cashPlayers.recognitionNickname];
+
+    if (adaptation && adaptation.length) {
+      return adaptation;
+    }
+    this.setPlayer(recognitionNickname);
+    adaptation = this.players[this.cashPlayers.recognitionNickname];
+
+    if (adaptation && adaptation.length) {
+      return adaptation;
+    }
+    return this.defaultAdaptation;
+  }
+}
+
+class Player {
+  constructor(id, adaptation) {
+    this.id = id;
+    this.adaptation = adaptation;
+  }
+}
+
+
+const testInitPlayers = [
+  {
+    player: 'player_0',
+    initBalance: 2600,
+    enumPosition: 0,
+    isDealer: true,
+    cards: null
+  },
+  {
+    player: 'player_1',
+    initBalance: 2400,
+    enumPosition: 9,
+    isDealer: false,
+    cards: null
+  },
+  {
+    player: 'player_2',
+    initBalance: 2500,
+    enumPosition: 8,
+    isDealer: false,
+    cards: {
+      hole1Value: '2',
+      hole2Value: '7',
+      hole1Suit: 's',
+      hole2Suit: 'c'
+    }
+  }
+];
+
+//////////////////////////////////////////////////// DB
 class Oracle {
   constructor() {
     this.connection = null;
@@ -47,13 +141,14 @@ class Oracle {
     }
   }
 
-  async addHandHandler(options) {
+  async loggingHandHistory(options) {
     if (this.connection) {
       const {
         rawActions,
-        initPlayers,
+        initPlayers = testInitPlayers,
         heroChair,
-        id_room,
+        room,
+        gameType,
         limit,
         board,
         plCount,
@@ -61,9 +156,12 @@ class Oracle {
         token,      // вычисляем по токену и id_room - player_id
       } = options;
 
+      const id_room = enumPoker.rooms[room];
+
       const newHandId = await this.insertHand(id_room, limit, board, plCount);    // tt_hands
       console.log('newHandId in addHandHandler');
       console.log(newHandId);
+      const init = await this.insertRawInit(newHandId, initPlayers, token, room, gameType);
 
       // raw actions
       // Amount = invest if call or превышение над максимальной если агро
@@ -129,50 +227,30 @@ class Oracle {
 //   }
 // }
 
-  async insertRawInit(newHandId, initPlayers, token, heroChair) {
+
+async insertRawInit(newHandId, initPlayers, token, room, gameType) {
     // ID_HAND, ID_PLAYER, STACK, ID_POSITION
     if (this.connection) {
-      const players = this.initPlayers.map((player, i) => {
-
+      const heroChair = enumPoker.enumPoker.gameTypesSettings[gameType].heroChair;
+      const players = initPlayers.map((player, i) => {
         if (player !== undefined) {
-          return [newHandId, ];
-
-          // if (player.cards && i === heroChair) {
-          //
-          // }
-          // heroCards = player.cards;
+          const tk = heroChair === i ? token : null;
+          const ID_PLAYER = PlayersHandler.getPlayerIdFromDB(player.player, tk, room, gameType, isAdaptation);
+          return [newHandId, ID_PLAYER, player.initBalance, player.enumPosition];
         }
+      }).filter(row => row !== undefined);
 
-        return {
-          nickname: player.player,
-          balance: this.getLastValidMoveBalance(i)/100,
-          bet: (curStreet !== currentStreet && isTerminal) ? 0 : this.getLastMoveAmount(i)/100,
-          isDealer: player.isDealer,
-          agroClass: i === agroChair ? 'bet-raise' : 'check-call',
-        };
-      });
-
-      player.enumPosition
       try {
-        const sql = `INSERT INTO tt_hands (ID, ID_ROOM, HANDNUM, LM, DT, C1, C2, C3, C4, C5, PL_COUNT) VALUES (handnumberid_seq.nextval, :id_room, handnumberid_seq.nextval, :limit, CURRENT_DATE, :C1, :C2, :C3, :C4, :C5, :plCount) RETURN ID INTO :id`;
-
-        const result = await this.connection.execute(
+        const sql = `INSERT INTO tt_raw_init VALUES (:1, :2, :3, :4)`;
+        const result = await this.connection.executeMany(
           sql,
-          {
-            id: {type: oracledb.NUMBER, dir: oracledb.BIND_OUT },
-            id_room,         // party 2
-            limit,
-            C1,
-            C2,
-            C3,
-            C4,
-            C5,
-            plCount,
-          }
+          players
         );
+        console.log('insertRawInit result');
+        console.log(result);
 
         if (result) {
-          return result.outBinds.id[0];
+          // return result.outBinds.id[0];
         }
       } catch (e) {
         console.error(e.message);
@@ -192,21 +270,6 @@ class Oracle {
             console.error(err.message);
         });
     }
-  }
-
-  getPlayerId(token, room, gameType, nickname) {
-    if (token) {                                      // hero
-      return enumPoker.tokens[token][room][gameType];
-    } else if (nickname) {
-      // db query
-      // return id
-    } else {
-      return 0;
-    }
-  }
-
-  getRoomId(room) {
-    return enumPoker.rooms[room];
   }
 }
 
