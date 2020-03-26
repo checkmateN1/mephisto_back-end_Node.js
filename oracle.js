@@ -158,26 +158,91 @@ class Oracle {
 
       const id_room = enumPoker.rooms[room];
 
-      const newHandId = await this.insertHand(id_room, limit, board, plCount);    // tt_hands
-      console.log('newHandId in addHandHandler');
-      console.log(newHandId);
-      const init = await this.insertRawInit(newHandId, initPlayers, token, room, gameType);
-
-      // raw actions
-      // Amount = invest if call or превышение над максимальной если агро
-      // тип действия 6 если агро оллын
-      // блайнды это улица 0, префлоп это улица 1
-      // ACT_NUM начинается всегда с 1
-      // PRE_BET - предыдущий амаунт игрока в пределах одной улицы. Улица 0 и 1 это одна улица
-      // MAX_BET - макс ставка на текущей улице до данного мува(если текущий рейз бета, то макс бет - амаунт бета)
-
+      const newHandId = await this.insertHand(id_room, limit, board, plCount);                   // tt_hands
+      const players = await this.insertRawInit(newHandId, initPlayers, token, room, gameType);   // raw_init
+      const actions = await this.insertRawActions(players, rawActions, newHandId);               // tt_raw_actions
 
 
       await this.connection.commit();
     }
   }
 
-  createDbRawActions(rawActions, initPlayers, newHandId) {
+  async insertRawActions(players, rawActions, newHandId) {
+    // raw actions
+    // Amount = invest if call or превышение над максимальной если агро
+    // тип действия 6 если агро оллын
+    // блайнды это улица 0, префлоп это улица 1
+    // ACT_NUM начинается всегда с 1
+    // PRE_BET - предыдущий амаунт игрока в пределах одной улицы. Улица 0 и 1 это одна улица
+    // MAX_BET - макс ставка на текущей улице до данного мува(если текущий рейз бета, то макс бет - амаунт бета)
+
+    // ID_HAND, ACT_NUM, STREET, ID_PLAYER, ID_ACTION, AMOUNT, PRE_POT, PRE_BET, PRE_STACK, MAX_BET
+
+    let prevStreet = 0;
+    let prevAction = 0;
+    let maxAmount = 0;
+    let prevBets = {};
+    let prevStacks = {};
+    const actions = rawActions.map( (action) => {
+      // players [[newHandId, ID_PLAYER, player.initBalance, player.enumPosition], ...];
+      const playerId = players.filter(player => player[3] === action.position)[1];
+      let street;
+      if (action.action === 0) {   // post
+        street = 0;
+      } else {
+        street = action.street + 1;
+      }
+      prevStreet = street;
+
+      let curAction;
+      let MAX_BET;
+      if (prevStreet === street) {
+        curAction = prevAction + 1;
+        MAX_BET = maxAmount;
+      } else {
+        if (street < 2) {
+          MAX_BET = maxAmount;
+        } else {
+          MAX_BET = 0;
+          maxAmount = action.invest;
+          prevBets = {};
+        }
+        curAction = 1;
+      }
+      prevAction = curAction;
+
+      let amount;
+      if (action.action < 3) {
+        amount = action.amount - MAX_BET;
+        maxAmount = amount;
+      } else {
+        if (action.action === 0) {
+          maxAmount = action.invest;
+        }
+        amount = action.invest;
+      }
+
+      const PRE_BET = prevBets[playerId] !== undefined ? prevBets[playerId] : 0;
+      prevBets[playerId] = amount;
+
+      const PRE_STACK = prevStacks[playerId] !== undefined ? prevStacks[playerId] : players.filter(player => player[3] === action.position)[2];
+      prevStacks[playerId] = PRE_STACK - action.invest;
+
+      return [newHandId, curAction, street, playerId, action.action, amount, action.pot, PRE_BET, PRE_STACK, MAX_BET];
+    });
+
+    try {
+      const sql = `INSERT INTO tt_raw_actions VALUES (:1, :2, :3, :4, :5, :6, :7, :8, :9, :10)`;
+      const result = await this.connection.executeMany(
+        sql,
+        actions,
+      );
+      console.log('insertRawActions result');
+      console.log(result);
+
+    } catch (e) {
+      console.error(e.message);
+    }
 
   }
 
@@ -250,7 +315,7 @@ async insertRawInit(newHandId, initPlayers, token, room, gameType) {
         console.log(result);
 
         if (result) {
-          // return result.outBinds.id[0];
+          return players;
         }
       } catch (e) {
         console.error(e.message);

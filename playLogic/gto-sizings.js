@@ -29,22 +29,28 @@ allin
 ///////////////////////// Multipot
 //////// 2bet
 //BTN
-2bb
+  [1/2, allin]              //[2bb, allin]
 
 // SB
-  [1/2...1, allin]                //[2bb..3bb, allin]
+if (smart_stack > 21bb) {
+  [3/4...1, allin]                    //[2.5bb..3bb, allin]
+} else if (smart_stack > 12 bb) {
+  [1/2...3/4), [3/4...1, allin]   //[2bb..2.5b), [2.5bb..3bb ,allin]
+} else {
+  [1/2...3/4, allin]                  //[2bb..2.5bb, allin]
+}
 
 // BB - after limp
 if (smart_stack < 8bb) {
-  [1/2...4/5, allin]              //[2bb..2.5bb  ,allin]
+  [1/2...3/4, allin]              //[2bb..2.5bb, allin]
 } else if (smart_stack < 12bb) {
-  [4/5...1, allin]                //[2.5bb..3  ,allin]
+  [3/4...1, allin]                //[2.5bb..3, allin]
 } else {
   [1...5/4, allin]                //[3bb..3.5, allin]
 }
 
 //////// 3bet
-[5/8...4/5, allin]  /// X DRN 2,5х opponent's amount(raise amount 3 - 3bet 7...8(AVG 7.5))
+[5/8...3/4, allin]  /// X = 2,5х opponent's amount(raise amount 3 - 3bet 7...8(AVG 7.5))
 
 //////// 4bet or limp-3bet
 allin
@@ -53,10 +59,10 @@ allin
 /// new ranges preflop
 //0 - call
 //1 - fold
-//2 - (0..1/2]
-//3 - (1/2..1]
+//2 - [1/2..3/4)
+//3 - [3/4..1]
 //4 - (1...5/4]
-//5 - (5/4...10000]   // allin
+//5 - allin   // allin
 
 
 
