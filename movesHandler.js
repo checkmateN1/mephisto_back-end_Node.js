@@ -8,7 +8,7 @@ const adapt_size = 10;
 addon = require('C:\\projects\\mephisto_back-end_Node.js\\custom_module\\PokerEngine\\pokerengine_addon');
 addon.SetDefaultDevice('cpu');
 // addon.DeserializeBucketingType('C:\\projects\\mephisto_back-end_Node.js\\custom_module\\buckets\\', 0);
-modelsPool = new addon.ModelsPool('C:\\projects\\mephisto_back-end_Node.js\\custom_module\\models\\regret_model', 'trained_RA');
+modelsPool = new addon.ModelsPool('C:\\projects\\mephisto_back-end_Node.js\\custom_module\\models\\regret_model', 'trained_RS');
 aggregator = new addon.RegretPoolToStrategyAggregator( modelsPool );
 // const setup = new addon.Setup(1);
 // setup.set_player(0,2500);
@@ -105,6 +105,7 @@ getSizing = (strategy, cur) => {     // возвращает ближайший 
 
 getMaxAmount = (arr, maxIndex) => arr.reduce((max, cur, i) => (i <= maxIndex && cur.amount > max) ? cur.amount : max, 0);
 
+//
 getHill = (position, curInvest, movesCount, setup) => {
     // console.log(`start getHill! MovesCount: ${movesCount}, movesInEngine: ${setup.movesInEngine}`);
     let strategy = aggregator.aggregate_all(setup.addonSetup, true);

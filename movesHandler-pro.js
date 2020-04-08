@@ -6,7 +6,7 @@ addon = require('C:\\projects\\mephisto_back-end_Node.js\\custom_module\\PokerEn
 addon.SetDefaultDevice('cpu');
 // addon.DeserializeBucketingType('C:\\projects\\mephisto_back-end_Node.js\\custom_module\\buckets\\', 0);
 // modelsPool = new addon.ModelsPool('C:\\projects\\mephisto_back-end_Node.js\\custom_module\\models\\regret_model', 'trained_RA');
-modelsPoolSync = new addon.ModelsPool('C:\\projects\\mephisto_back-end_Node.js\\custom_module\\models\\regret_model', 'trained_RA');
+modelsPoolSync = new addon.ModelsPool('C:\\projects\\mephisto_back-end_Node.js\\custom_module\\models\\regret_model', 'trained_RS');
 // aggregator = new addon.RegretPoolToStrategyAggregator( modelsPool );
 aggregatorSync = new addon.RegretPoolToStrategyAggregator( modelsPoolSync );
 // setup = new addon.Setup(1.0);
@@ -26,7 +26,7 @@ class AggregatorPool {
     constructor() {
         this.pool = {};
         Array(enumPoker.enumPoker.perfomancePolicy.maxActiveTasks).fill().forEach((cur, index) => {
-            const modelsPool = new addon.ModelsPool('C:\\projects\\mephisto_back-end_Node.js\\custom_module\\models\\regret_model', 'trained_RA');
+            const modelsPool = new addon.ModelsPool('C:\\projects\\mephisto_back-end_Node.js\\custom_module\\models\\regret_model', 'trained_RS');
             this.pool[index] = {
                 modelsPool,
                 aggregator: new addon.RegretPoolToStrategyAggregator( modelsPool ),
