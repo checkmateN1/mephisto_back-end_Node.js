@@ -14,11 +14,17 @@ class PlayersHandler {
 
   static getPlayerIdFromDB(player, token, room, gameType, isAdaptation) {
     if (token) {
-      return enumPoker.tokens[token][room][gameType];
+      return {
+        id: enumPoker.tokens[token][room][gameType].id,
+        nickname: enumPoker.tokens[token][room][gameType].nickname
+      };
     } else if (isAdaptation) {
       // db query
     } else {
-      return 0;
+      return {
+        id: player.enumPosition,
+        nickname: player.player
+      };
     }
   }
 
@@ -31,7 +37,7 @@ class PlayersHandler {
   }
 
   setPlayer(recognitionNickname) {
-    let playerID = this.getPlayerIdFromDB(recognitionNickname);
+    let playerID = this.getPlayerIdFromDB(recognitionNickname).id;
     let adaptation = this.getAdaptationFromDB(playerID);
 
     if (playerID) {
@@ -64,36 +70,6 @@ class Player {
     this.adaptation = adaptation;
   }
 }
-
-
-const testInitPlayers = [
-  {
-    player: 'player_0',
-    initBalance: 2600,
-    enumPosition: 0,
-    isDealer: true,
-    cards: null
-  },
-  {
-    player: 'player_1',
-    initBalance: 2400,
-    enumPosition: 9,
-    isDealer: false,
-    cards: null
-  },
-  {
-    player: 'player_2',
-    initBalance: 2500,
-    enumPosition: 8,
-    isDealer: false,
-    cards: {
-      hole1Value: '2',
-      hole2Value: '7',
-      hole1Suit: 's',
-      hole2Suit: 'c'
-    }
-  }
-];
 
 //////////////////////////////////////////////////// DB
 class Oracle {
@@ -145,7 +121,7 @@ class Oracle {
     if (this.connection) {
       const {
         rawActions,
-        initPlayers = testInitPlayers,
+        initPlayers,
         heroChair,
         room,
         gameType,
@@ -158,12 +134,20 @@ class Oracle {
 
       const id_room = enumPoker.rooms[room];
 
-      const newHandId = await this.insertHand(id_room, limit, board, plCount);                   // tt_hands
-      const players = await this.insertRawInit(newHandId, initPlayers, token, room, gameType);   // raw_init
-      const actions = await this.insertRawActions(players, rawActions, newHandId);               // tt_raw_actions
+      try {
+        const newHandId = await this.insertHand(id_room, limit, board, plCount);                   // tt_hands
+        console.log('tt_hands insert successful');
+        const players = await this.insertRawInit(newHandId, initPlayers, token, room, gameType);   // tt_raw_init
+        console.log('tt_raw_init insert successful');
+        const actions = await this.insertRawActions(players, rawActions, newHandId);               // tt_raw_actions
+        console.log('tt_raw_actions insert successful');
 
 
-      await this.connection.commit();
+        await this.connection.commit();
+      } catch (e) {
+        console.log('oracle writing history error', e);
+        this.connection.rollback();
+      }
     }
   }
 
@@ -176,16 +160,20 @@ class Oracle {
     // PRE_BET - предыдущий амаунт игрока в пределах одной улицы. Улица 0 и 1 это одна улица
     // MAX_BET - макс ставка на текущей улице до данного мува(если текущий рейз бета, то макс бет - амаунт бета)
 
-    // ID_HAND, ACT_NUM, STREET, ID_PLAYER, ID_ACTION, AMOUNT, PRE_POT, PRE_BET, PRE_STACK, MAX_BET
+    // ID_HAND, ACT_NUM, STREET, ID_PLAYER, ID_ACTION, AMOUNT, PRE_POT, PRE_BET, PRE_STACK, MAX_BET, STRATEGY_ALL_LOG, STRATEGY_ONE_LOG
 
     let prevStreet = 0;
     let prevAction = 0;
     let maxAmount = 0;
     let prevBets = {};
     let prevStacks = {};
+    console.log('players');
+    console.log(players);
     const actions = rawActions.map( (action) => {
       // players [[newHandId, ID_PLAYER, player.initBalance, player.enumPosition], ...];
-      const playerId = players.filter(player => player[3] === action.position)[1];
+      const playerId = players.filter(player => {
+        return player[3] === action.position;
+      })[0][1];
       let street;
       if (action.action === 0) {   // post
         street = 0;
@@ -228,56 +216,51 @@ class Oracle {
       const PRE_STACK = prevStacks[playerId] !== undefined ? prevStacks[playerId] : players.filter(player => player[3] === action.position)[2];
       prevStacks[playerId] = PRE_STACK - action.invest;
 
-      return [newHandId, curAction, street, playerId, action.action, amount, action.pot, PRE_BET, PRE_STACK, MAX_BET];
+      const STRATEGY_ALL = 'test STRATEGY_ALL_LOG';
+      const STRATEGY_ONE = 'test STRATEGY_ONE_LOG';
+
+      return [newHandId, curAction, street, playerId, action.action, amount, action.pot, PRE_BET, PRE_STACK, MAX_BET, STRATEGY_ALL, STRATEGY_ONE];
     });
 
-    try {
-      const sql = `INSERT INTO tt_raw_actions VALUES (:1, :2, :3, :4, :5, :6, :7, :8, :9, :10)`;
-      const result = await this.connection.executeMany(
-        sql,
-        actions,
-      );
-      console.log('insertRawActions result');
-      console.log(result);
-
-    } catch (e) {
-      console.error(e.message);
-    }
-
+    const sql = `INSERT INTO tt_raw_actions VALUES (:1, :2, :3, :4, :5, :6, :7, :8, :9, :10, :11, :12)`;
+    console.log('actions[0]');
+    console.log(actions[0]);
+    const result = await this.connection.executeMany(
+      sql,
+      actions,
+    );
+    console.log('insertRawActions result');
+    console.log(result);
   }
 
   async insertHand(id_room, limit, board, plCount) {      // tt_hands
     if (this.connection) {
-      try {
-        const {
-          C1 = '',
-          C2 = '',
-          C3 = '',
-          C4 = '',
-          C5 = '',
-        } = board;
-        const sql = `INSERT INTO tt_hands (ID, ID_ROOM, HANDNUM, LM, DT, C1, C2, C3, C4, C5, PL_COUNT) VALUES (handnumberid_seq.nextval, :id_room, handnumberid_seq.nextval, :limit, CURRENT_DATE, :C1, :C2, :C3, :C4, :C5, :plCount) RETURN ID INTO :id`;
+      const {
+        C1 = '',
+        C2 = '',
+        C3 = '',
+        C4 = '',
+        C5 = '',
+      } = board;
+      const sql = `INSERT INTO tt_hands (ID, ID_ROOM, HANDNUM, LM, DT, C1, C2, C3, C4, C5, PL_COUNT) VALUES (handnumberid_seq.nextval, :id_room, handnumberid_seq.nextval, :limit, CURRENT_DATE, :C1, :C2, :C3, :C4, :C5, :plCount) RETURN ID INTO :id`;
 
-        const result = await this.connection.execute(
-          sql,
-          {
-            id: {type: oracledb.NUMBER, dir: oracledb.BIND_OUT },
-            id_room,         // party 2
-            limit,
-            C1,
-            C2,
-            C3,
-            C4,
-            C5,
-            plCount,
-          }
-        );
-
-        if (result) {
-          return result.outBinds.id[0];
+      const result = await this.connection.execute(
+        sql,
+        {
+          id: {type: oracledb.NUMBER, dir: oracledb.BIND_OUT },
+          id_room,         // party 2
+          limit,
+          C1,
+          C2,
+          C3,
+          C4,
+          C5,
+          plCount,
         }
-      } catch (e) {
-        console.error(e.message);
+      );
+
+      if (result) {
+        return result.outBinds.id[0];
       }
     }
   }
@@ -293,38 +276,30 @@ class Oracle {
 // }
 
 
-async insertRawInit(newHandId, initPlayers, token, room, gameType) {
+  async insertRawInit(newHandId, initPlayers, token, room, gameType) {
     // ID_HAND, ID_PLAYER, STACK, ID_POSITION
     if (this.connection) {
       const heroChair = enumPoker.enumPoker.gameTypesSettings[gameType].heroChair;
       const players = initPlayers.map((player, i) => {
         if (player !== undefined) {
           const tk = heroChair === i ? token : null;
-          const ID_PLAYER = PlayersHandler.getPlayerIdFromDB(player.player, tk, room, gameType, isAdaptation);
+          const ID_PLAYER = PlayersHandler.getPlayerIdFromDB(player, tk, room, gameType, isAdaptation).id;
           return [newHandId, ID_PLAYER, player.initBalance, player.enumPosition];
         }
       }).filter(row => row !== undefined);
 
-      try {
-        const sql = `INSERT INTO tt_raw_init VALUES (:1, :2, :3, :4)`;
-        const result = await this.connection.executeMany(
-          sql,
-          players
-        );
-        console.log('insertRawInit result');
-        console.log(result);
+      const sql = `INSERT INTO tt_raw_init VALUES (:1, :2, :3, :4)`;
+      const result = await this.connection.executeMany(
+        sql,
+        players
+      );
+      console.log('insertRawInit result');
+      console.log(result);
 
-        if (result) {
-          return players;
-        }
-      } catch (e) {
-        console.error(e.message);
+      if (result) {
+        return players;
       }
     }
-  }
-
-  async insertRawActions() {
-
   }
 
   doRelease() {

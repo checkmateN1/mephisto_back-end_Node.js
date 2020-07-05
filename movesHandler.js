@@ -240,6 +240,9 @@ getAllHandStrategy = (cash, position, setup) => {            // cash = [{ hand, 
         })
     };
 
+    // console.log('allHandsStrategy');
+    // console.log(allHandsStrategy);
+
     // normalize
     let maxWeight = 0;
     let maxPreflopWeight = 0;
@@ -254,7 +257,7 @@ getAllHandStrategy = (cash, position, setup) => {            // cash = [{ hand, 
 
     allHandsStrategy.allHands = allHandsStrategy.allHands.map( hand => {
         return Object.assign(hand, {
-            weight: hand.weight/maxWeight,
+            weight: hand.weight/maxWeight || 0,
             preflopWeight: hand.preflopWeight/maxPreflopWeight
         });
     }).filter(el => el.weight >= 0);

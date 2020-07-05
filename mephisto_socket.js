@@ -489,6 +489,10 @@ io.on('connection', client => {
     });
 });
 
+// server.listen(27991, '192.168.1.40', function() {        // fatal1ty
+//     console.log("Сервер ожидает подключения...");
+// });
+
 // server.listen(27991, '192.168.1.30', function() {        // lucifer
 //     console.log("Сервер ожидает подключения...");
 // });

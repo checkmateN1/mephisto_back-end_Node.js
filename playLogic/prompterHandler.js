@@ -1491,7 +1491,6 @@ const isNeedSimulation = (isStrategy, rawActionList, isTerminal) => getCurStreet
 
 const prompterListener = (setup, request, gameTypesSettings) => {
     // console.log('enter prompter listener');
-
     const {
         data,
         txtFile,
@@ -1538,7 +1537,6 @@ const prompterListener = (setup, request, gameTypesSettings) => {
         }
 
     } else if (result === PROMPT && !setup.playSetup.simulationsRequests[setup.playSetup.rawActionList.length]) {
-
         const {
             cash,
             handNumber,
