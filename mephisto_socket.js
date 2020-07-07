@@ -20,6 +20,7 @@ const fs = require('fs');
 const _ = require('lodash');
 
 const sessionsHandler = require('./sessionsHandler');
+const moves = require('./movesHandler');
 
 const sequenceRecognitionClients = {};
 const sequencePrompterClients = {};
@@ -418,6 +419,20 @@ io.on('connection', client => {
                 }
             });
 
+            client.on('getGenerationsNames', () => {
+                client.emit('generationsNames', moves.generationsNames);
+            });
+
+            client.on('setGeneration', generation => {
+                if (generation) {
+                    console.log('setGeneration', generation);
+                    moves.changeAddonPath(generation);
+                    client.emit('setGenerationSuccess');
+                } else {
+                    client.emit('generationError', data);
+                }
+            });
+
             client.on('saveSetup', data => {
                 if (!_.isEmpty(data)) {
                     client.emit('saveSetupSuccess');
@@ -497,10 +512,10 @@ io.on('connection', client => {
 //     console.log("Сервер ожидает подключения...");
 // });
 
-// server.listen(27990, '192.168.1.20', function() {        // mephisto
-//     console.log("Сервер ожидает подключения...");
-// });
-
-server.listen(27990, 'localhost', function() {
+server.listen(27990, '192.168.1.20', function() {        // mephisto
     console.log("Сервер ожидает подключения...");
 });
+
+// server.listen(27990, 'localhost', function() {
+//     console.log("Сервер ожидает подключения...");
+// });
