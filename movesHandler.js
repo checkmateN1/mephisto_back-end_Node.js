@@ -3,12 +3,18 @@
 const enumPoker = require('./enum');
 
 const _ = require('lodash');
+const fs = require('fs');
 const adapt_size = 10;
+const diskDrive = 'C';  // laptop
+// const diskDrive = 'D';  // mephisto
 
-addon = require('C:\\projects\\mephisto_back-end_Node.js\\custom_module\\PokerEngine\\pokerengine_addon');
+addon = require(`${diskDrive}:\\projects\\mephisto_back-end_Node.js\\custom_module\\PokerEngine\\pokerengine_addon`);
 addon.SetDefaultDevice('cpu');
+const trainedPrefix = 'trained_RS';
+const modelsAllPath = ':\\projects\\mephisto_back-end_Node.js\\custom_module\\models\\regret_model';
+
 // addon.DeserializeBucketingType('C:\\projects\\mephisto_back-end_Node.js\\custom_module\\buckets\\', 0);
-modelsPool = new addon.ModelsPool('C:\\projects\\mephisto_back-end_Node.js\\custom_module\\models\\regret_model', 'trained_RA');
+modelsPool = new addon.ModelsPool((diskDrive + modelsAllPath), trainedPrefix);
 aggregator = new addon.RegretPoolToStrategyAggregator( modelsPool );
 // const setup = new addon.Setup(1);
 // setup.set_player(0,2500);
@@ -21,6 +27,57 @@ aggregator = new addon.RegretPoolToStrategyAggregator( modelsPool );
 // console.log(strategy);
 
 const handsDict = addon.GetHandsDict();
+
+let currentGeneration = 'all';
+let generationsNames = [];
+
+const changeAddonPath = (generation) => {
+    const newModelsPoolPath = diskDrive + modelsAllPath + ((generation === 'all') ? '' : `\\single_copies\\${generation}`);
+
+    modelsPool = new addon.ModelsPool(newModelsPoolPath, trainedPrefix);
+    aggregator = new addon.RegretPoolToStrategyAggregator( modelsPool );
+
+    currentGeneration = generation;
+};
+
+const copySingleGenerations = () => {
+    const folders = fs.readdirSync((diskDrive + modelsAllPath));
+    // console.log('folders');   // ['trained_RS1', 'trained_RS2', etc, 'single_copies']
+    // console.log(folders);
+
+    folders.forEach(folder => {
+        if (folder !== 'single_copies' && folder !== 'bk') {
+            const newFolderName = folder.replace(trainedPrefix, '');    // 1, 2, 3, etc
+            const folderPath = diskDrive + modelsAllPath + `\\single_copies\\${newFolderName}`;
+            try {
+                if (!fs.existsSync(folderPath)){
+                    fs.mkdirSync(folderPath);
+                    fs.mkdirSync(folderPath + `\\${folder}`);
+
+                    // copy files
+                    // read files list in source folder
+                    const files = fs.readdirSync((diskDrive + modelsAllPath + `\\${folder}`));
+
+                    // copy
+                    files.forEach(file => {
+                        fs.copyFileSync((diskDrive + modelsAllPath + `\\${folder}\\${file}`), (folderPath + `\\${folder}\\${file}`));
+                    });
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+    });
+
+    // copy all files success
+    generationsNames = fs.readdirSync((diskDrive + modelsAllPath + `\\single_copies`))
+      .filter(folder => !isNaN(folder))
+      .sort((a, b) => +a - +b);
+};
+console.log('start copySingleGenerations');
+copySingleGenerations();
+// console.log('generationsNames', generationsNames);
+
 
 // console.log(handsDict);
 
@@ -105,6 +162,7 @@ getSizing = (strategy, cur) => {     // возвращает ближайший 
 
 getMaxAmount = (arr, maxIndex) => arr.reduce((max, cur, i) => (i <= maxIndex && cur.amount > max) ? cur.amount : max, 0);
 
+//
 getHill = (position, curInvest, movesCount, setup) => {
     // console.log(`start getHill! MovesCount: ${movesCount}, movesInEngine: ${setup.movesInEngine}`);
     let strategy = aggregator.aggregate_all(setup.addonSetup, true);
@@ -239,6 +297,9 @@ getAllHandStrategy = (cash, position, setup) => {            // cash = [{ hand, 
         })
     };
 
+    // console.log('allHandsStrategy');
+    // console.log(allHandsStrategy);
+
     // normalize
     let maxWeight = 0;
     let maxPreflopWeight = 0;
@@ -253,7 +314,7 @@ getAllHandStrategy = (cash, position, setup) => {            // cash = [{ hand, 
 
     allHandsStrategy.allHands = allHandsStrategy.allHands.map( hand => {
         return Object.assign(hand, {
-            weight: hand.weight/maxWeight,
+            weight: hand.weight/maxWeight || 0,
             preflopWeight: hand.preflopWeight/maxPreflopWeight
         });
     }).filter(el => el.weight >= 0);
@@ -304,11 +365,12 @@ const movesHandler = (request, bbSize, setup, nodeId, isTerminal, enumPosition) 
     let isCashSteelUseful = true;
     let movesCount = 0;
 
-    if (!isInitPlayersEqual(request, setup)) {
+    if (!isInitPlayersEqual(request, setup) || setup.movesCash.generation != currentGeneration) {
         console.log('!!!!! releaseSetup !!!!');
         console.log(bbSize);
         setup.addonSetup = new addon.Setup(bbSize);
         setup.resetCash();
+        setup.movesCash.generation = currentGeneration;
         setup.hillsCash = [];
         setup.movesInEngine = 0;
         isCashSteelUseful = false;
@@ -629,3 +691,5 @@ const movesHandler = (request, bbSize, setup, nodeId, isTerminal, enumPosition) 
 };
 
 module.exports.movesHandler = movesHandler;
+module.exports.changeAddonPath = changeAddonPath;
+module.exports.generationsNames = generationsNames;

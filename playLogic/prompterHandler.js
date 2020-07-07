@@ -1,19 +1,20 @@
 const moment = require('moment');
 
 const enumPoker = require('../enum');
-const enumCommon = require('../enum');
 const validator = require('./frameCreator');
 const movesHandler = require('../movesHandler-pro');
 
 
 
-const REJECT_HAND = enumCommon.enumCommon.REJECT_HAND;
-const STOP_PROMPT = enumCommon.enumCommon.STOP_PROMPT;
-const PROMPT = enumCommon.enumCommon.PROMPT;
-const HAND_PROMPT = enumCommon.enumCommon.HAND_PROMPT;
-const INVALID_FRAME = enumCommon.enumCommon.INVALID_FRAME;
+const REJECT_HAND = enumPoker.enumCommon.REJECT_HAND;
+const STOP_PROMPT = enumPoker.enumCommon.STOP_PROMPT;
+const PROMPT = enumPoker.enumCommon.PROMPT;
+const HAND_PROMPT = enumPoker.enumCommon.HAND_PROMPT;
+const INVALID_FRAME = enumPoker.enumCommon.INVALID_FRAME;
 
 const { performance } = require('perf_hooks');
+
+const isDBLogging = true;
 
 class PlayersHandler {
     constructor() {
@@ -22,9 +23,16 @@ class PlayersHandler {
         this.defaultAdaptation = [1,1,1,1,1,1,1,1,1,1,1,1,1,1];
     }
 
-    getPlayerIdFromDB(recognitionNickname) {
-        return 1111111;        // will implementing
+    getPlayerIdFromDB(player, token, room, gameType, isAdaptation) {
+        if (token) {
+            return enumPoker.tokens[token][room][gameType];
+        } else if (isAdaptation) {
+            // db query
+        } else {
+            return 0;
+        }
     }
+
     getAdaptationFromDB(id) {
         return [1,1,1,1,1,1,1,1,1,1,1,1,1,1];        // will implementing
     }
@@ -39,6 +47,7 @@ class PlayersHandler {
             this.players.playerID = adaptation;
         }
     }
+
     getAdaptation(recognitionNickname) {
         let adaptation = this.players[this.cashPlayers.recognitionNickname];
 
@@ -148,7 +157,23 @@ class PlaySetup {
             return STOP_PROMPT;
         }
         if (playFrame.handNumber !== this.handNumber) {         // new hand
-            // console.log(`frameHandler/// new hand!  playFrame.handNumber: ${playFrame.handNumber}, this.handNumber: ${this.handNumber}`);
+            // logging
+            if (isDBLogging && this.initPlayers.length && !this.rejectHand) {
+                console.log('this.initPlayers');
+                console.log(this.initPlayers);
+                // this.sessionSetup.oracle.loggingHandHistory({
+                //     rawActions,
+                //     initPlayers,
+                //     heroChair,
+                //     room,
+                //     gameType,
+                //     limit,
+                //     board,
+                //     plCount,
+                //     cash,
+                //     token,      // вычисляем по токену и id_room - player_id
+                // });
+            }
             this.sessionSetup.tasksQueue.clearIrrelevantTasks(this.handNumber);
             this.simulationsRequests = [];      // clear locked actions for simulations requests
             this.handNumber = playFrame.handNumber;
@@ -1200,7 +1225,9 @@ class PlaySetup {
         }
 
         this.initPlayers.forEach(player => {
-            allPlayers.push(player.enumPosition);
+            if (player !== undefined) {
+                allPlayers.push(player.enumPosition);
+            }
         });
 
         for (let i = allPlayers.length - 1; i >= 0; i--) { // добавляем только тех кто остался
@@ -1464,7 +1491,6 @@ const isNeedSimulation = (isStrategy, rawActionList, isTerminal) => getCurStreet
 
 const prompterListener = (setup, request, gameTypesSettings) => {
     // console.log('enter prompter listener');
-
     const {
         data,
         txtFile,
@@ -1511,7 +1537,6 @@ const prompterListener = (setup, request, gameTypesSettings) => {
         }
 
     } else if (result === PROMPT && !setup.playSetup.simulationsRequests[setup.playSetup.rawActionList.length]) {
-
         const {
             cash,
             handNumber,

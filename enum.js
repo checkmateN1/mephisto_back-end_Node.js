@@ -4,7 +4,7 @@ const enumPoker = Object.freeze({
     adequatePositionsOrder9: ["SB", "BB", "UTG1", "UTG2", "MP1", "MP2", "MP3", "CO", "BTN"],
     adequatePositionsOrder6: ["SB", "BB", "MP2", "MP3", "CO", "BTN"],
     adequatePositionsOrder3: ["SB", "BB", "BTN"],
-    adequateHaPreflopPositionsOrder: ["BTN", "SB"],
+    adequateHaPreflopPositionsOrder: ["BTN", "BB"],
     dealPositions: {
         DEALPOS_NONE: -1,
         DEALPOS_BTN: 0,
@@ -18,7 +18,7 @@ const enumPoker = Object.freeze({
         DEALPOS_SB: 9,
         DEALPOS_FLOP: 13,
         DEALPOS_TURN: 14,
-        DEALPOS_RIVER: 15,
+        DEALPOS_RIVER: 15
     },
     actionsType: ['post', "bet", "raise", "call", "check", "fold"],
     streets: ["preflop", "flop", "turn", "river"],
@@ -27,7 +27,7 @@ const enumPoker = Object.freeze({
         'Spin&Go': {
             heroChair: 2,
             playersCount: 3,
-            hashSum: [7500, 5000, 3750, 2500, 1875, 1500, 1250],
+            hashSum: [7500, 5000, 3750, 2500, 1875, 1500, 1250]
         }
     },
     cardsValues: ['2', '3', '4', '5', '6', '7', '8', '9', 'T', 'j', 'q', 'k', 'a'],
@@ -39,8 +39,8 @@ const enumPoker = Object.freeze({
         startSimulationStreet: 2,
         maxActiveTasks: 1,               // pack moves within one hand number
         maxActiveSimulations: 1,
-        oneHandCallRegretCount: 1,
-    },
+        oneHandCallRegretCount: 1
+    }
 });
 
 const enumCommon = Object.freeze({
@@ -48,11 +48,32 @@ const enumCommon = Object.freeze({
     STOP_PROMPT: 'STOP_PROMPT',
     REJECT_HAND: 'REJECT_HAND',
     PROMPT: 'prompt',
-    HAND_PROMPT: 'hand_prompt',
+    HAND_PROMPT: 'hand_prompt'
+});
+
+const rooms = Object.freeze({
+    Partypoker: 2
+});
+
+// nicknames for players id in tt_raw_init
+const tokens = Object.freeze({
+    'uidfksicnm730pdemg662oermfyf75jdf9djf': 'simulator Ivan',
+    'uidfksicnm730pdemg662oermfyf75jdf9djk': 'simulator Molot-ok',
+    'uidfksicnm730pdemg662oermfyf75jdf9djj': 'simulator checkmate',
+    'dfioulkdgdlb87jkj53pioifjlwlo8cvjksnj': {                      // Ivan
+        Partypoker: {
+            'Spin&Go': {
+                id: 101,
+                nickname: 'So Lucky'
+            }
+        }
+    },
 });
 
 module.exports.enumPoker = enumPoker;
 module.exports.enumCommon = enumCommon;
+module.exports.tokens = tokens;
+module.exports.rooms = rooms;
 
 
 
