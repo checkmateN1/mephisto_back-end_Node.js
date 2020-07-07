@@ -512,10 +512,10 @@ io.on('connection', client => {
 //     console.log("Сервер ожидает подключения...");
 // });
 
-server.listen(27990, '192.168.1.20', function() {        // mephisto
-    console.log("Сервер ожидает подключения...");
-});
-
-// server.listen(27990, 'localhost', function() {
+// server.listen(27990, '192.168.1.20', function() {        // mephisto
 //     console.log("Сервер ожидает подключения...");
 // });
+
+server.listen(27990, 'localhost', function() {
+    console.log("Сервер ожидает подключения...");
+});

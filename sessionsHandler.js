@@ -3,7 +3,7 @@ const _ = require('lodash');
 const prompterHandler = require('./playLogic/prompterHandler');
 // const movesHandler = require('./movesHandler-pro');
 const moves = require('./movesHandler');
-// const oracle = require('./oracle');
+const oracle = require('./oracle');
 const enumPoker = require('./enum');
 
 /////////////////////////////////   TEST RAW ACTIONS
@@ -58,7 +58,7 @@ const testInitPlayers = [
 ];
 
 /////////////////////////////////  TEST Oracle
-// const oraclePlaySetup = new oracle.oracle();
+const oraclePlaySetup = new oracle.oracle();
 ///////////////////////////////////
 // setTimeout(async () => {
 //     const result = await oraclePlaySetup.loggingHandHistory({

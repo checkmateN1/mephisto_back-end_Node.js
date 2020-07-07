@@ -255,6 +255,7 @@ const mockStrategy = (callBack) => {
         callBack(strategy);
     }, 300);
 };
+
 const mockStrategyOne = (callBack) => {
     const strategy = {                                 // test strategy example
         '1': {

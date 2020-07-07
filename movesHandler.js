@@ -5,8 +5,8 @@ const enumPoker = require('./enum');
 const _ = require('lodash');
 const fs = require('fs');
 const adapt_size = 10;
-// const diskDrive = 'C';  // laptop
-const diskDrive = 'D';  // mephisto
+const diskDrive = 'C';  // laptop
+// const diskDrive = 'D';  // mephisto
 
 addon = require(`${diskDrive}:\\projects\\mephisto_back-end_Node.js\\custom_module\\PokerEngine\\pokerengine_addon`);
 addon.SetDefaultDevice('cpu');
