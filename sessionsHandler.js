@@ -1,7 +1,7 @@
 const _ = require('lodash');
 
 const prompterHandler = require('./playLogic/prompterHandler');
-// const movesHandler = require('./movesHandler-pro');
+const movesHandler = require('./movesHandler-pro');
 const moves = require('./movesHandler');
 const oracle = require('./oracle');
 const enumPoker = require('./enum');

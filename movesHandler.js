@@ -255,8 +255,8 @@ getHill = (position, curInvest, movesCount, setup) => {
 
 getAllHandStrategy = (cash, position, setup) => {            // cash = [{ hand, weight, strategy, optimalSizing, isPreflop }, .....]
 
-    console.log('setup.movesCash');
-    console.log(setup.movesCash);
+    // console.log('setup.movesCash');
+    // console.log(setup.movesCash);
 
 
     const preflopCash = position !== undefined ? setup.hillsCash.reduceRight((cash, cur) => {
@@ -268,6 +268,15 @@ getAllHandStrategy = (cash, position, setup) => {            // cash = [{ hand, 
     }, undefined) : null;
     // console.log('preflopCash');
     // console.log(preflopCash);
+
+    console.log('preflopCash[0].strategy[preflopCash[0].optimalSizing]');
+    console.log(preflopCash ? preflopCash[0].strategy[preflopCash[0].optimalSizing] : null);
+
+    console.log('preflopCash[0].strategy[preflopCash[0].optimalSizing].strategy');
+    console.log(preflopCash ? preflopCash[0].strategy[preflopCash[0].optimalSizing].strategy: null);
+
+    console.log('!!preflopCash');
+    console.log(!!preflopCash);
 
 
     const allHandsStrategy = {     // simulator format
