@@ -10,6 +10,10 @@ const diskDrive = 'C';  // laptop
 
 addon = require(`${diskDrive}:\\projects\\mephisto_back-end_Node.js\\custom_module\\PokerEngine\\pokerengine_addon`);
 addon.SetDefaultDevice('cpu');
+
+// addon.DeserializeBucketingType(`${diskDrive}:\\projects\\mephisto_back-end_Node.js\\custom_module\\buckets\\`, 0);
+// addon.DeserializeBucketingType(`${diskDrive}:\\projects\\mephisto_back-end_Node.js\\custom_module\\buckets\\`, 4);
+
 const trainedPrefix = 'trained_RS';
 const modelsAllPath = ':\\projects\\mephisto_back-end_Node.js\\custom_module\\models\\regret_model';
 

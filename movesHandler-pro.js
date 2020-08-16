@@ -4,6 +4,10 @@ const enumPoker = require('./enum');
 
 addon = require('C:\\projects\\mephisto_back-end_Node.js\\custom_module\\PokerEngine\\pokerengine_addon');
 addon.SetDefaultDevice('cpu');
+
+addon.DeserializeBucketingType('C:\\projects\\mephisto_back-end_Node.js\\custom_module\\buckets\\', 0);
+addon.DeserializeBucketingType('C:\\projects\\mephisto_back-end_Node.js\\custom_module\\buckets\\', 4);
+
 // addon.DeserializeBucketingType('C:\\projects\\mephisto_back-end_Node.js\\custom_module\\buckets\\', 0);
 // modelsPool = new addon.ModelsPool('C:\\projects\\mephisto_back-end_Node.js\\custom_module\\models\\regret_model', 'trained_RA');
 modelsPoolSync = new addon.ModelsPool('C:\\projects\\mephisto_back-end_Node.js\\custom_module\\models\\regret_model', 'trained_RS');
@@ -281,8 +285,7 @@ const strategyOne = (addonSetup, hand, handTxt, playSetup) => {
     for (let i = 0; i < callCount; i++) {
         console.log(`bom/// hand: ${hand}, handTXT: ${handTxt}, textPath: ${playSetup.txtPath + '\\' + playSetup.txtFile}`);
         const reg = aggregatorSync.random_model_regret(addonSetup, hand);
-        console.log('!!!!bom bom');
-        console.log(`random regret`);
+        console.log(`one hand prompt`);
         console.log(reg);
         let maxKey = 0;
 

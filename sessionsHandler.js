@@ -206,7 +206,6 @@ class SessionSetup {
             } else {
                 console.log(`movesHandler/// result is undefined`);
             }
-
         }
         // last move hero simulation for prompter
         if (requestType === 'prompter') {

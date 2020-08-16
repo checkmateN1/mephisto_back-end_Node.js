@@ -325,6 +325,14 @@ io.on('connection', client => {
                 curFile = '';
             });
 
+            client.on('pauseDebug', () => {
+                curFile = '';
+            });
+
+            client.on('playDebug', () => {
+                curFile = '';
+            });
+
             //////////////////////////////////////////
 
             // css
