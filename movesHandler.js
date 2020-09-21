@@ -56,7 +56,7 @@ const copySingleGenerations = () => {
             try {
                 if (!fs.existsSync(folderPath)){
                     fs.mkdirSync(folderPath);
-                    fs.mkdirSync(folderPath + `\\${folder}`);
+                    fs.mkdirSync(folderPath + `\\${trainedPrefix}1`);
 
                     // copy files
                     // read files list in source folder
@@ -64,7 +64,7 @@ const copySingleGenerations = () => {
 
                     // copy
                     files.forEach(file => {
-                        fs.copyFileSync((diskDrive + modelsAllPath + `\\${folder}\\${file}`), (folderPath + `\\${folder}\\${file}`));
+                        fs.copyFileSync((diskDrive + modelsAllPath + `\\${folder}\\${file}`), (folderPath + `\\${trainedPrefix}1\\${file}`));
                     });
                 }
             } catch (err) {
