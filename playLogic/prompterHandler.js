@@ -159,6 +159,9 @@ class PlaySetup {
         if (playFrame.handNumber !== this.handNumber) {         // new hand
             // logging
             if (isDBLogging && this.initPlayers.length && !this.rejectHand) {
+
+                // создаем фейковый фрейм если предыдущий фрейм не в терминальном состоянии.
+                // балансы игроков равны тем балансам(пока что без учета рейка) которые мы видим в следующей валидной новой руке.
                 console.log('this.initPlayers');
                 console.log(this.initPlayers);
                 // this.sessionSetup.oracle.loggingHandHistory({
