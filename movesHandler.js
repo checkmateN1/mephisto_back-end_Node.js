@@ -11,8 +11,9 @@ const diskDrive = 'C';  // laptop
 addon = require(`${diskDrive}:\\projects\\mephisto_back-end_Node.js\\custom_module\\PokerEngine\\pokerengine_addon`);
 addon.SetDefaultDevice('cpu');
 
-// addon.DeserializeBucketingType(`${diskDrive}:\\projects\\mephisto_back-end_Node.js\\custom_module\\buckets\\`, 0);
-// addon.DeserializeBucketingType(`${diskDrive}:\\projects\\mephisto_back-end_Node.js\\custom_module\\buckets\\`, 4);
+///!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! всегда включать на мефисте
+addon.DeserializeBucketingType(`${diskDrive}:\\projects\\mephisto_back-end_Node.js\\custom_module\\buckets\\`, 0);
+addon.DeserializeBucketingType(`${diskDrive}:\\projects\\mephisto_back-end_Node.js\\custom_module\\buckets\\`, 4);
 
 const trainedPrefix = 'trained_RS';
 const modelsAllPath = ':\\projects\\mephisto_back-end_Node.js\\custom_module\\models\\regret_model';
@@ -37,6 +38,7 @@ let generationsNames = [];
 
 const changeAddonPath = (generation) => {
     const newModelsPoolPath = diskDrive + modelsAllPath + ((generation === 'all') ? '' : `\\single_copies\\${generation}`);
+    console.log('newModelsPoolPath', newModelsPoolPath);
 
     modelsPool = new addon.ModelsPool(newModelsPoolPath, trainedPrefix);
     aggregator = new addon.RegretPoolToStrategyAggregator( modelsPool );
@@ -56,7 +58,7 @@ const copySingleGenerations = () => {
             try {
                 if (!fs.existsSync(folderPath)){
                     fs.mkdirSync(folderPath);
-                    fs.mkdirSync(folderPath + `\\${folder}`);
+                    fs.mkdirSync(folderPath + `\\${trainedPrefix}1`);
 
                     // copy files
                     // read files list in source folder
@@ -64,7 +66,7 @@ const copySingleGenerations = () => {
 
                     // copy
                     files.forEach(file => {
-                        fs.copyFileSync((diskDrive + modelsAllPath + `\\${folder}\\${file}`), (folderPath + `\\${folder}\\${file}`));
+                        fs.copyFileSync((diskDrive + modelsAllPath + `\\${folder}\\${file}`), (folderPath + `\\${trainedPrefix}1\\${file}`));
                     });
                 }
             } catch (err) {
