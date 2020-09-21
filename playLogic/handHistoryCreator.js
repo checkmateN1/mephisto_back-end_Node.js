@@ -97,6 +97,13 @@ const getDistributionOfWinners = () => {    // returns { winner: chair, draw: }
 
 };
 
+
+// returns
+// [
+//   { min: 50, players: [ 0, 1, 2 ], pot: 150 },
+//   { min: 20, players: [ 0, <1 empty item>, 2 ], pot: 40 }
+// ]
+
 const getDividedPots = (initPlayers) => {    // returns [ { chairs: [0, 1, 2, 3], pot: 10}, { chairs: [1, 2, 3], pot: 7}, { chairs: [2, 3], pot: 7} ]
   let balances = initPlayers.map((player) => {
     return player.initBalance;
@@ -104,13 +111,13 @@ const getDividedPots = (initPlayers) => {    // returns [ { chairs: [0, 1, 2, 3]
 
   const arr = [];
 
-  while(balances.filter(cur => cur !== undefined).length > 1) {
+  let count = 0;
+  while(balances.filter(cur => cur !== undefined).length > 1 || count > 10) {
     const min = Math.min(...balances.filter(cur => cur !== undefined));
 
     // we need 1) pot, 2) chairs who will divide pot
 
-    const obj = { min, players: [] };
-    obj.pot = 0;
+    const obj = { min, pot: 0, players: [] };
 
     balances = balances.map((cur, i) => {
       if (cur !== undefined) {
@@ -124,12 +131,31 @@ const getDividedPots = (initPlayers) => {    // returns [ { chairs: [0, 1, 2, 3]
     });
 
     arr.push(obj);
+    count++;
   }
 
   return arr;
 };
 
 
+// returns [ { chair: 3, net: 160 }, { chair: 1, net: -160 } ]
+const getUnicWinnerChair = (potsArr, newPlayFrame) => {     // false, null or unic winners recPosition
+  return potsArr.reduce((isFound, cur, i) => {
+    if (isFound === false) {
+      return false;
+    } else if (cur !== undefined) {
+      if (newPlayFrame.playPlayers[i] === undefined) {
+        return isFound;
+      }
+
+      if (cur.initBalance < (newPlayFrame.playPlayers[i].curBalance + newPlayFrame.playPlayers[i].betAmount)) {
+        return isFound === null ? i : false;   // winners recPosition
+      }
+
+      return isFound;
+    }
+  }, null);
+};
 
 // const getUnicWinnerChair = (initPlayers, newPlayFrame) => {     // false, null or unic winners recPosition
 //   return initPlayers.reduce((isFound, cur, i) => {
