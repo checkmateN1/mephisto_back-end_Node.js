@@ -26,154 +26,93 @@ const getValidHistory = (options) => {
 
 };
 
-class PlayFrame {
-  constructor(handNumber, pot, playPlayers, board, isButtons, heroRecPosition, testNumber) {
-    this.handNumber = handNumber;
-    this.pot = pot;
-    this.playPlayers = playPlayers;   // []  index == chair
-    this.board = board;         // []
-    this.isButtons = isButtons;
-    this.heroRecPosition = heroRecPosition;       // 2 for spin&go
-    this.testNumber = testNumber;
-  }
-}
 
-class PlayPlayer {
-  constructor(nickname, recognitionPosition, curBalance, amount, isActive, isDealer, cards) {
-    this.nickname = nickname;
-    this.recognitionPosition = recognitionPosition;
-    this.curBalance = curBalance;
-    this.betAmount = amount;
-    this.isActive = isActive;
-    this.isDealer = isDealer;
-    this.cards = cards;
-  }
-}
+// first initPlayers input
+// const balances = [100, 50, 70, 10, undefined, 100, 100, 500, 400];
+// let balances = [100, 50, 70, 10, 500];
+const balances = [100, 50, 70];
+let unicBalances = [...new Set(balances)].filter(el => el !== undefined).sort((a , b) => b - a); // [ 100, 70, 50 ]
+const nets = Array(balances.length).fill(0);  // index === chair
 
-class InitPlayer {
-  constructor(player, initBalance, enumPosition, isDealer, cards) {
-    this.player = player;
-    this.initBalance = initBalance;
-    this.enumPosition = enumPosition;
-    this.isDealer = isDealer;
-    this.cards = cards;
-  }
-}
+// second initPlayers input
+// let balancesNew = [50, 150, 20];  // 1 index win all, 0 and 2 draw
+let balancesNew = [220, 0, 0];  // 1 index win all, 0 and 2 draw
 
-// this.initPlayers = [];      // all players who was active in start. Index === recPosition, some indexes == undefined!
+// if one of new balances was't undefined and becomes => blanance === 0
+console.log('unicBalances', unicBalances);
 
-// пока что без рейка
-// создаем фейковый фрейм в котором балансы игроков === инит балансам в newPlayFrame
-// в этом фрейме заканчивается вложение денег всех участников игры.. дочекивание всеми делаем потом
-const createFinalFrame = (initPlayers, prevPlayFrame, newPlayFrame, isTerminal, finalBoard) => {
-    // создаем массив плееров с инициальными балансами в новой руке из newPlayFrame
-    // пока что без учета рейка
-  const initBalances = newPlayFrame.playPlayers.map(player => player === undefined ? undefined : (player.curBalance + player.betAmount));
+const getPlayerNet = (unicBalances, balances, isWin, isDraw, maxBalance, chair, nets) => {
+  const sum = unicBalances.reduce((sum, cur, index) => {
+    if (cur <= maxBalance && balances[chair] >= cur) {
+      const min = cur - ((index === unicBalances.length - 1) ? 0 : unicBalances[index + 1]);
+      const looseNet = (!isWin && !isDraw) ? min : 0;
+      const winNet = isWin ? (balances.filter(bal => bal !== undefined && bal >= cur).length - 1) * min : 0;
 
-  // создаем фейковый фрейм на той же улице на которой есть последнее действие в prevPlayFrame если не терминальное состояние или на следующей улице
-  // если совпали балансы prevPlayFrame и initBalances - игроки чекают все оставшиеся улицы
-  if (isTerminal) {
-    // шлем фрейм с ривером докуда все дочекали.. так же проверяем, что frameCreator каждый раз добавляет карты борда, даже если что-то не распознает!
-    return Object.assign(prevPlayFrame, { board: finalBoard, isButtons: false });
+      return sum + looseNet + winNet;
+    }
+    return sum;
+  }, 0);
+
+  if (nets) {
+    nets[chair] += (isWin || isDraw) ? sum : -sum;
+    return nets[chair];
   } else {
-    // игроки могли сделать любое действие. А так же общее блайнды могли вырости(но это не важно)
-    // Определяем вырос ли пот по балансу того кто выиграл и проиграл(ничья) и определяем были ли коллы или рейзы. Если игроков 2 и был рейз - определям был ли колл
-    // если пот не вырос с момента последнего фрейма - все кто не успел вколить повышение - фолдят.. или все чекают до ривера включительно
-    // если пот вырос - смотрим по потерям тех кто проиграл - кто колил а кто падал - завершаем улицу и чекаем до ривера(убираем ставки)
-
-    // есть ли уникальный победитель - это единственный у кого прирос баланс
-
-    const winnerChair = getUnicWinnerChair(initPlayers, newPlayFrame);
-
-    if (winnerChair !== false && winnerChair !== null) {    // unic winner exist
-
-    }
-
-    const winnerLoosersPotDiff = newPlayFrame.playPlayers
+    return (isWin || isDraw) ? sum : -sum;
   }
 };
 
-const getDistributionOfWinners = () => {    // returns { winner: chair, draw: }
+let winIndex = unicBalances.length;   // индекс уникального стека у которого есть победитель
+let tmpIndex;
+while (winIndex !== tmpIndex) {
+  tmpIndex = winIndex;
+  winIndex = unicBalances.reduce((newWinIndex, cur, index) => {
+    if (newWinIndex === winIndex && index < winIndex) {
+      // перебираем балансы по убыванию пока не найдем винера
+      if (balances.filter(el => el !== undefined && el >= cur).length > 1) {  // there is 2 or more plrs who will claim the pot
+        // !! if I found the winner - delete UNIC balances all top stacks witch less the winner's stack and calculating player's profit
+        const winnerChair = balances.reduce((winner, blance, i) => {   // get winner chair
+          if (winner === null && blance !== undefined && blance >= cur && newWinIndex === winIndex) {    // plr claim the pot - checking is he winner
+            const bal = getPlayerNet(unicBalances, balances, true, false, cur, i);
+            if (bal + blance === (balancesNew[i] !== undefined ? balancesNew[i] : 0)) {   // winner
+              newWinIndex = index;
+              return i;
+            }
+          }
+          return winner;
+        }, null);
 
-};
+        if (winnerChair !== null) {
+          balances.forEach((blance, i) => {
+            if (blance !== undefined && blance >= cur) {
+              const isWin = winnerChair === i;
+              const bal = getPlayerNet(unicBalances, balances, isWin, false, cur, i, nets);
+            }
+          });
+        } else if (index === unicBalances.length - 1) {
+          newWinIndex = unicBalances.length;    // БОЛЬШЕ чем существующие индексы в уникальных балансах на 1 - не использовать его
+        }
+      }
+    }
 
+    return newWinIndex;
+  }, winIndex);
+}
 
-// returns
-// [
-//   { min: 50, players: [ 0, 1, 2 ], pot: 150 },
-//   { min: 20, players: [ 0, <1 empty item>, 2 ], pot: 40 }
-// ]
-
-const getDividedPots = (initPlayers) => {    // returns [ { chairs: [0, 1, 2, 3], pot: 10}, { chairs: [1, 2, 3], pot: 7}, { chairs: [2, 3], pot: 7} ]
-  let balances = initPlayers.map((player) => {
-    return player.initBalance;
+// draws
+if (winIndex) {
+  unicBalances.forEach((cur, index) => {
+    if (balances.filter(el => el !== undefined && el >= cur).length > 1) {  // there is 2 or more plrs who will claim the pot
+      balances.forEach((blance, i) => {
+        if (blance !== undefined && blance >= cur) {
+          const bal = getPlayerNet(unicBalances, balances, false, true, cur, i, nets);
+        }
+      });
+    }
   });
+}
 
-  const arr = [];
-
-  let count = 0;
-  while(balances.filter(cur => cur !== undefined).length > 1 || count > 10) {
-    const min = Math.min(...balances.filter(cur => cur !== undefined));
-
-    // we need 1) pot, 2) chairs who will divide pot
-
-    const obj = { min, pot: 0, players: [] };
-
-    balances = balances.map((cur, i) => {
-      if (cur !== undefined) {
-        obj.pot += min;
-        obj.players[i] = i;
-      }
-
-      if (cur > min) {
-        return cur - min;
-      }
-    });
-
-    arr.push(obj);
-    count++;
-  }
-
-  return arr;
-};
-
-
-// returns [ { chair: 3, net: 160 }, { chair: 1, net: -160 } ]
-const getUnicWinnerChair = (potsArr, newPlayFrame) => {     // false, null or unic winners recPosition
-  return potsArr.reduce((isFound, cur, i) => {
-    if (isFound === false) {
-      return false;
-    } else if (cur !== undefined) {
-      if (newPlayFrame.playPlayers[i] === undefined) {
-        return isFound;
-      }
-
-      if (cur.initBalance < (newPlayFrame.playPlayers[i].curBalance + newPlayFrame.playPlayers[i].betAmount)) {
-        return isFound === null ? i : false;   // winners recPosition
-      }
-
-      return isFound;
-    }
-  }, null);
-};
-
-// const getUnicWinnerChair = (initPlayers, newPlayFrame) => {     // false, null or unic winners recPosition
-//   return initPlayers.reduce((isFound, cur, i) => {
-//     if (isFound === false) {
-//       return false;
-//     } else if (cur !== undefined) {
-//       if (newPlayFrame.playPlayers[i] === undefined) {
-//         return isFound;
-//       }
-//
-//       if (cur.initBalance < (newPlayFrame.playPlayers[i].curBalance + newPlayFrame.playPlayers[i].betAmount)) {
-//         return isFound === null ? i : false;   // winners recPosition
-//       }
-//
-//       return isFound;
-//     }
-//   }, null);
-// };
+console.log(balances);
+console.log(nets);
 
 
 module.exports.getValidHistory = getValidHistory;
