@@ -1316,7 +1316,11 @@ class PlaySetup {
 
     // return the last bet or raise amount
     wasBet(oldActionListLength, isTerminal) {
-        const currentStreet = isTerminal ? Math.min(this.rawActionList[oldActionListLength].street + 1, 3) : this.rawActionList[oldActionListLength].street;
+        if (isTerminal) {
+            return 0;
+        }
+
+        const currentStreet = this.rawActionList[oldActionListLength].street;
         for (let i = oldActionListLength; i >= 0; i--) {
             if (this.rawActionList[i].street === currentStreet) {
                 if (this.rawActionList[i].action < 3) {
@@ -1326,6 +1330,38 @@ class PlaySetup {
                 return 0;
             }
         }
+    }
+
+    // return the last bet or raise amount
+    betsCount(oldActionListLength, isTerminal) {        // не учитываем блайнды
+        if (isTerminal) {
+            return 0;
+        }
+
+        const currentStreet = this.rawActionList[oldActionListLength].street;
+        let count = 0;
+        for (let i = oldActionListLength; i >= 0; i--) {
+            if (this.rawActionList[i].street === currentStreet) {
+                if (this.rawActionList[i].action < 3 && this.rawActionList[i].action !== 0) {
+                    count++;
+                }
+            } else {
+                return count;
+            }
+        }
+    }
+
+    // has initiative
+    hasInitiative(street, enumPosition) {
+        for (let i = this.rawActionList.length - 1; i >= 0; i--) {
+            if (this.rawActionList[i].street === street) {
+                if (this.rawActionList[i].action < 3) {
+                    return enumPosition === this.rawActionList[i].position;
+                }
+            }
+            if (this.rawActionList[i].street < street) { return false; }
+        }
+        return false;
     }
 
     // возвращает enum позицию того кто будет ходить следующим
