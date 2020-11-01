@@ -172,7 +172,7 @@ class PlaySetup {
         this.rejectCount = 0;
 
         // node identifire pre-calculated data
-        this.preCalculatedData = _.cloneDeep(preCalculatedDataTemplate);
+        this.preCalculatedData = {};
 
         // debug info
         this.txtFile = '';
@@ -224,6 +224,8 @@ class PlaySetup {
             this.rejectHand = false;
             this.stopPrompt = false;
             this.rejectCount = 0;
+
+            this.preCalculatedData = _.cloneDeep(preCalculatedDataTemplate);
 
             this.setInitPlayers(playFrame);
             this.setPositionsMap();
@@ -897,7 +899,10 @@ class PlaySetup {
         };
     }
 
-    getPenalty() {
+    getPenalty(heroPosition, isTerminal, move_id) {
+        // this.preCalculatedData
+        // создаем словарь с использованием preCalculatedData, куда добавляем статы чтобы не делать лищних проверок.
+        // смотрим какая улица и перебираем все статы по этой улице с использованием preCalculatedData и добавлением в нее данных
 
         const penalty = {
             agro: 0,
@@ -906,6 +911,35 @@ class PlaySetup {
 
         return penalty;
     }
+
+    applyPenalty(strategy, penalty) {
+        const { agro = 0, passive = 0 } = penalty;
+        let maxKey;
+
+        // принимаем такой объект, на выходе выдаем такой же, где у наивысшего сожаления стратегия 1 а у остальных 0 + меняем regret
+        // {
+            // 0: {strategy: 0, regret: 0.7526401877403259}
+            // 270: {strategy: 0, regret: -66.60626220703125}
+            // 2400: {strategy: 0, regret: -91.47394561767578}
+            // -1: {strategy: 1, regret: 32.952693939208984}
+        // }
+
+        Object.keys(strategy).reduce((max, key) => {
+            strategy[key].regret -= +key > 0 ? agro : 0;
+            strategy[key].regret -= +key === 0 ? passive : 0;
+            if (strategy[key].regret > max) {
+                maxKey = key;
+                return strategy[key].regret;
+            }
+            return max;
+        }, -100500);
+
+        for (let key in strategy) {
+            strategy[key].strategy = maxKey === key ? 1 : 0;
+        }
+
+        return strategy;
+    };
 
     restoreRawAction(count) {
         while(this.fantomRawActionsCount - (count || 0)) {
@@ -1553,6 +1587,9 @@ class PlaySetup {
                 id,
             };
 
+
+            console.log(`!!!test one hand inside handPrompt`);
+            console.log(promptData);
             setTimeout(() => {
                 // console.log('send hand prompt');
                 client.emit(HAND_PROMPT, promptData);
@@ -1660,7 +1697,7 @@ const prompterListener = (setup, request, gameTypesSettings) => {
             };
 
             // !geting penalty
-            const penalty = setup.playSetup.getPenalty();
+            const penalty = setup.playSetup.getPenalty(heroPosition, isTerminal, move_id);
 
             if (!needSimulation && isHeroTurn) {
                 movesHandler.getHill(request, undefined, true);
