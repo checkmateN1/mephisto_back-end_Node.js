@@ -73,7 +73,7 @@ while (winIndex !== tmpIndex) {
         const winnerChair = balances.reduce((winner, blance, i) => {   // get winner chair
           if (winner === null && blance !== undefined && blance >= cur && newWinIndex === winIndex) {    // plr claim the pot - checking is he winner
             const bal = getPlayerNet(unicBalances, balances, true, false, cur, i);
-            if (bal + blance === (balancesNew[i] !== undefined ? balancesNew[i] : 0)) {   // winner
+            if (bal + blance === (balancesNew[i] === undefined ? 0 : balancesNew[i])) {   // winner
               newWinIndex = index;
               return i;
             }
