@@ -2,15 +2,20 @@ const _ = require('lodash');
 
 const enumPoker = require('./enum');
 
-addon = require('C:\\projects\\mephisto_back-end_Node.js\\custom_module\\PokerEngine\\pokerengine_addon');
+const diskDrive = 'C';  // laptop
+// const diskDrive = 'D';  // mephisto
+
+const isOfflineStrategy = true;
+
+addon = require(`${diskDrive}:\\projects\\mephisto_back-end_Node.js\\custom_module\\PokerEngine\\pokerengine_addon`);
 addon.SetDefaultDevice('cpu');
 
-addon.DeserializeBucketingType('C:\\projects\\mephisto_back-end_Node.js\\custom_module\\buckets\\', 0);
-addon.DeserializeBucketingType('C:\\projects\\mephisto_back-end_Node.js\\custom_module\\buckets\\', 4);
+addon.DeserializeBucketingType(`${diskDrive}:\\projects\\mephisto_back-end_Node.js\\custom_module\\buckets\\`, 0);
+addon.DeserializeBucketingType(`${diskDrive}:\\projects\\mephisto_back-end_Node.js\\custom_module\\buckets\\`, 4);
 
 // addon.DeserializeBucketingType('C:\\projects\\mephisto_back-end_Node.js\\custom_module\\buckets\\', 0);
 // modelsPool = new addon.ModelsPool('C:\\projects\\mephisto_back-end_Node.js\\custom_module\\models\\regret_model', 'trained_RA');
-modelsPoolSync = new addon.ModelsPool('C:\\projects\\mephisto_back-end_Node.js\\custom_module\\models\\regret_model', 'trained_RS');
+modelsPoolSync = new addon.ModelsPool(`${diskDrive}:\\projects\\mephisto_back-end_Node.js\\custom_module\\models\\regret_model`, 'trained_RS');
 // aggregator = new addon.RegretPoolToStrategyAggregator( modelsPool );
 aggregatorSync = new addon.RegretPoolToStrategyAggregator( modelsPoolSync );
 // setup = new addon.Setup(1.0);
@@ -30,7 +35,7 @@ class AggregatorPool {
     constructor() {
         this.pool = {};
         Array(enumPoker.enumPoker.perfomancePolicy.maxActiveTasks).fill().forEach((cur, index) => {
-            const modelsPool = new addon.ModelsPool('C:\\projects\\mephisto_back-end_Node.js\\custom_module\\models\\regret_model', 'trained_RS');
+            const modelsPool = new addon.ModelsPool(`${diskDrive}:\\projects\\mephisto_back-end_Node.js\\custom_module\\models\\regret_model`, 'trained_RS');
             this.pool[index] = {
                 modelsPool,
                 aggregator: new addon.RegretPoolToStrategyAggregator( modelsPool ),
@@ -441,7 +446,7 @@ const isMockStrategy = false;
 const isSimulationsOn = false;
 const isDebugMode = true;
 
-const getHill = (request, callback, isOneHand) => {
+const movesHandler = (isOneHand, callback, request) => {
     const {
         handNumber,
         playSetup,
@@ -451,11 +456,132 @@ const getHill = (request, callback, isOneHand) => {
         board,
         cash,
         move_id,
-        move_position,
+        isTerminal,
+        hand,
+    } = request;
+
+    const isIrrelevant = handNumber !== playSetup.handNumber || playSetup.stopPrompt;
+    if (isIrrelevant) {
+        callback();
+        tasksQueue.clearIrrelevantTasks(handNumber);
+        SimulationsHandler.checkCallBacks(playSetup, handNumber, isMockStrategy);
+        return false;
+    }
+
+    console.log(`start hand: ${hand} request`);
+
+    const addonSetup = new addon.Setup(BB/100);
+
+    initPlayers.forEach(player => {
+        console.log(`set_player(${player.enumPosition}, ${player.initBalance})`);
+        addonSetup.set_player(player.enumPosition, player.initBalance);
+    });
+
+    for (let move = 0; move <= move_id; move++) {
+        if (move < 2) {     // 0, 1 - blinds indexes
+            const { position, invest, action } = rawActionList[move];
+            console.log(`push_move(${position}, ${invest}, ${action})`);
+            addonSetup.push_move(position, invest, action);
+        } else {
+            if (isOneHand) {
+                if (move === move_id) {
+                    playSetup.handPrompt(strategyOne(addonSetup, getHandIndex(hand), hand, playSetup), handNumber, move_id, playSetup.id);
+                    break;
+                }
+            } else {
+                if (!SimulationsHandler.isMoveLock(playSetup, handNumber, move)) {
+                    if (aggregatorPool.isFree()) {
+                        const aggregatorKey = aggregatorPool.getFreeKey();
+                        const aggregator = aggregatorPool.pool[aggregatorKey].aggregator;
+
+                        // callback
+                        const getStrategyAsync = (strategy) => {
+                            aggregatorPool.unlock(aggregatorKey);       // first
+                            tasksQueue.tasksHandler();                  // second
+
+                            // debug mode
+                            if (isDebugMode) {
+                                debugEmmit(playSetup, '', false, '');
+                            }
+
+                            cash[move] = { strategy };
+
+                            SimulationsHandler.checkCallBacks(playSetup, handNumber, isMockStrategy);
+                            if (move < move_id) {
+                                movesHandler();
+                            }
+                        };
+
+                        if (nodeSimulation(rawActionList, isTerminal, move)) {
+                            if (isCashReady(rawActionList, cash, move)) {
+                                // debug mode
+                                if (isDebugMode) {
+                                    debugEmmit(playSetup, hand, true, move);
+                                }
+                                SimulationsHandler.lockMove(playSetup, handNumber, move);       // lock move for always
+                                if (isMockStrategy) {
+                                    mockStrategy(getStrategyAsync);
+                                } else if (isSimulationsOn) {
+                                    setHills(addonSetup, initPlayers, rawActionList, cash, move);
+                                    aggregator.simulate(addonSetup, getStrategyAsync);
+                                } else {
+                                    aggregator.aggregate_all_async(addonSetup, getStrategyAsync, true);
+                                }
+                            } else {
+                                aggregatorPool.unlock(aggregatorKey);
+
+                                // debug mode
+                                if (isDebugMode) {
+                                    debugEmmit(playSetup, '', false, '');
+                                }
+                            }
+                            break;      // sync mode
+                        } else {                // have an aggregator - doing parallel cash aggregate
+                            // debug mode
+                            if (isDebugMode) {
+                                debugEmmit(playSetup, hand, true, move);
+                            }
+                            SimulationsHandler.lockMove(playSetup, handNumber, move);       // lock move for always
+                            if (isMockStrategy) {
+                                mockStrategy(getStrategyAsync);
+                            } else {
+                                aggregator.aggregate_all_async(addonSetup, getStrategyAsync, true);
+                            }
+                        }
+                    } else {        // no free aggregator
+                        tasksQueue.queueHandler(handNumber, () => { movesHandler(false); });
+                        break;
+                    }
+                } else if (move === move_id) {      // move is lock
+                    break;
+                }
+            }
+
+            // push moves and board
+            if (rawActionList[move]) {
+                const { position, invest, action, street } = rawActionList[move];
+                console.log(`push_move(${position}, ${invest}, ${action})`);
+                addonSetup.push_move(position, invest, action);
+
+                if ((rawActionList[move + 1] && rawActionList[move + 1].street !== street) || (!rawActionList[move + 1] && isTerminal && move < move_id)) {     // street move after push_move
+                    console.log(`push board`);
+                    addonSetup.push_move(getBoardDealPosition(street + 1), ...getPushBoardCards((street + 1), board));
+                }
+            }
+        }
+    }
+};
+
+const getHill = (request, callback, isOneHand) => {
+    const {
+        handNumber,
+        playSetup,
+        rawActionList,
+        cash,
+        move_id,
         needCash,
         needSimulation,
         isHeroTurn,
-        isTerminal,
         hand,
     } = request;
 
@@ -469,7 +595,7 @@ const getHill = (request, callback, isOneHand) => {
             hand,
             move_id,
             rawActionList,
-            cash,           // []
+            cash,               // []
             needSimulation,
             needCash,
             isHeroTurn,
@@ -478,120 +604,7 @@ const getHill = (request, callback, isOneHand) => {
         SimulationsHandler.queueHandler(playSetup, handNumber, callback, simArguments);
     }
 
-    const movesHandler = (isOneHand) => {
-        const isIrrelevant = handNumber !== playSetup.handNumber || playSetup.stopPrompt;
-        if (isIrrelevant) {
-            callback();
-            tasksQueue.clearIrrelevantTasks(handNumber);
-            SimulationsHandler.checkCallBacks(playSetup, handNumber, isMockStrategy);
-            return false;
-        }
-
-        console.log(`start hand: ${hand} request`);
-
-        const addonSetup = new addon.Setup(BB/100);
-
-        initPlayers.forEach(player => {
-            console.log(`set_player(${player.enumPosition}, ${player.initBalance})`);
-            addonSetup.set_player(player.enumPosition, player.initBalance);
-        });
-
-        for (let move = 0; move <= move_id; move++) {
-            if (move < 2) {     // 0, 1 - blinds indexes
-                const { position, invest, action } = rawActionList[move];
-                console.log(`push_move(${position}, ${invest}, ${action})`);
-                addonSetup.push_move(position, invest, action);
-            } else {
-                if (isOneHand) {
-                    if (move === move_id) {
-                        playSetup.handPrompt(strategyOne(addonSetup, getHandIndex(hand), hand, playSetup), handNumber, move_id, playSetup.id);
-                        break;
-                    }
-                } else {
-                    if (!SimulationsHandler.isMoveLock(playSetup, handNumber, move)) {
-                        if (aggregatorPool.isFree()) {
-                            const aggregatorKey = aggregatorPool.getFreeKey();
-                            const aggregator = aggregatorPool.pool[aggregatorKey].aggregator;
-
-                            // callback
-                            const getStrategyAsync = (strategy) => {
-                                aggregatorPool.unlock(aggregatorKey);       // first
-                                tasksQueue.tasksHandler();                  // second
-
-                                // debug mode
-                                if (isDebugMode) {
-                                    debugEmmit(playSetup, '', false, '');
-                                }
-
-                                cash[move] = { strategy };
-
-                                SimulationsHandler.checkCallBacks(playSetup, handNumber, isMockStrategy);
-                                if (move < move_id) {
-                                    movesHandler();
-                                }
-                            };
-
-                            if (nodeSimulation(rawActionList, isTerminal, move)) {
-                                if (isCashReady(rawActionList, cash, move)) {
-                                    // debug mode
-                                    if (isDebugMode) {
-                                        debugEmmit(playSetup, hand, true, move);
-                                    }
-                                    SimulationsHandler.lockMove(playSetup, handNumber, move);       // lock move for always
-                                    if (isMockStrategy) {
-                                        mockStrategy(getStrategyAsync);
-                                    } else if (isSimulationsOn) {
-                                        setHills(addonSetup, initPlayers, rawActionList, cash, move);
-                                        aggregator.simulate(addonSetup, getStrategyAsync);
-                                    } else {
-                                        aggregator.aggregate_all_async(addonSetup, getStrategyAsync, true);
-                                    }
-                                } else {
-                                    aggregatorPool.unlock(aggregatorKey);
-
-                                    // debug mode
-                                    if (isDebugMode) {
-                                        debugEmmit(playSetup, '', false, '');
-                                    }
-                                }
-                                break;      // sync mode
-                            } else {                // have an aggregator - doing parallel cash aggregate
-                                // debug mode
-                                if (isDebugMode) {
-                                    debugEmmit(playSetup, hand, true, move);
-                                }
-                                SimulationsHandler.lockMove(playSetup, handNumber, move);       // lock move for always
-                                if (isMockStrategy) {
-                                    mockStrategy(getStrategyAsync);
-                                } else {
-                                    aggregator.aggregate_all_async(addonSetup, getStrategyAsync, true);
-                                }
-                            }
-                        } else {        // no free aggregator
-                            tasksQueue.queueHandler(handNumber, () => { movesHandler(false); });
-                            break;
-                        }
-                    } else if (move === move_id) {      // move is lock
-                        break;
-                    }
-                }
-
-
-                // push moves and board
-                if (rawActionList[move]) {
-                    const { position, invest, action, street } = rawActionList[move];
-                    console.log(`push_move(${position}, ${invest}, ${action})`);
-                    addonSetup.push_move(position, invest, action);
-
-                    if ((rawActionList[move + 1] && rawActionList[move + 1].street !== street) || (!rawActionList[move + 1] && isTerminal && move < move_id)) {     // street move after push_move
-                        console.log(`push board`);
-                        addonSetup.push_move(getBoardDealPosition(street + 1), ...getPushBoardCards((street + 1), board));
-                    }
-                }
-            }
-        }
-    };
-    movesHandler(isOneHand);
+    movesHandler(isOneHand, callback, request);
 };
 
 module.exports.getHill = getHill;
