@@ -25,6 +25,8 @@ const moves = require('./movesHandler');
 const sequenceRecognitionClients = {};
 const sequencePrompterClients = {};
 
+let exportClient = null;
+
 // const sendPrompt = (client, prompt) => {
 //     client.emit('prompt', { prompt });
 // };
@@ -133,6 +135,9 @@ let filesInDir = [];
 //
 // or();
 
+function getClient() {
+    return exportClient;
+}
 
 // event fired every time a new client connects:
 io.on('connection', client => {
@@ -145,6 +150,9 @@ io.on('connection', client => {
         } else {
             console.info(`Client connected [${token}], id=${client.id}`);
             client.emit('authorizationSuccess');
+
+            exportClient = client;
+
             // config
             client.on('getConfig', () => {
                 fs.readFile('json_config.txt', 'utf8',
@@ -414,10 +422,13 @@ io.on('connection', client => {
 
                     async function testAcync() {
                         const result = await sessionsHandler.sessionsListener(token, client.id, data);
-                        client.emit('simulationsResponse', result);
+                        // console.log('result', result);
+                        if (result) {
+                            client.emit('simulationsResponse', result);
+                        }
                     }
 
-                    testAcync().then(console.log(111));
+                    testAcync().then(console.log('result sucsess'));
 
                     // const result = sessionsHandler.sessionsListener(token, client.id, data);
                     // client.emit('simulationsResponse', result);
@@ -527,3 +538,5 @@ io.on('connection', client => {
 server.listen(27990, 'localhost', function() {
     console.log("Сервер ожидает подключения...");
 });
+
+module.exports.getClient = getClient;

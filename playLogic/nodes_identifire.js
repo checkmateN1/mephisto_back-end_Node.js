@@ -1,46 +1,46 @@
 const stats = {
-  // как часто игрок добровольно вкладывает деньги
-  isVPIP_node(rawActions, enumPosition, options) {   // enumPosition === chair to move after all actions
-    const { rawActionList, street, betCount, enumPosition, hasInitiative, preflopBetCount, isTerminal, cash, penalties } = options;
+  // street, betCount, enumPosition, hasInitiative, preflopBetCount
 
-    return !rawActions.filter(action => action.action !== 0 && enumPosition === action.position).length;
+  // как часто игрок добровольно вкладывает деньги
+  isVPIP_node(options) {   // enumPosition === chair to move after all actions
+    if (options.street === 0 && options.betCount === 0 && !options.isTerminal) {
+      const { rawActions, enumPosition } = options;
+
+      return !rawActions.filter(action => action.action !== 0 && enumPosition === action.position).length;
+    }
   },
 
   // как часто игрок лимпит
-  isLimp_node(rawActions, enumPosition, wasBet, options) {   // enumPosition === chair to move after all actions
-    const { rawActionList, street, betCount, enumPosition, hasInitiative, preflopBetCount, isTerminal, cash, penalties } = options;
-
-    // не ставил бб И не делал ничего кроме поста сб
-    if (wasBet) {
-      return false;
+  isLimp_node(options) {   // enumPosition === chair to move after all actions
+    if (options.street === 0 && options.betCount === 0 && !options.isTerminal) {
+      const { rawActions, enumPosition } = options;
+      // не ставил бб И не делал ничего кроме поста сб
+      return !rawActions.filter((action, i) => enumPosition === action.position && i !== 0).length;  // not SB post
     }
-    return !rawActions.filter((action, i) => enumPosition === action.position && i !== 0).length;  // not SB post
   },
 
-
-// процент рук, которые игрок открывает рейзом.
+  // процент рук, которые игрок открывает рейзом.
   isPFR_node(rawActions, enumPosition, options) {   // enumPosition === chair to move after all actions
-    const { rawActionList, street, betCount, enumPosition, hasInitiative, preflopBetCount, isTerminal, cash, penalties } = options;
+    if (options.street === 0 && options.betCount === 0 && !options.isTerminal) {
+      const { rawActions, enumPosition } = options;
 
-    return !rawActions.filter(action => action.action !== 0 && enumPosition === action.position).length;
-  },
-
-// процент рук, которые игрок открывает рейзом.
-// use betsCount fn in prompterHandler to get betsCount
-  is3Bet_node(rawActions, betsCount, isTerminal, options) {   // enumPosition === chair to move after all actions
-    const { rawActionList, street, betCount, enumPosition, hasInitiative, preflopBetCount, isTerminal, cash, penalties } = options;
-
-    if (isTerminal || rawActions[rawActions.length - 1].street > 0 || betsCount !== 1) {
-      return false;
+      return !rawActions.filter(action => action.action !== 0 && enumPosition === action.position).length;
     }
-    return true;
   },
 
-// Это ставка, сделанная вами на флопе, после того как вы выступали префлоп-агрессором.
-// use hasInitiative fn in prompterHandler
-// вызываем тогда когда ходит хиро => enum position === heroChair
+  // процент рук, которые игрок открывает рейзом.
+  // use betsCount fn in prompterHandler to get betsCount
+  is3Bet_node(rawActions, betsCount, isTerminal, options) {   // enumPosition === chair to move after all actions
+    if (options.street === 0 && options.betCount === 1 && !options.isTerminal) {
+      return true;
+    }
+  },
+
+  // Это ставка, сделанная вами на флопе, после того как вы выступали префлоп-агрессором.
+  // use hasInitiative fn in prompterHandler
+  // вызываем тогда когда ходит хиро => enum position === heroChair
   isCbetFlop_node(rawActions, hasInitiative, isTerminal, options) {   // enumPosition === chair to move after all actions
-    const { rawActionList, street, betCount, enumPosition, hasInitiative, preflopBetCount, isTerminal, cash, penalties } = options;
+    const { rawActions, street, betCount, enumPosition, hasInitiative, preflopBetCount, isTerminal, cash, penalties } = options;
 
     if (rawActions[rawActions.length - 1].street === 0 && isTerminal) {
       return hasInitiative;
@@ -49,7 +49,7 @@ const stats = {
   },
 
   isCbetTurn_node(rawActions, hasInitiative, isTerminal, options) {   // enumPosition === chair to move after all actions
-    const { rawActionList, street, betCount, enumPosition, hasInitiative, preflopBetCount, isTerminal, cash, penalties } = options;
+    const { rawActions, street, betCount, enumPosition, hasInitiative, preflopBetCount, isTerminal, cash, penalties } = options;
 
     if (rawActions[rawActions.length - 1].street === 1 && isTerminal) {
       return hasInitiative;
@@ -58,7 +58,7 @@ const stats = {
   },
 
   isDonkFlop_node(rawActions, hasInitiative, isTerminal, options) {   // enumPosition === chair to move after all actions
-    const { rawActionList, street, betCount, enumPosition, hasInitiative, preflopBetCount, isTerminal, cash, penalties } = options;
+    const { rawActions, street, betCount, enumPosition, hasInitiative, preflopBetCount, isTerminal, cash, penalties } = options;
 
     if (rawActions[rawActions.length - 1].street === 0 && isTerminal) {
       return !hasInitiative;

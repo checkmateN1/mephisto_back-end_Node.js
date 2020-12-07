@@ -19,9 +19,6 @@ const getValidHistory = (options) => {
     playersHands,
   } = options;
 
-
-
-
   // возвращаем валидную историю руки в виде rawActions
 
 };
