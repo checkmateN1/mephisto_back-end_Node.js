@@ -41,6 +41,10 @@ const enumPoker = Object.freeze({
         maxActiveTasks: 1,               // pack moves within one hand number
         maxActiveSimulations: 1,
         oneHandCallRegretCount: 1
+    },
+    DBsettings: {
+        isHistoryLogging: true,
+        isImageControl: true,
     }
 });
 

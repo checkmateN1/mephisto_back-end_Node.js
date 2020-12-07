@@ -1,12 +1,15 @@
 // const PokerEngine = require('./pokerEngine');  // molotok
 // const middleware = require('./engineMiddleware_work');   // molotok
 const enumPoker = require('./enum');
+const errorHandler = require('./utils');
 
 const _ = require('lodash');
 const fs = require('fs');
 const adapt_size = 10;
 const diskDrive = 'C';  // laptop
 // const diskDrive = 'D';  // mephisto
+
+const isOfflineStrategy = true;
 
 addon = require(`${diskDrive}:\\projects\\mephisto_back-end_Node.js\\custom_module\\PokerEngine\\pokerengine_addon`);
 addon.SetDefaultDevice('cpu');
@@ -19,8 +22,14 @@ const trainedPrefix = 'trained_RS';
 const modelsAllPath = ':\\projects\\mephisto_back-end_Node.js\\custom_module\\models\\regret_model';
 
 // addon.DeserializeBucketingType('C:\\projects\\mephisto_back-end_Node.js\\custom_module\\buckets\\', 0);
-modelsPool = new addon.ModelsPool((diskDrive + modelsAllPath), trainedPrefix);
-aggregator = new addon.RegretPoolToStrategyAggregator( modelsPool );
+
+if (isOfflineStrategy) {
+    strategyObject = addon.Strategy.Load(`${diskDrive}:\\projects\\mephisto_back-end_Node.js\\custom_module\\strategies\\`);
+} else {
+    modelsPool = new addon.ModelsPool((diskDrive + modelsAllPath), trainedPrefix);
+    aggregator = new addon.RegretPoolToStrategyAggregator( modelsPool );
+}
+
 // const setup = new addon.Setup(1);
 // setup.set_player(0,2500);
 // setup.set_player(8,2500);
@@ -168,10 +177,45 @@ getSizing = (strategy, cur) => {     // возвращает ближайший 
 
 getMaxAmount = (arr, maxIndex) => arr.reduce((max, cur, i) => (i <= maxIndex && cur.amount > max) ? cur.amount : max, 0);
 
+
+
 //
 getHill = (position, curInvest, movesCount, setup) => {
     // console.log(`start getHill! MovesCount: ${movesCount}, movesInEngine: ${setup.movesInEngine}`);
-    let strategy = aggregator.aggregate_all(setup.addonSetup, true);
+    let strategy = null;
+
+    if (isOfflineStrategy) {
+        let tmp;
+        try {
+            tmp = strategyObject.get_strategy(setup.addonSetup);
+        } catch (e) {
+            // console.log('e', e);
+            console.log('e.message', e.message);
+            // console.log('e.messageerror', e.messageerror);
+            errorHandler.errorsHandler(e.message);
+            return null;
+        }
+
+        strategy = {};
+        for (let key in tmp) {
+            strategy[key] =  {};
+            for (let innerKey in tmp[key]) {
+                strategy[key][innerKey] = { strategy:  tmp[key][innerKey], regret: 0 }
+            }
+        }
+        // console.log('strategyObject from offline!!!');
+        // console.log(strategy);
+    } else {
+        try {
+            strategy = aggregator.aggregate_all(setup.addonSetup, true);
+        } catch (e) {
+            console.log(e);
+            errorHandler.errorsHandler(e);
+            return null;
+        }
+        // console.log('strategyObject from online!!!');
+        // console.log(strategy);
+    }
     console.log(`get strategy success!`);
 
     // console.log('strategy[1325]');
@@ -365,7 +409,6 @@ isInitPlayersEqual = (request, setup) => {
 popMoves = (nMove, setup) => {
     setup.hillsCash.length = nMove;
 
-
     // console.log(`popMoves... nMove: ${nMove}, setup.movesInEngine: ${setup.movesInEngine}`);
     while(setup.movesInEngine > nMove && setup.movesInEngine > 0) {
         setup.addonSetup.pop_move();
@@ -380,7 +423,7 @@ const movesHandler = (request, bbSize, setup, nodeId, isTerminal, enumPosition) 
     let isCashSteelUseful = true;
     let movesCount = 0;
 
-    if (!isInitPlayersEqual(request, setup) || setup.movesCash.generation != currentGeneration) {
+    if (isOfflineStrategy || !isInitPlayersEqual(request, setup) || setup.movesCash.generation != currentGeneration) {
         console.log('!!!!! releaseSetup !!!!');
         console.log(bbSize);
         setup.addonSetup = new addon.Setup(bbSize);
@@ -462,6 +505,9 @@ const movesHandler = (request, bbSize, setup, nodeId, isTerminal, enumPosition) 
             let cash = [];
             if (i > 1) {
                 cash = getHill(position, maxAmountRaise, movesCount, setup);
+                if (cash === null) {
+                    break;
+                }
             }
 
             setup.hillsCash[movesCount] = { position, cash,  isPreflop: true };      // PREFLOP!!!
@@ -549,6 +595,9 @@ const movesHandler = (request, bbSize, setup, nodeId, isTerminal, enumPosition) 
                 isCashSteelUseful = false;
 
                 const cash = getHill(position, maxAmountRaise, movesCount, setup);
+                if (cash === null) {
+                    break;
+                }
                 setup.hillsCash[movesCount] = { position, cash,  isPreflop: false };
 
                 const result = setup.addonSetup.push_move(position, curInvest, action);
@@ -618,6 +667,9 @@ const movesHandler = (request, bbSize, setup, nodeId, isTerminal, enumPosition) 
                 isCashSteelUseful = false;
 
                 const cash = getHill(position, maxAmountRaise, movesCount, setup);
+                if (cash === null) {
+                    break;
+                }
                 setup.hillsCash[movesCount] = { position, cash,  isPreflop: false };
 
                 const result = setup.addonSetup.push_move(position, curInvest, action);
@@ -687,6 +739,9 @@ const movesHandler = (request, bbSize, setup, nodeId, isTerminal, enumPosition) 
                 isCashSteelUseful = false;
 
                 const cash = getHill(position, maxAmountRaise, movesCount, setup);
+                if (cash === null) {
+                    break;
+                }
                 setup.hillsCash[movesCount] = { position, cash,  isPreflop: false };
 
                 const result = setup.addonSetup.push_move(position, curInvest, action);

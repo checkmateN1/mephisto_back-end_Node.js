@@ -1,57 +1,71 @@
-class Stats {
+const stats = {
+  // street, betCount, enumPosition, hasInitiative, preflopBetCount
+
   // как часто игрок добровольно вкладывает деньги
-  static isVPIP_node = (rawActions, enumPosition) => {   // enumPosition === chair to move after all actions
-    return !rawActions.filter(action => action.action !== 0 && enumPosition === action.position).length;
-  };
+  isVPIP_node(options) {   // enumPosition === chair to move after all actions
+    if (options.street === 0 && options.betCount === 0 && !options.isTerminal) {
+      const { rawActions, enumPosition } = options;
+
+      return !rawActions.filter(action => action.action !== 0 && enumPosition === action.position).length;
+    }
+  },
 
   // как часто игрок лимпит
-  static isLimp_node = (rawActions, enumPosition, wasBet) => {   // enumPosition === chair to move after all actions
-    // не ставил бб И не делал ничего кроме поста сб
-    if (wasBet) {
-      return false;
+  isLimp_node(options) {   // enumPosition === chair to move after all actions
+    if (options.street === 0 && options.betCount === 0 && !options.isTerminal) {
+      const { rawActions, enumPosition } = options;
+      // не ставил бб И не делал ничего кроме поста сб
+      return !rawActions.filter((action, i) => enumPosition === action.position && i !== 0).length;  // not SB post
     }
-    return !rawActions.filter((action, i) => enumPosition === action.position && i !== 0).length;  // not SB post
-  };
+  },
 
+  // процент рук, которые игрок открывает рейзом.
+  isPFR_node(rawActions, enumPosition, options) {   // enumPosition === chair to move after all actions
+    if (options.street === 0 && options.betCount === 0 && !options.isTerminal) {
+      const { rawActions, enumPosition } = options;
 
-// процент рук, которые игрок открывает рейзом.
-  static isPFR_node = (rawActions, enumPosition) => {   // enumPosition === chair to move after all actions
-    return !rawActions.filter(action => action.action !== 0 && enumPosition === action.position).length;
-  };
-
-// процент рук, которые игрок открывает рейзом.
-// use betsCount fn in prompterHandler to get betsCount
-  static is3Bet_node = (rawActions, betsCount, isTerminal) => {   // enumPosition === chair to move after all actions
-    if (isTerminal || rawActions[rawActions.length - 1].street > 0 || betsCount !== 1) {
-      return false;
+      return !rawActions.filter(action => action.action !== 0 && enumPosition === action.position).length;
     }
-    return true;
-  };
+  },
 
-// Это ставка, сделанная вами на флопе, после того как вы выступали префлоп-агрессором.
-// use hasInitiative fn in prompterHandler
-// вызываем тогда когда ходит хиро => enum position === heroChair
-  static isCbetFlop_node = (rawActions, hasInitiative, isTerminal) => {   // enumPosition === chair to move after all actions
+  // процент рук, которые игрок открывает рейзом.
+  // use betsCount fn in prompterHandler to get betsCount
+  is3Bet_node(rawActions, betsCount, isTerminal, options) {   // enumPosition === chair to move after all actions
+    if (options.street === 0 && options.betCount === 1 && !options.isTerminal) {
+      return true;
+    }
+  },
+
+  // Это ставка, сделанная вами на флопе, после того как вы выступали префлоп-агрессором.
+  // use hasInitiative fn in prompterHandler
+  // вызываем тогда когда ходит хиро => enum position === heroChair
+  isCbetFlop_node(rawActions, hasInitiative, isTerminal, options) {   // enumPosition === chair to move after all actions
+    const { rawActions, street, betCount, enumPosition, hasInitiative, preflopBetCount, isTerminal, cash, penalties } = options;
+
     if (rawActions[rawActions.length - 1].street === 0 && isTerminal) {
       return hasInitiative;
     }
     return false;
-  };
+  },
 
-  static isCbetTurn_node = (rawActions, hasInitiative, isTerminal) => {   // enumPosition === chair to move after all actions
+  isCbetTurn_node(rawActions, hasInitiative, isTerminal, options) {   // enumPosition === chair to move after all actions
+    const { rawActions, street, betCount, enumPosition, hasInitiative, preflopBetCount, isTerminal, cash, penalties } = options;
+
     if (rawActions[rawActions.length - 1].street === 1 && isTerminal) {
       return hasInitiative;
     }
     return false;
-  };
+  },
 
-  static isDonkFlop_node = (rawActions, hasInitiative, isTerminal) => {   // enumPosition === chair to move after all actions
+  isDonkFlop_node(rawActions, hasInitiative, isTerminal, options) {   // enumPosition === chair to move after all actions
+    const { rawActions, street, betCount, enumPosition, hasInitiative, preflopBetCount, isTerminal, cash, penalties } = options;
+
     if (rawActions[rawActions.length - 1].street === 0 && isTerminal) {
       return !hasInitiative;
     }
     return false;
-  };
-}
+  }
+};
 
 // Вычисляется по формуле AF = (Raise% + Bet%) / Call% и показывает, насколько часто игрок разыгрывает свои руки коллом или рейзом.
 // const isAF_node = (rawActions, enumPosition) => {   // enumPosition === chair to move after all actions
@@ -61,4 +75,4 @@ class Stats {
 //   return !rawActions.filter(action => action.action !== 0 && enumPosition === action.position).length;
 // };
 
-module.exports.Stats = Stats;
+module.exports = stats;

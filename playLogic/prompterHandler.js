@@ -1,4 +1,5 @@
 const moment = require('moment');
+const _ = require('lodash');
 
 const enumPoker = require('../enum');
 const validator = require('./frameCreator');
@@ -13,8 +14,6 @@ const HAND_PROMPT = enumPoker.enumCommon.HAND_PROMPT;
 const INVALID_FRAME = enumPoker.enumCommon.INVALID_FRAME;
 
 const { performance } = require('perf_hooks');
-
-const isDBLogging = true;
 
 class PlayersHandler {
     constructor() {
@@ -118,6 +117,37 @@ class ActionString {
     }
 }
 
+// node identifire pre-calculated data template
+const preCalculatedDataTemplate = Object.freeze({
+    preflop: {
+        is2bet: null,
+        is3bet: null,
+        is4bet: null,
+    },
+    flop: {
+        is2bet: null,
+        is3bet: null,
+        is4bet: null,
+    },
+    turn: {
+        is2bet: null,
+        is3bet: null,
+        is4bet: null,
+    },
+    river: {
+        is2bet: null,
+        is3bet: null,
+        is4bet: null,
+    },
+    players: [              // index === player's chair
+        // {
+        //     hasPreflopInitiative: null,
+        //     hasFlopInitiative: null,
+        //     hasTurnInitiative: null,
+        // }
+    ]
+});
+
 class PlaySetup {
     constructor(gameTypesSettings) {            // frame from recognition -> validator.dll -> playFrame
         this.client = null;
@@ -141,6 +171,9 @@ class PlaySetup {
         this.selfRestart = 0;
         this.rejectCount = 0;
 
+        // node identifire pre-calculated data
+        this.preCalculatedData = {};
+
         // debug info
         this.txtFile = '';
     }
@@ -158,7 +191,7 @@ class PlaySetup {
         }
         if (playFrame.handNumber !== this.handNumber) {         // new hand
             // logging
-            if (isDBLogging && this.initPlayers.length && !this.rejectHand) {
+            if (enumPoker.enumPoker.DBsettings.isHistoryLogging && this.initPlayers.length && !this.rejectHand) {
 
                 // создаем фейковый фрейм если предыдущий фрейм не в терминальном состоянии.
                 // балансы игроков равны тем балансам(пока что без учета рейка) которые мы видим в следующей валидной новой руке.
@@ -191,6 +224,8 @@ class PlaySetup {
             this.rejectHand = false;
             this.stopPrompt = false;
             this.rejectCount = 0;
+
+            this.preCalculatedData = _.cloneDeep(preCalculatedDataTemplate);
 
             this.setInitPlayers(playFrame);
             this.setPositionsMap();
@@ -828,7 +863,7 @@ class PlaySetup {
         return hand;
     }
 
-    createMainPrompt(playFrame, isHeroTurn) {
+    createMainPrompt(playFrame, isHeroTurn, isTerminal) {
         if (!this.rawActionList.length) {
             return {};
         }
@@ -837,7 +872,6 @@ class PlaySetup {
         const agroChair = this.getRecAgroChairWithMaxAmount();
 
         let heroCards;
-        const isTerminal = this.isTerminalStreetState();
         const curStreet = this.getStreetNumber(this.board.length);
         const players = this.initPlayers.map((player, i) => {
             if (player.cards && i === playFrame.heroRecPosition) {
@@ -864,6 +898,48 @@ class PlaySetup {
             isHeroTurn,
         };
     }
+
+    getPenalty(heroPosition, isTerminal, move_id) {
+        // this.preCalculatedData
+        // создаем словарь с использованием preCalculatedData, куда добавляем статы чтобы не делать лищних проверок.
+        // смотрим какая улица и перебираем все статы по этой улице с использованием preCalculatedData и добавлением в нее данных
+
+        const penalty = {
+            agro: 0,
+            passive: 0,
+        };
+
+        return penalty;
+    }
+
+    applyPenalty(strategy, penalty) {
+        const { agro = 0, passive = 0 } = penalty;
+        let maxKey;
+
+        // принимаем такой объект, на выходе выдаем такой же, где у наивысшего сожаления стратегия 1 а у остальных 0 + меняем regret
+        // {
+            // 0: {strategy: 0, regret: 0.7526401877403259}
+            // 270: {strategy: 0, regret: -66.60626220703125}
+            // 2400: {strategy: 0, regret: -91.47394561767578}
+            // -1: {strategy: 1, regret: 32.952693939208984}
+        // }
+
+        Object.keys(strategy).reduce((max, key) => {
+            strategy[key].regret -= +key > 0 ? agro : 0;
+            strategy[key].regret -= +key === 0 ? passive : 0;
+            if (strategy[key].regret > max) {
+                maxKey = key;
+                return strategy[key].regret;
+            }
+            return max;
+        }, -100500);
+
+        for (let key in strategy) {
+            strategy[key].strategy = maxKey === key ? 1 : 0;
+        }
+
+        return strategy;
+    };
 
     restoreRawAction(count) {
         while(this.fantomRawActionsCount - (count || 0)) {
@@ -1511,6 +1587,9 @@ class PlaySetup {
                 id,
             };
 
+
+            console.log(`!!!test one hand inside handPrompt`);
+            console.log(promptData);
             setTimeout(() => {
                 // console.log('send hand prompt');
                 client.emit(HAND_PROMPT, promptData);
@@ -1617,8 +1696,12 @@ const prompterListener = (setup, request, gameTypesSettings) => {
                 hand,
             };
 
+            // !geting penalty
+            const penalty = setup.playSetup.getPenalty(heroPosition, isTerminal, move_id);
+
             if (!needSimulation && isHeroTurn) {
                 movesHandler.getHill(request, undefined, true);
+                // calls setup.playSetup.handPrompt inside movesHandler.getHill
             }
 
             if (needCash) {
@@ -1626,11 +1709,13 @@ const prompterListener = (setup, request, gameTypesSettings) => {
             }
 
             if (client !== null) {
-                const prompt = Object.assign({ handNumber, move_id }, setup.playSetup.createMainPrompt(setup.playSetup.prevPlayFrame[setup.playSetup.prevPlayFrame.length - 1], isHeroTurn));
+                const prompt = Object.assign({ handNumber, move_id }, setup.playSetup.createMainPrompt(setup.playSetup.prevPlayFrame[setup.playSetup.prevPlayFrame.length - 1], isHeroTurn, isTerminal));
                 const promptData = {
                     prompt,
                     id,
                 };
+
+
 
                 setTimeout(() => {
                     // console.log('send prompt');
