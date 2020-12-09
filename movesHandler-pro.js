@@ -446,7 +446,7 @@ const isMockStrategy = false;
 const isSimulationsOn = false;
 const isDebugMode = true;
 
-const movesHandler = (isOneHand, callback, request) => {
+const movesHandler = (callback, request, isOneHand) => {
     const {
         handNumber,
         playSetup,
@@ -508,7 +508,7 @@ const movesHandler = (isOneHand, callback, request) => {
 
                             SimulationsHandler.checkCallBacks(playSetup, handNumber, isMockStrategy);
                             if (move < move_id) {
-                                movesHandler();
+                                movesHandler(callback, request);
                             }
                         };
 
@@ -549,7 +549,7 @@ const movesHandler = (isOneHand, callback, request) => {
                             }
                         }
                     } else {        // no free aggregator
-                        tasksQueue.queueHandler(handNumber, () => { movesHandler(false); });
+                        tasksQueue.queueHandler(handNumber, () => { movesHandler(callback, request, false); });
                         break;
                     }
                 } else if (move === move_id) {      // move is lock
@@ -604,7 +604,7 @@ const getHill = (request, callback, isOneHand) => {
         SimulationsHandler.queueHandler(playSetup, handNumber, callback, simArguments);
     }
 
-    movesHandler(isOneHand, callback, request);
+    movesHandler(callback, request, isOneHand);
 };
 
 module.exports.getHill = getHill;
