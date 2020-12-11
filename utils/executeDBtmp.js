@@ -8,4 +8,3 @@ setTimeout(async () => {
 }, 3000);
 /////////////////////////////////
 
-// oraclePlaySetup.insertStacks();

@@ -465,7 +465,7 @@ const getHill = (request, callback, isOneHand) => {
     }
 
     if (!isOneHand) {
-        const simArguments = {
+        const options = {
             hand,
             move_id,
             rawActionList,
@@ -475,7 +475,7 @@ const getHill = (request, callback, isOneHand) => {
             isHeroTurn,
         };
 
-        SimulationsHandler.queueHandler(playSetup, handNumber, callback, simArguments);
+        SimulationsHandler.queueHandler(playSetup, handNumber, callback, options);
     }
 
     const movesHandler = (isOneHand) => {

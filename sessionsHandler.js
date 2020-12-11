@@ -58,7 +58,7 @@ const testInitPlayers = [
 ];
 
 /////////////////////////////////  TEST Oracle
-const oraclePlaySetup = new oracle.oracle();
+// const oraclePlaySetup = new oracle.oracle();
 ///////////////////////////////////
 // setTimeout(async () => {
 //     const result = await oraclePlaySetup.loggingHandHistory({
@@ -153,7 +153,7 @@ class SessionSetup {
         this.token = token;
         this.addonSetup = null;  // setup
         this.playSetup = null;
-        this.oracle = new oracle.oracle();
+        // this.oracle = new oracle.oracle();
         this.timeout = setupTimeout;
         this.movesInEngine = 0;
         this.tasksQueue = tasksQueue;

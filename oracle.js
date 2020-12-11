@@ -97,6 +97,41 @@ class Oracle {
     );
   }
 
+  async insertStacks() {      // tt_hands
+
+    function createStacksArr(maxSum, step) {
+      const arr = [];
+      [...Array(maxSum)].forEach((cur, i) => {
+        const min = i + 1;
+        [...Array(maxSum)].forEach((cur, middle) => {
+          const max = maxSum - middle - min;
+          if (middle >= min && max >= middle && (min + middle + max) === maxSum && (min%step === 0) && (middle%step === 0)) {
+            arr.push(`${middle}:${middle}:${min}`);
+          }
+        });
+      });
+
+      return arr;
+    }
+
+    if (this.connection) {
+      const stacks = createStacksArr(75, 3).map(cur => [`preflop:gto:${cur}`]);
+      // const stacks = ['4:4:4'].map(cur => [`preflop:gto:${cur}`]);
+
+      const sql = `INSERT INTO DISTRIB_TASKS(PARAMS) VALUES (:1)`;
+      const result = await this.connection.executeMany(
+        sql,
+        stacks
+      );
+      console.log('insert stacks result');
+      console.log(result);
+
+      if (result) {
+        await this.connection.commit();
+      }
+    }
+  }
+
   async testSelect() {
     if (this.connection) {
       const sql = `SELECT * FROM EE_BRAK`;
