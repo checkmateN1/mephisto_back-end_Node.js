@@ -1,7 +1,7 @@
 // const PokerEngine = require('./pokerEngine');  // molotok
 // const middleware = require('./engineMiddleware_work');   // molotok
 const enumPoker = require('./enum');
-const errorHandler = require('./utils');
+const utils = require('./utils');
 
 const _ = require('lodash');
 const fs = require('fs');
@@ -192,7 +192,7 @@ getHill = (position, curInvest, movesCount, setup) => {
             // console.log('e', e);
             console.log('e.message', e.message);
             // console.log('e.messageerror', e.messageerror);
-            errorHandler.errorsHandler(e.message);
+            utils.errorsHandler(e.message);
             return null;
         }
 
@@ -210,7 +210,7 @@ getHill = (position, curInvest, movesCount, setup) => {
             strategy = aggregator.aggregate_all(setup.addonSetup, true);
         } catch (e) {
             console.log(e);
-            errorHandler.errorsHandler(e);
+            utils.errorsHandler(e);
             return null;
         }
         // console.log('strategyObject from online!!!');

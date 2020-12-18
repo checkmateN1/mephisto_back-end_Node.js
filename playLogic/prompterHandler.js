@@ -150,6 +150,7 @@ const preCalculatedDataTemplate = Object.freeze({
 
 class PlaySetup {
     constructor(gameTypesSettings) {            // frame from recognition -> validator.dll -> playFrame
+        this.sessionSetup = null;
         this.client = null;
         this.cash = [];
         this.initPlayers = [];      // all players who was active in start. Index === recPosition, some indexes == undefined!
@@ -191,24 +192,28 @@ class PlaySetup {
         }
         if (playFrame.handNumber !== this.handNumber) {         // new hand
             // logging
-            if (enumPoker.enumPoker.DBsettings.isHistoryLogging && this.initPlayers.length && !this.rejectHand) {
+            if (enumPoker.enumPoker.DBsettings.isHistoryLogging
+              && this.initPlayers.length && !this.rejectHand && this.sessionSetup.oracle) {
 
                 // создаем фейковый фрейм если предыдущий фрейм не в терминальном состоянии.
                 // балансы игроков равны тем балансам(пока что без учета рейка) которые мы видим в следующей валидной новой руке.
                 console.log('this.initPlayers');
                 console.log(this.initPlayers);
-                // this.sessionSetup.oracle.loggingHandHistory({
-                //     rawActions,
-                //     initPlayers,
-                //     heroChair,
-                //     room,
-                //     gameType,
-                //     limit,
-                //     board,
-                //     plCount,
-                //     cash,
-                //     token,      // вычисляем по токену и id_room - player_id
-                // });
+                const options = [];
+                const {
+                    rawActions,
+                    initPlayers,
+                    heroChair,
+                    room,
+                    gameType,
+                    limit,
+                    board,
+                    plCount,
+                    cash,
+                    token,      // вычисляем по токену и id_room - player_id
+                } = options;
+
+                this.sessionSetup.oracle.loggingHandHistory(options);
             }
             this.sessionSetup.tasksQueue.clearIrrelevantTasks(this.handNumber);
             this.simulationsRequests = [];      // clear locked actions for simulations requests
@@ -1425,6 +1430,7 @@ class PlaySetup {
                 return count;
             }
         }
+        return count;
     }
 
     // has initiative

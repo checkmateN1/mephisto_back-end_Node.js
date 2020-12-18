@@ -1,12 +1,24 @@
 const exportClient = require('./mephisto_socket');
 
-function errorsHandler(error) {
-  console.log(error);
+const utils = Object.freeze({
+  createHash(str) {
+    let hash = 0, chr;
+    if (str.length === 0) return hash;
+    for (let i = 0; i < str.length; i++) {
+      chr   = str.charCodeAt(i);
+      hash  = ((hash << 5) - hash) + chr;
+      hash |= 0; // Convert to 32bit integer
+    }
+    return hash;
+  },
+  errorsHandler(error) {
+    console.log(error);
 
-  const client = exportClient.getClient();
-  if (client) {
-    client.emit('simulationError', error);
+    const client = exportClient.getClient();
+    if (client) {
+      client.emit('simulationError', error);
+    }
   }
-}
+});
 
-module.exports.errorsHandler = errorsHandler;
+module.exports = utils;

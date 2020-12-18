@@ -45,6 +45,10 @@ const enumPoker = Object.freeze({
     DBsettings: {
         isHistoryLogging: true,
         isImageControl: true,
+    },
+    stacksCombs: {
+        spinsHU: [],
+        spins3W: [],
     }
 });
 

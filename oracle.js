@@ -1,7 +1,8 @@
 const oracledb = require('oracledb');
 
 const enumPoker = require('./enum');
-
+const playUtils = require('./playLogic/play_utils');
+const utils = require('./utils');
 const isAdaptation = false;
 
 ///////////////////////////////////////////////////////////////////// PLAYERS
@@ -98,24 +99,8 @@ class Oracle {
   }
 
   async insertStacks() {      // tt_hands
-
-    function createStacksArr(maxSum, step) {
-      const arr = [];
-      [...Array(maxSum)].forEach((cur, i) => {
-        const min = i + 1;
-        [...Array(maxSum)].forEach((cur, middle) => {
-          const max = maxSum - middle - min;
-          if (middle >= min && max >= middle && (min + middle + max) === maxSum && (min%step === 0) && (middle%step === 0)) {
-            arr.push(`${middle}:${middle}:${min}`);
-          }
-        });
-      });
-
-      return arr;
-    }
-
     if (this.connection) {
-      const stacks = createStacksArr(75, 3).map(cur => [`preflop:gto:${cur}`]);
+      const stacks = playUtils.createStacksArr(75, 3).map(cur => [`preflop:gto:${cur}`]);
       // const stacks = ['4:4:4'].map(cur => [`preflop:gto:${cur}`]);
 
       const sql = `INSERT INTO DISTRIB_TASKS(PARAMS) VALUES (:1)`;
@@ -129,6 +114,27 @@ class Oracle {
       if (result) {
         await this.connection.commit();
       }
+    }
+  }
+
+  async getHistoryHashes(roomId) {
+    if (this.connection) {
+      const sql = `SELECT * FROM EE_HISTORY_HASHES WHERE ROOM_ID = :1`;
+      const binds = {
+        roomId,
+      };
+
+      // For a complete list of options see the documentation.
+      const options = {
+        outFormat: oracledb.OUT_FORMAT_OBJECT   // query result format
+        // extendedMetaData: true,   // get extra metadata
+        // fetchArraySize: 100       // internal buffer allocation size for tuning
+      };
+
+      const result = await this.connection.execute(sql, binds, options);
+
+      console.log("Column metadata: ", result.metaData);
+      console.log('HistoryHashes', result.rows);
     }
   }
 
@@ -170,6 +176,13 @@ class Oracle {
       const id_room = enumPoker.rooms[room];
 
       try {
+        // comparing all hashes from db for last 30s with rawActions hash
+        const hashesFromDb = await this.getHistoryHashes(id_room);
+        const historyHash = utils.createHash(JSON.stringify(rawActions));
+
+        if (hashesFromDb.includes(historyHash)) {
+          return false;
+        }
         const newHandId = await this.insertHand(id_room, limit, board, plCount);                   // tt_hands
         console.log('tt_hands insert successful');
         const players = await this.insertRawInit(newHandId, initPlayers, token, room, gameType);   // tt_raw_init
