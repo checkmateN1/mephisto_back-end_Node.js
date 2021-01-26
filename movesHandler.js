@@ -15,8 +15,10 @@ addon = require(`${diskDrive}:\\projects\\mephisto_back-end_Node.js\\custom_modu
 addon.SetDefaultDevice('cpu');
 
 ///!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! всегда включать на мефисте
-addon.DeserializeBucketingType(`${diskDrive}:\\projects\\mephisto_back-end_Node.js\\custom_module\\buckets\\`, 0);
-addon.DeserializeBucketingType(`${diskDrive}:\\projects\\mephisto_back-end_Node.js\\custom_module\\buckets\\`, 4);
+if (enumPoker.enumPoker.perfomancePolicy.isBouquetsLoading || diskDrive === 'D') {
+    addon.DeserializeBucketingType(`${diskDrive}:\\projects\\mephisto_back-end_Node.js\\custom_module\\buckets\\`, 0);
+    addon.DeserializeBucketingType(`${diskDrive}:\\projects\\mephisto_back-end_Node.js\\custom_module\\buckets\\`, 4);
+}
 
 const trainedPrefix = 'trained_RS';
 const modelsAllPath = ':\\projects\\mephisto_back-end_Node.js\\custom_module\\models\\regret_model';

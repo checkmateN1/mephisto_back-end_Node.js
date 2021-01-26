@@ -41,6 +41,6 @@ const playUtils = Object.freeze({
   }
 });
 
-console.log(playUtils.createStacksArr(75, 3));
+// console.log(playUtils.createStacksArr(75, 3));
 
 module.exports = playUtils;

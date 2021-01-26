@@ -37,13 +37,16 @@ const enumPoker = Object.freeze({
     cardsSuitsCode: ['♣', '♠', '♦', '♥'],
     perfomancePolicy: {
         prepareCashStrategyStreet: 1,
-        startSimulationStreet: 2,
+        startSimulationStreet: 1,
+        startMoveSimultion: 1,
+        startMultipotMoveSimulation: 1,
         maxActiveTasks: 1,               // pack moves within one hand number
         maxActiveSimulations: 1,
-        oneHandCallRegretCount: 1
+        oneHandCallRegretCount: 1,
+        isBouquetsLoading: false,
     },
     DBsettings: {
-        isHistoryLogging: true,
+        isHistoryLogging: false,
         isImageControl: true,
     },
     stacksCombs: {

@@ -142,7 +142,7 @@ function getClient() {
 // event fired every time a new client connects:
 io.on('connection', client => {
     // authorization
-    client.on('authorization', token => {
+    client.once('authorization', token => {
         if (!(token in enumPoker.tokens)) {
             console.log('unauthorized access');
             client.emit('unauthorizedAccess');
@@ -538,5 +538,11 @@ io.on('connection', client => {
 server.listen(27990, 'localhost', function() {
     console.log("Сервер ожидает подключения...");
 });
+
+// server.listen(27990, '192.168.1.105', function() {        // laptop
+//     console.log("Сервер ожидает подключения...");
+// });
+
+// http://212.22.223.151:27990  - внешний ip
 
 module.exports.getClient = getClient;

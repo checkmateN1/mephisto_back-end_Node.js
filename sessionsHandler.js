@@ -81,7 +81,9 @@ class SessionSetup {
         this.token = token;
         this.addonSetup = null;  // setup
         this.playSetup = null;
-        this.oracle = new oracle.oracle();
+        if (enumPoker.enumPoker.DBsettings.isHistoryLogging) {
+            this.oracle = new oracle.oracle();
+        }
         this.timeout = setupTimeout;
         this.movesInEngine = 0;
         this.tasksQueue = tasksQueue;

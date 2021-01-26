@@ -5,8 +5,10 @@ const enumPoker = require('./enum');
 addon = require('C:\\projects\\mephisto_back-end_Node.js\\custom_module\\PokerEngine\\pokerengine_addon');
 addon.SetDefaultDevice('cpu');
 
-addon.DeserializeBucketingType('C:\\projects\\mephisto_back-end_Node.js\\custom_module\\buckets\\', 0);
-addon.DeserializeBucketingType('C:\\projects\\mephisto_back-end_Node.js\\custom_module\\buckets\\', 4);
+if (enumPoker.enumPoker.perfomancePolicy.isBouquetsLoading || true) {
+  addon.DeserializeBucketingType('C:\\projects\\mephisto_back-end_Node.js\\custom_module\\buckets\\', 0);
+  addon.DeserializeBucketingType('C:\\projects\\mephisto_back-end_Node.js\\custom_module\\buckets\\', 4);
+}
 
 // addon.DeserializeBucketingType('C:\\projects\\mephisto_back-end_Node.js\\custom_module\\buckets\\', 0);
 // modelsPool = new addon.ModelsPool('C:\\projects\\mephisto_back-end_Node.js\\custom_module\\models\\regret_model', 'trained_RA');
@@ -416,11 +418,35 @@ class SimulationsHandler {
     }
 }
 
+// возвращает улицу СЛЕДУЮЩЕГО за предысторией мува
+const getCurStreet = (rawActionList, isTerminal) => {
+    const lastStreet = rawActionList[rawActionList.length - 1].street;
+    return (isTerminal && lastStreet < 3) ? (lastStreet + 1) : lastStreet;
+};
+
+// возвращает количество фактических ходов на улице
+const getMovesCount = (rawActionList, street, isTerminal) => {
+    if (isTerminal) {
+        return 0;
+    }
+
+    return rawActionList.filter(el => el.street === street).length;
+};
+
 const nodeSimulation = (rawActionList, isTerminal, move) => {
     if (rawActionList[move]) {
-        return rawActionList[move].street >= enumPoker.enumPoker.perfomancePolicy.startSimulationStreet;
+        if (rawActionList[move].street > enumPoker.enumPoker.perfomancePolicy.startSimulationStreet) {
+            return true;
+        }
+        if (rawActionList[move].street < enumPoker.enumPoker.perfomancePolicy.startSimulationStreet) {
+            return false;
+        }
     }
-    return rawActionList[move - 1].street + (isTerminal ? 1 : 0) >= enumPoker.enumPoker.perfomancePolicy.startSimulationStreet;
+
+    // rawActionList[move].street === enumPoker.enumPoker.perfomancePolicy.startSimulationStreet
+    const street = getCurStreet(rawActionList, isTerminal);     // улица следующего за rawActionList хода
+
+    return getMovesCount(rawActionList, street, isTerminal) >= enumPoker.enumPoker.perfomancePolicy.startMoveSimultion;
 };
 
 const debugEmmit = (playSetup, hand, aggregatorLock, move) => {
