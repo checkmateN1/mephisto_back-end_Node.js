@@ -1,4 +1,5 @@
 const stats = require('./nodes_identifire');
+const enumPoker = require('../enum');
 
 // функция которая зная особенности узла: улица, повышеный ли, 3бет ли и тд перебирает только нужные функции для нод
 
@@ -9,21 +10,56 @@ const nodesStatsHandler = (setup, preCalculatedData) => {
   // если после мува запушен борд - значит это терминальное состояние и не нужно делать никаких проверок
   const rawActions = [];
 
+
   // !определяем целевую улицу и запускаем оппределение количества повышений на ней, номер стула и его инициативу, прфелоп тип пота
   // согласно своду правил улиц, префлоп типу пота и инициативе игрока на текущей улице проверяем совпадения
   // написать функцию, которая проверяет свод правил и соответствие их ситуации перед тем как запустить проверку (1)
   // все идентиикации нод хранятся в своде(2), сортированные поулично, и по типам пота префлоп - проверяют количество бетов и инициативу с предыдущей улицы
 
 
+  //
   // isTerminal - касается только rawActions без учета следующего узла, который и проверяем
-  // const { rawActions, street, betCount, enumPosition, hasInitiative, preflopBetCount, isTerminal, cash } = options;
+  //
+
+  const isTerminal = true;    /// определяем его из вернувшего setup from pokerEngine
+  const street = rawActions[rawActions.length - 1].street;
+  const betCount = betsCount(rawActions, street, isTerminal);
+  const enumPosition = enumPoker.enumPoker.positions[0];   /// определяем его из вернувшего setup from pokerEngine
+  const hasPreflopInitiative = street && hasInitiative(rawActions, street, enumPosition);
+  // const { rawActions, street, betCount, enumPosition, hasPreflopInitiative, preflopBetCount, isTerminal, cash } = options;
 };
 
-
-// 2  - возвращает массив функций, которые будут проверять ноды
-function nodesIdentifireFunctionsSet(options) {
-  return Object.keys(stats).map(fn => stats[fn](options)).filter(fn => fn !== undefined);
+function hasInitiative(rawActions, street, enumPosition, targetStreet = 0) {
+  for (let i = rawActions.length - 1; i >= 0; i--) {
+    if (rawActions[i].street === targetStreet) {
+      if (rawActions[i].action < 3 && rawActions[i].action !== 0) {
+        return rawActions[i].position === enumPosition;
+      }
+    } else if (rawActions[i].street < targetStreet) {
+      return false;
+    }
+  }
 }
+
+function betsCount(rawActions, street, isTerminal) {        // не учитываем блайнды
+  if (isTerminal) {
+    return 0;
+  }
+
+  let count = 0;
+  for (let i = rawActions.length - 1; i >= 0; i--) {
+    if (rawActions[i].street === street) {
+      if (rawActions[i].action < 3 && rawActions[i].action !== 0) {
+        count++;
+      }
+    } else {
+      return count;
+    }
+  }
+  return count;
+}
+
+
 
 // function isTerminalStreetState(rawActionList) {
 //   const currentAmount = this.maxAmountAtCurrentStreet();

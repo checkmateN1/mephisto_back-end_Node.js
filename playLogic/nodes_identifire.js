@@ -40,31 +40,25 @@ const stats = {
   // use hasInitiative fn in prompterHandler
   // вызываем тогда когда ходит хиро => enum position === heroChair
   isCbetFlop_node(rawActions, hasInitiative, isTerminal, options) {   // enumPosition === chair to move after all actions
-    const { rawActions, street, betCount, enumPosition, hasInitiative, preflopBetCount, isTerminal, cash, penalties } = options;
-
-    if (rawActions[rawActions.length - 1].street === 0 && isTerminal) {
-      return hasInitiative;
-    }
-    return false;
-  },
-
-  isCbetTurn_node(rawActions, hasInitiative, isTerminal, options) {   // enumPosition === chair to move after all actions
-    const { rawActions, street, betCount, enumPosition, hasInitiative, preflopBetCount, isTerminal, cash, penalties } = options;
-
-    if (rawActions[rawActions.length - 1].street === 1 && isTerminal) {
-      return hasInitiative;
+    if (options.street === 0 && options.isTerminal) {
+      return options.hasInitiative;
     }
     return false;
   },
 
   isDonkFlop_node(rawActions, hasInitiative, isTerminal, options) {   // enumPosition === chair to move after all actions
-    const { rawActions, street, betCount, enumPosition, hasInitiative, preflopBetCount, isTerminal, cash, penalties } = options;
-
-    if (rawActions[rawActions.length - 1].street === 0 && isTerminal) {
-      return !hasInitiative;
+    if (options.street === 0 && options.isTerminal) {
+      return !options.hasInitiative;
     }
     return false;
-  }
+  },
+
+  isCbetTurn_node(rawActions, hasInitiative, isTerminal, options) {   // enumPosition === chair to move after all actions
+    if (options.street === 1 && options.isTerminal) {
+      return options.hasInitiative;
+    }
+    return false;
+  },
 };
 
 // Вычисляется по формуле AF = (Raise% + Bet%) / Call% и показывает, насколько часто игрок разыгрывает свои руки коллом или рейзом.

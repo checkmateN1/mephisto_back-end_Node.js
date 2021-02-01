@@ -6,78 +6,6 @@ const moves = require('./movesHandler');
 const oracle = require('./oracle');
 const enumPoker = require('./enum');
 
-/////////////////////////////////   TEST RAW ACTIONS
-const rawActionList = [];
-
-class ActionString {
-    constructor(street, player, balance, action, pot, amount, position, gto, isHero) {
-        this.street = street;
-        this.player = player;
-        this.balance = balance;
-        this.action = action;
-        this.pot = pot;
-        this.amount = amount;
-        this.position = position;
-        this.gto = gto;
-        this.isHero = isHero;
-    }
-
-    set setNickname(newNickname) {
-        this.player = newNickname;
-    }
-
-};
-
-// ha
-rawActionList[0] = new ActionString(0, "So Lucky", 7.25, 0, 0, 0.1, 0, false, false); // post BB  -30
-rawActionList[1] = new ActionString(0, "joooe84", 5, 0, 0.1, 0.25, 8, false, false);       // bet 0.75 BTN   -55
-rawActionList[2] = new ActionString(0, "So Lucky", 7.15, 2, 0.35, 0.75, 0, false, false);   // call BB
-rawActionList[3] = new ActionString(0, "joooe84", 4.75, 3, 1, 0.75, 8, false, false);       // bet 0.75 BTN
-
-
-const testInitPlayers = [
-    {
-        player: 'So Lucky',
-        initBalance: 7.25,
-        enumPosition: 0,
-        isDealer: true,
-        cards: {
-            hole1Value: '2',
-            hole2Value: '7',
-            hole1Suit: 's',
-            hole2Suit: 'c'
-        }
-    },
-    {
-        player: 'random player',
-        initBalance: 5,
-        enumPosition: 8,
-        isDealer: false,
-        cards: null
-    }
-];
-
-/////////////////////////////////  TEST Oracle
-const oraclePlaySetup = new oracle.oracle();
-///////////////////////////////////
-// setTimeout(async () => {
-//     const result = await oraclePlaySetup.loggingHandHistory({
-//         rawActions: rawActionList,
-//         initPlayers: testInitPlayers,
-//         room: 'Partypoker',
-//         gameType: 'Spin&Go',
-//         limit: 3,           // BB/100
-//         board: {
-//             C1: 'Ac',
-//             C2: '7s',
-//             C3: 'Kh'
-//         },
-//         plCount: 2,     // initPlayersLength
-//         cash: {},
-//         token: 'dfioulkdgdlb87jkj53pioifjlwlo8cvjksnj',     // So Lucky
-//     });
-// }, 3000);
-/////////////////////////////////
 
 class TasksQueue {
     constructor() {
@@ -153,7 +81,9 @@ class SessionSetup {
         this.token = token;
         this.addonSetup = null;  // setup
         this.playSetup = null;
-        this.oracle = new oracle.oracle();
+        if (enumPoker.enumPoker.DBsettings.isHistoryLogging) {
+            this.oracle = new oracle.oracle();
+        }
         this.timeout = setupTimeout;
         this.movesInEngine = 0;
         this.tasksQueue = tasksQueue;

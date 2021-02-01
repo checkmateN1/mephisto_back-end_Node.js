@@ -150,6 +150,7 @@ const preCalculatedDataTemplate = Object.freeze({
 
 class PlaySetup {
     constructor(gameTypesSettings) {            // frame from recognition -> validator.dll -> playFrame
+        this.sessionSetup = null;
         this.client = null;
         this.cash = [];
         this.initPlayers = [];      // all players who was active in start. Index === recPosition, some indexes == undefined!
@@ -189,27 +190,101 @@ class PlaySetup {
         if (this.rejectHand && playFrame.handNumber === this.handNumber) {
             return STOP_PROMPT;
         }
+        console.log('new playFrame', playFrame);
+        console.log('new playFrame.handNumber', playFrame.handNumber);
+        console.log('this.handNumber', this.handNumber);
         if (playFrame.handNumber !== this.handNumber) {         // new hand
-            // logging
-            if (enumPoker.enumPoker.DBsettings.isHistoryLogging && this.initPlayers.length && !this.rejectHand) {
+            // logging history
+            console.log('new hand number!!!');
+            console.log('this.initPlayers.length', this.initPlayers.length);
+            console.log('this.rejectHand', this.rejectHand);
 
-                // создаем фейковый фрейм если предыдущий фрейм не в терминальном состоянии.
+            if (enumPoker.enumPoker.DBsettings.isHistoryLogging
+              && this.initPlayers.length && !this.rejectHand && this.sessionSetup.oracle || true) {
+
+                console.log('playFrame from logging', playFrame);
+
+                // создаем фейковый фрейм если предыдущий фрейм не в терминальном состоянии. Если он в терминальном состоянии, то дочекиваем борд если
+                // не приросли балансы. Если приросли - не пишем историю
+
                 // балансы игроков равны тем балансам(пока что без учета рейка) которые мы видим в следующей валидной новой руке.
-                console.log('this.initPlayers');
-                console.log(this.initPlayers);
-                // this.sessionSetup.oracle.loggingHandHistory({
-                //     rawActions,
-                //     initPlayers,
-                //     heroChair,
-                //     room,
-                //     gameType,
-                //     limit,
-                //     board,
-                //     plCount,
-                //     cash,
-                //     token,      // вычисляем по токену и id_room - player_id
-                // });
+                //
+
+                // проверяем время фрейма с новой рукой относительно предыдущего валидного или ликвидность новых балансов правилам.
+                //
+
+                // const fakePlayFrame = this.getFakePlayFrame();
+
+                // const testFrame = {
+                //       handNumber: '81okp7e70kjtpjmxz',
+                //       pot: 700,
+                //       playPlayers: [
+                //           {
+                //               nickname: 'player_0',
+                //               recognitionPosition: 0,
+                //               curBalance: 2200,
+                //               betAmount: 0,
+                //               isActive: true,
+                //               isDealer: false,
+                //               cards: null
+                //           },
+                //           {
+                //               nickname: 'player_1',
+                //               recognitionPosition: 1,
+                //               curBalance: 2400,
+                //               betAmount: 0,
+                //               isActive: false,
+                //               isDealer: true,
+                //               cards: null
+                //           },
+                //           {
+                //               nickname: 'player_2',
+                //               recognitionPosition: 2,
+                //               curBalance: 2200,
+                //               betAmount: 0,
+                //               isActive: true,
+                //               isDealer: false,
+                //               cards: [Object]
+                //           }
+                //       ],
+                //       board: [
+                //           {value: '4', suit: 'h'},
+                //           {value: '4', suit: 's'},
+                //           {value: '5', suit: 'c'}
+                //       ],
+                //       isButtons: true,
+                //       heroRecPosition: 2,
+                //   };
+
+
+                // this.getMovesFromFrame(fakePlayFrame);
+                // this.selfRestart = 0;
+                // console.log('!!! this.rawActionList at the end of getMovesFromFrame inside of logging history');
+                // console.log(this.rawActionList);
+
+                if (this.rejectHand) {
+                    // не можем записать историю!
+                }
+
+                const options = [];
+                const {
+                    rawActions,
+                    initPlayers,
+                    heroChair,
+                    room,
+                    gameType,
+                    limit,
+                    board,
+                    plCount,
+                    cash,
+                    token,      // вычисляем по токену и id_room - player_id
+                } = options;
+
+                if (this.sessionSetup.oracle) {
+                    // this.sessionSetup.oracle.loggingHandHistory(options);
+                }
             }
+
             this.sessionSetup.tasksQueue.clearIrrelevantTasks(this.handNumber);
             this.simulationsRequests = [];      // clear locked actions for simulations requests
             this.handNumber = playFrame.handNumber;
@@ -230,6 +305,7 @@ class PlaySetup {
             this.setInitPlayers(playFrame);
             this.setPositionsMap();
         }
+
         if (this.rejectHand) {
             return STOP_PROMPT;
         }
@@ -259,6 +335,145 @@ class PlaySetup {
         // console.log(`this.whoIsNextMove(): ${this.whoIsNextMove()}`);
         return PROMPT;
     };
+
+    // returns pot diff between final pot in rawActions and first new hand frame invert pot.
+    potDiff(rawActions, initPlyers, newHandPlayFrame) {
+        class ActionString {
+            constructor(street, player, balance, action, pot, amount, position, invest) {
+                this.street = street;
+                this.player = player;
+                this.balance = balance;
+                this.action = action;
+                this.pot = pot;
+                this.amount = amount;
+                this.position = position;
+                this.invest = invest;
+            }
+        }
+
+        const pot = rawActions[rawActions.length - 1].pot + rawActions[rawActions.length - 1].invest;
+
+        class InitPlayer {
+            constructor(player, initBalance, enumPosition, isDealer, cards) {
+                this.player = player;
+                this.initBalance = initBalance;
+                this.enumPosition = enumPosition;
+                this.isDealer = isDealer;
+                this.cards = cards;
+            }
+        }
+
+        class PlayPlayer {
+            constructor(nickname, recognitionPosition, curBalance, amount, isActive, isDealer, cards) {
+                this.nickname = nickname;
+                this.recognitionPosition = recognitionPosition;
+                this.curBalance = curBalance;
+                this.betAmount = amount;
+                this.isActive = isActive;
+                this.isDealer = isDealer;
+                this.cards = cards;
+            }
+        }
+
+        const testFrame = {
+            handNumber: '81okp7e70kjtpjmxz',
+            pot: 700,
+            playPlayers: [
+                {
+                    nickname: 'player_0',
+                    recognitionPosition: 0,
+                    curBalance: 2200,
+                    betAmount: 0,
+                    isActive: true,
+                    isDealer: false,
+                    cards: null
+                },
+                {
+                    nickname: 'player_1',
+                    recognitionPosition: 1,
+                    curBalance: 2400,
+                    betAmount: 0,
+                    isActive: false,
+                    isDealer: true,
+                    cards: null
+                },
+                {
+                    nickname: 'player_2',
+                    recognitionPosition: 2,
+                    curBalance: 2200,
+                    betAmount: 0,
+                    isActive: true,
+                    isDealer: false,
+                    cards: [Object]
+                }
+            ],
+            board: [
+                {value: '4', suit: 'h'},
+                {value: '4', suit: 's'},
+                {value: '5', suit: 'c'}
+            ],
+            isButtons: true,
+            heroRecPosition: 2,
+        };
+
+        // const finalPot = initPlyers.reduce((pot, player, i) => {
+        //     const newHandPlayerBalance = newHandPlayFrame.board.length ?
+        //     return player === undefined ? 0 : Math.abs(player.initBalance - newHandPlayFrame.playPlayers[i]);
+        // }, 0);
+
+
+    }
+
+    getFakePlayFrame(newHandPlayFrame, initPlayers, isTerminal, board) {
+
+        const testFrame = {
+            handNumber: '81okp7e70kjtpjmxz',
+            pot: 700,
+            playPlayers: [
+                {
+                    nickname: 'player_0',
+                    recognitionPosition: 0,
+                    curBalance: 2200,
+                    betAmount: 0,
+                    isActive: true,
+                    isDealer: false,
+                    cards: null
+                },
+                {
+                    nickname: 'player_1',
+                    recognitionPosition: 1,
+                    curBalance: 2400,
+                    betAmount: 0,
+                    isActive: false,
+                    isDealer: true,
+                    cards: null
+                },
+                {
+                    nickname: 'player_2',
+                    recognitionPosition: 2,
+                    curBalance: 2200,
+                    betAmount: 0,
+                    isActive: true,
+                    isDealer: false,
+                    cards: [Object]
+                }
+            ],
+            board: [
+                {value: '4', suit: 'h'},
+                {value: '4', suit: 's'},
+                {value: '5', suit: 'c'}
+            ],
+            isButtons: true,
+            heroRecPosition: 2,
+        };
+
+        const newPlayers = newHandPlayFrame.playPlayers.map(player => {
+            // return Object.assign(player, { curBalance: })
+        });
+
+        const fakeFrame = {};
+
+    }
 
     getMovesFromFrame(playFrame) {
         // console.log(`getMovesFromFrame at start/// this.rawActionList.length: ${this.rawActionList.length}`);
@@ -1425,6 +1640,7 @@ class PlaySetup {
                 return count;
             }
         }
+        return count;
     }
 
     // has initiative
@@ -1600,12 +1816,37 @@ class PlaySetup {
 
 // 1) из реквеста создаем полноценный фрейм
 // 2) в setup записываем setup.playSetup = new PlaySetup(если его там не было), и дальше всегда работаем с ним при поступлении реквестов.
-const getCurStreet = (isStrategy, rawActionList, isTerminal) => {
+// возвращает улицу СЛЕДУЮЩЕГО за предысторией мува
+const getCurStreet = (rawActionList, isTerminal) => {
     const lastStreet = rawActionList[rawActionList.length - 1].street;
-    return (isStrategy && isTerminal && lastStreet < 3) ? lastStreet + 1 : lastStreet;
+    return (isTerminal && lastStreet < 3) ? lastStreet + 1 : lastStreet;
 };
-const isNeedCash = (isStrategy, rawActionList, isTerminal) => getCurStreet(isStrategy, rawActionList, isTerminal) >= enumPoker.enumPoker.perfomancePolicy.prepareCashStrategyStreet;
-const isNeedSimulation = (isStrategy, rawActionList, isTerminal) => getCurStreet(isStrategy, rawActionList, isTerminal) >= enumPoker.enumPoker.perfomancePolicy.startSimulationStreet;
+
+// возвращает количество фактических ходов на улице
+const getMovesCount = (rawActionList, street, isTerminal) => {
+    if (isTerminal) {
+        return 0;
+    }
+
+    return rawActionList.filter(el => el.street === street).length;
+};
+const isNeedCash = (rawActionList, isTerminal) => getCurStreet(rawActionList, isTerminal) >= enumPoker.enumPoker.perfomancePolicy.prepareCashStrategyStreet;
+
+// нужно только для того чтобы понять: добавлять в очередь задачу или синхронно
+const isNeedSimulation = (rawActionList, isTerminal) => {
+    const street = getCurStreet(rawActionList, isTerminal);
+
+    // console.log(`inside isNeedSimulation //////////////////////////// street = ${street}`);
+
+    if (street > enumPoker.enumPoker.perfomancePolicy.startSimulationStreet) {
+        return true;
+    }
+    if (street === enumPoker.enumPoker.perfomancePolicy.startSimulationStreet) {
+        return getMovesCount(rawActionList, street, isTerminal) >= enumPoker.enumPoker.perfomancePolicy.startMoveSimultion;
+    }
+
+    return false;
+};
 
 const prompterListener = (setup, request, gameTypesSettings) => {
     // console.log('enter prompter listener');
@@ -1677,8 +1918,8 @@ const prompterListener = (setup, request, gameTypesSettings) => {
             const heroPosition = initPlayers[heroChair].enumPosition;
             const isHeroTurn = move_position === heroPosition;
             const move_id = rawActionList.length;
-            const needCash = isNeedCash(true, rawActionList, isTerminal);
-            const needSimulation = isNeedSimulation(true, rawActionList, isTerminal);
+            const needCash = isNeedCash(rawActionList, isTerminal);
+            const needSimulation = isNeedSimulation(rawActionList, isTerminal);
             const request = {
                 handNumber,
                 playSetup: setup.playSetup,
@@ -1697,7 +1938,7 @@ const prompterListener = (setup, request, gameTypesSettings) => {
             };
 
             // !geting penalty
-            const penalty = setup.playSetup.getPenalty(heroPosition, isTerminal, move_id);
+            // const penalty = setup.playSetup.getPenalty(heroPosition, isTerminal, move_id);
 
             if (!needSimulation && isHeroTurn) {
                 movesHandler.getHill(request, undefined, true);
@@ -1708,14 +1949,13 @@ const prompterListener = (setup, request, gameTypesSettings) => {
                 setup.tasksQueue.queueHandler(handNumber, rawActionList.length, request);
             }
 
+            // шлем симтуацию в подсказчик
             if (client !== null) {
                 const prompt = Object.assign({ handNumber, move_id }, setup.playSetup.createMainPrompt(setup.playSetup.prevPlayFrame[setup.playSetup.prevPlayFrame.length - 1], isHeroTurn, isTerminal));
                 const promptData = {
                     prompt,
                     id,
                 };
-
-
 
                 setTimeout(() => {
                     // console.log('send prompt');

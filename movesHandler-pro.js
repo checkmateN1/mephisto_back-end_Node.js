@@ -2,15 +2,18 @@ const _ = require('lodash');
 
 const enumPoker = require('./enum');
 
-addon = require('C:\\projects\\mephisto_back-end_Node.js\\custom_module\\PokerEngine\\pokerengine_addon');
+const diskDrive = enumPoker.enumPoker.perfomancePolicy.projectDrive;  // laptop
+addon = require(`${diskDrive}:\\projects\\mephisto_back-end_Node.js\\custom_module\\PokerEngine\\pokerengine_addon`);
 addon.SetDefaultDevice('cpu');
 
-addon.DeserializeBucketingType('C:\\projects\\mephisto_back-end_Node.js\\custom_module\\buckets\\', 0);
-addon.DeserializeBucketingType('C:\\projects\\mephisto_back-end_Node.js\\custom_module\\buckets\\', 4);
+if (!enumPoker.enumPoker.perfomancePolicy.isSimulatorOnly) {
+  addon.DeserializeBucketingType(`${diskDrive}:\\projects\\mephisto_back-end_Node.js\\custom_module\\buckets\\`, 0);
+  addon.DeserializeBucketingType(`${diskDrive}:\\projects\\mephisto_back-end_Node.js\\custom_module\\buckets\\`, 4);
+}
 
 // addon.DeserializeBucketingType('C:\\projects\\mephisto_back-end_Node.js\\custom_module\\buckets\\', 0);
 // modelsPool = new addon.ModelsPool('C:\\projects\\mephisto_back-end_Node.js\\custom_module\\models\\regret_model', 'trained_RA');
-modelsPoolSync = new addon.ModelsPool('C:\\projects\\mephisto_back-end_Node.js\\custom_module\\models\\regret_model', 'trained_RS');
+modelsPoolSync = new addon.ModelsPool(`${diskDrive}:\\projects\\mephisto_back-end_Node.js\\custom_module\\models\\regret_model`, 'trained_RS');
 // aggregator = new addon.RegretPoolToStrategyAggregator( modelsPool );
 aggregatorSync = new addon.RegretPoolToStrategyAggregator( modelsPoolSync );
 // setup = new addon.Setup(1.0);
@@ -416,11 +419,36 @@ class SimulationsHandler {
     }
 }
 
-const nodeSimulation = (rawActionList, isTerminal, move) => {
-    if (rawActionList[move]) {
-        return rawActionList[move].street >= enumPoker.enumPoker.perfomancePolicy.startSimulationStreet;
+// возвращает улицу СЛЕДУЮЩЕГО за предысторией мува
+const getCurStreet = (rawActionList, isTerminal) => {
+    const lastStreet = rawActionList[rawActionList.length - 1].street;
+    return (isTerminal && lastStreet < 3) ? (lastStreet + 1) : lastStreet;
+};
+
+// возвращает количество фактических ходов на улице
+const getMovesCount = (rawActionList, street, isTerminal) => {
+    if (isTerminal) {
+        return 0;
     }
-    return rawActionList[move - 1].street + (isTerminal ? 1 : 0) >= enumPoker.enumPoker.perfomancePolicy.startSimulationStreet;
+
+    return rawActionList.filter(el => el.street === street).length;
+};
+
+const nodeSimulation = (rawActionList, isTerminal, move) => {
+    // !!!!!!!!!!!!!!!!!!! определять для конкретного мува терминальное здесь или не здесь!
+    if (rawActionList[move]) {
+        if (rawActionList[move].street > enumPoker.enumPoker.perfomancePolicy.startSimulationStreet) {
+            return true;
+        }
+        if (rawActionList[move].street < enumPoker.enumPoker.perfomancePolicy.startSimulationStreet) {
+            return false;
+        }
+    }
+
+    // rawActionList[move].street === enumPoker.enumPoker.perfomancePolicy.startSimulationStreet
+    const street = getCurStreet(rawActionList, isTerminal);     // улица следующего за rawActionList хода
+
+    return getMovesCount(rawActionList, street, isTerminal) >= enumPoker.enumPoker.perfomancePolicy.startMoveSimultion;
 };
 
 const debugEmmit = (playSetup, hand, aggregatorLock, move) => {
@@ -465,7 +493,7 @@ const getHill = (request, callback, isOneHand) => {
     }
 
     if (!isOneHand) {
-        const simArguments = {
+        const options = {
             hand,
             move_id,
             rawActionList,
@@ -475,7 +503,7 @@ const getHill = (request, callback, isOneHand) => {
             isHeroTurn,
         };
 
-        SimulationsHandler.queueHandler(playSetup, handNumber, callback, simArguments);
+        SimulationsHandler.queueHandler(playSetup, handNumber, callback, options);
     }
 
     const movesHandler = (isOneHand) => {
@@ -523,7 +551,7 @@ const getHill = (request, callback, isOneHand) => {
                                     debugEmmit(playSetup, '', false, '');
                                 }
 
-                                cash[move] = { strategy };
+                                cash[move] = { strategy };      // WHY NOT FIRST THAN tasksQueue.tasksHandler();
 
                                 SimulationsHandler.checkCallBacks(playSetup, handNumber, isMockStrategy);
                                 if (move < move_id) {
