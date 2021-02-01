@@ -6,16 +6,16 @@ const utils = require('./utils');
 const _ = require('lodash');
 const fs = require('fs');
 const adapt_size = 10;
-const diskDrive = 'C';  // laptop
+const diskDrive = enumPoker.enumPoker.perfomancePolicy.projectDrive;  // laptop
 // const diskDrive = 'D';  // mephisto
 
-const isOfflineStrategy = true;
+const isOfflineStrategy = false;
 
 addon = require(`${diskDrive}:\\projects\\mephisto_back-end_Node.js\\custom_module\\PokerEngine\\pokerengine_addon`);
 addon.SetDefaultDevice('cpu');
 
 ///!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! всегда включать на мефисте
-if (enumPoker.enumPoker.perfomancePolicy.isBouquetsLoading || diskDrive === 'D') {
+if (enumPoker.enumPoker.perfomancePolicy.isSimulatorOnly || diskDrive === 'D') {
     addon.DeserializeBucketingType(`${diskDrive}:\\projects\\mephisto_back-end_Node.js\\custom_module\\buckets\\`, 0);
     addon.DeserializeBucketingType(`${diskDrive}:\\projects\\mephisto_back-end_Node.js\\custom_module\\buckets\\`, 4);
 }
@@ -186,6 +186,7 @@ getHill = (position, curInvest, movesCount, setup) => {
     // console.log(`start getHill! MovesCount: ${movesCount}, movesInEngine: ${setup.movesInEngine}`);
     let strategy = null;
 
+    //
     if (isOfflineStrategy) {
         let tmp;
         try {
@@ -305,6 +306,7 @@ getHill = (position, curInvest, movesCount, setup) => {
     });
 };
 
+//
 getAllHandStrategy = (cash, position, setup) => {            // cash = [{ hand, weight, strategy, optimalSizing, isPreflop }, .....]
 
     // console.log('setup.movesCash');
@@ -431,7 +433,7 @@ const movesHandler = (request, bbSize, setup, nodeId, isTerminal, enumPosition) 
         setup.addonSetup = new addon.Setup(bbSize);
         setup.resetCash();
         setup.movesCash.generation = currentGeneration;
-        setup.hillsCash = [];
+        setup.hillsCash = []
         setup.movesInEngine = 0;
         isCashSteelUseful = false;
 
