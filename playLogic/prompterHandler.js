@@ -1831,10 +1831,12 @@ const getMovesCount = (rawActionList, street, isTerminal) => {
     return rawActionList.filter(el => el.street === street).length;
 };
 const isNeedCash = (rawActionList, isTerminal) => getCurStreet(rawActionList, isTerminal) >= enumPoker.enumPoker.perfomancePolicy.prepareCashStrategyStreet;
+
+// нужно только для того чтобы понять: добавлять в очередь задачу или синхронно
 const isNeedSimulation = (rawActionList, isTerminal) => {
     const street = getCurStreet(rawActionList, isTerminal);
 
-    console.log(`inside isNeedSimulation //////////////////////////// street = ${street}`);
+    // console.log(`inside isNeedSimulation //////////////////////////// street = ${street}`);
 
     if (street > enumPoker.enumPoker.perfomancePolicy.startSimulationStreet) {
         return true;
@@ -1947,6 +1949,7 @@ const prompterListener = (setup, request, gameTypesSettings) => {
                 setup.tasksQueue.queueHandler(handNumber, rawActionList.length, request);
             }
 
+            // шлем симтуацию в подсказчик
             if (client !== null) {
                 const prompt = Object.assign({ handNumber, move_id }, setup.playSetup.createMainPrompt(setup.playSetup.prevPlayFrame[setup.playSetup.prevPlayFrame.length - 1], isHeroTurn, isTerminal));
                 const promptData = {

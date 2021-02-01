@@ -435,6 +435,7 @@ const getMovesCount = (rawActionList, street, isTerminal) => {
 };
 
 const nodeSimulation = (rawActionList, isTerminal, move) => {
+    // !!!!!!!!!!!!!!!!!!! определять для конкретного мува терминальное здесь или не здесь!
     if (rawActionList[move]) {
         if (rawActionList[move].street > enumPoker.enumPoker.perfomancePolicy.startSimulationStreet) {
             return true;
@@ -550,7 +551,7 @@ const getHill = (request, callback, isOneHand) => {
                                     debugEmmit(playSetup, '', false, '');
                                 }
 
-                                cash[move] = { strategy };
+                                cash[move] = { strategy };      // WHY NOT FIRST THAN tasksQueue.tasksHandler();
 
                                 SimulationsHandler.checkCallBacks(playSetup, handNumber, isMockStrategy);
                                 if (move < move_id) {
