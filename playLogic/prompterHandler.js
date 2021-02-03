@@ -1572,7 +1572,7 @@ class PlaySetup {
         }
     }
 
-    isTerminalStreetState() {
+    isTerminalStreetState(rawActionList, move) {
         const currentAmount = this.maxAmountAtCurrentStreet();
         const nPlayers = this.whoIsInGame();    //добавляем всех у кого УМНЫЙ баланc больше нуля и кто не делал фолд. массив с позициями
 
@@ -1903,6 +1903,7 @@ const prompterListener = (setup, request, gameTypesSettings) => {
             initPlayers,
             heroChair,
             bbSize,
+            positionEnumKeyMap,
         } = setup.playSetup;
 
         const isTerminal = setup.playSetup.isTerminalStreetState();
@@ -1917,7 +1918,7 @@ const prompterListener = (setup, request, gameTypesSettings) => {
             const move_position = setup.playSetup.whoIsNextMove(isTerminal);
             const heroPosition = initPlayers[heroChair].enumPosition;
             const isHeroTurn = move_position === heroPosition;
-            const move_id = rawActionList.length;
+            const move_id = rawActionList.length;                   // !!! БУДУЩИЙ ход, которого еще нету в rawActions
             const needCash = isNeedCash(rawActionList, isTerminal);
             const needSimulation = isNeedSimulation(rawActionList, isTerminal);
             const request = {
@@ -1928,13 +1929,14 @@ const prompterListener = (setup, request, gameTypesSettings) => {
                 BB: bbSize[bbSize.length - 1],
                 board,
                 cash,
-                move_id,
+                move_id,        // !!! БУДУЩИЙ ход, которого еще нету в rawActions
                 move_position,
                 isHeroTurn,
                 isTerminal,
                 needCash,
                 needSimulation,
                 hand,
+                positionEnumKeyMap: Object.assign({}, positionEnumKeyMap),
             };
 
             // !geting penalty
