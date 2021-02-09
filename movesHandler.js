@@ -6,7 +6,7 @@ const utils = require('./utils');
 const _ = require('lodash');
 const fs = require('fs');
 const adapt_size = 10;
-const diskDrive = enumPoker.enumPoker.perfomancePolicy.projectDrive;  // laptop
+const diskDrive = enumPoker.enumPoker.perfomancePolicy.projectDrive;
 // const diskDrive = 'D';  // mephisto
 
 const isOfflineStrategy = false;

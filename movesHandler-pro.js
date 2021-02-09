@@ -441,22 +441,43 @@ const nodeSimulation = (playSetup, rawActionList, move, initPlayers, positionEnu
     // !!!!!!!!!!!!!!!!!!! определять для конкретного мува терминальное здесь или не здесь!
     const initStreet = rawActionList[move] ? rawActionList[move].street : rawActionList[rawActionList.length - 1].street;
 
+    // debug
+    if (isDebugMode && playSetup.client) {
+        const rawActionsSlice = rawActionList.slice();
+        if (move !== undefined && rawActionsSlice[move]) {
+            rawActionsSlice.length = move + 1;
+        }
+
+        const isTerminal = playUtils.isTerminalStreetState(rawActionsSlice, move, initPlayers, positionEnumKeyMap);
+        const street = getCurStreet(rawActionsSlice, isTerminal);     // улица следующего за rawActionList хода
+        const result = getMovesCount(rawActionsSlice, street, isTerminal) >= enumPoker.enumPoker.perfomancePolicy.startMoveSimultion;
+
+        const data = {
+            street,
+            isTerminal,
+            isNodeSimulation: result,
+            movesCount: getMovesCount(rawActionsSlice, street, isTerminal),
+        };
+
+        console.log('debug_moves_handler', data);
+        playSetup.client.emit(enumPoker.enumCommon.DEBUG_MOVES_HANDLER, data);
+    }
+
     if (initStreet > enumPoker.enumPoker.perfomancePolicy.startSimulationStreet) {
         return true;
     }
-    if ((initStreet + 1) < enumPoker.enumPoker.perfomancePolicy.startSimulationStreet) {
-        return false;
-    }
 
     const rawActionsSlice = rawActionList.slice();
-    if (move !== undefined) {
+    if (move !== undefined && rawActionsSlice[move]) {
         rawActionsSlice.length = move + 1;
     }
 
     const isTerminal = playUtils.isTerminalStreetState(rawActionsSlice, move, initPlayers, positionEnumKeyMap);
-
-    // rawActionList[move].street === enumPoker.enumPoker.perfomancePolicy.startSimulationStreet
     const street = getCurStreet(rawActionsSlice, isTerminal);     // улица следующего за rawActionList хода
+
+    if (street < enumPoker.enumPoker.perfomancePolicy.startSimulationStreet) {
+        return false;
+    }
 
     return getMovesCount(rawActionsSlice, street, isTerminal) >= enumPoker.enumPoker.perfomancePolicy.startMoveSimultion;
 };
@@ -477,7 +498,7 @@ const debugEmmit = (playSetup, hand, aggregatorLock, move) => {
 
 const isMockStrategy = false;
 const isSimulationsOn = false;
-const isDebugMode = true;
+const isDebugMode = enumPoker.enumPoker.perfomancePolicy.debugMode;
 
 const getHill = (request, callback, isOneHand) => {
     const {
@@ -548,7 +569,9 @@ const getHill = (request, callback, isOneHand) => {
                     }
                 } else {
                     if (!SimulationsHandler.isMoveLock(playSetup, handNumber, move)) {
+                        // console.log(111);
                         if (aggregatorPool.isFree()) {
+                            // console.log(222);
                             const aggregatorKey = aggregatorPool.getFreeKey();
                             const aggregator = aggregatorPool.pool[aggregatorKey].aggregator;
 
@@ -570,7 +593,7 @@ const getHill = (request, callback, isOneHand) => {
                                 }
                             };
 
-                            if (nodeSimulation(playSetup, rawActionList, move, initPlayers, positionEnumKeyMap)) {
+                            if (nodeSimulation(playSetup, rawActionList, move, initPlayers, positionEnumKeyMap)) {  // sync mode with simulations
                                 if (isCashReady(rawActionList, cash, move)) {
                                     // debug mode
                                     if (isDebugMode) {
@@ -583,6 +606,7 @@ const getHill = (request, callback, isOneHand) => {
                                         setHills(addonSetup, initPlayers, rawActionList, cash, move);          // !!! WAITING API
                                         aggregator.simulate(addonSetup, getStrategyAsync);                     // !!! WAITING API
                                     } else {
+                                        console.log(`!!!!!!!////// //// //// inside nodeSimulation /// isCashReady /// move = ${move}`);
                                         aggregator.aggregate_all_async(addonSetup, getStrategyAsync, true);
                                     }
                                 } else {
@@ -592,6 +616,9 @@ const getHill = (request, callback, isOneHand) => {
                                     if (isDebugMode) {
                                         debugEmmit(playSetup, '', false, '');
                                     }
+
+                                    // !!! продумать не нужно ли здесь ставить в очередь задачу
+                                    // !!! добавить приоритетность симуляций из очереди перед кэшированием нейрогорбов
                                 }
                                 break;      // sync mode
                             } else {                // have an aggregator - doing parallel cash aggregate

@@ -36,6 +36,7 @@ const enumPoker = Object.freeze({
     cardsSuitsName: ['clubs', 'spades', 'diamonds', 'hearts'],
     cardsSuitsCode: ['♣', '♠', '♦', '♥'],
     perfomancePolicy: {
+        prepareCashStrategyFirstHeroMove: true,
         prepareCashStrategyStreet: 1,
         startSimulationStreet: 1,
         startMoveSimultion: 1,
@@ -43,8 +44,9 @@ const enumPoker = Object.freeze({
         maxActiveTasks: 1,               // pack moves within one hand number
         maxActiveSimulations: 1,
         oneHandCallRegretCount: 1,
-        isSimulatorOnly: true,
-        projectDrive: 'D',
+        isSimulatorOnly: false,
+        projectDrive: 'C',
+        debugMode: true,
     },
     DBsettings: {
         isHistoryLogging: false,
@@ -61,7 +63,8 @@ const enumCommon = Object.freeze({
     STOP_PROMPT: 'STOP_PROMPT',
     REJECT_HAND: 'REJECT_HAND',
     PROMPT: 'prompt',
-    HAND_PROMPT: 'hand_prompt'
+    HAND_PROMPT: 'hand_prompt',
+    DEBUG_MOVES_HANDLER: 'debug_moves_handler',
 });
 
 const rooms = Object.freeze({

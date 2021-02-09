@@ -190,9 +190,7 @@ class PlaySetup {
         if (this.rejectHand && playFrame.handNumber === this.handNumber) {
             return STOP_PROMPT;
         }
-        console.log('new playFrame', playFrame);
-        console.log('new playFrame.handNumber', playFrame.handNumber);
-        console.log('this.handNumber', this.handNumber);
+
         if (playFrame.handNumber !== this.handNumber) {         // new hand
             // logging history
             console.log('new hand number!!!');
@@ -288,7 +286,7 @@ class PlaySetup {
             this.sessionSetup.tasksQueue.clearIrrelevantTasks(this.handNumber);
             this.simulationsRequests = [];      // clear locked actions for simulations requests
             this.handNumber = playFrame.handNumber;
-            this.cash = [];
+            this.cash = [];             // reset cash when new hand
             this.initPlayers = [];
             this.positionEnumKeyMap = {};
             this.rawActionList = [];
@@ -1830,7 +1828,11 @@ const getMovesCount = (rawActionList, street, isTerminal) => {
 
     return rawActionList.filter(el => el.street === street).length;
 };
-const isNeedCash = (rawActionList, isTerminal) => getCurStreet(rawActionList, isTerminal) >= enumPoker.enumPoker.perfomancePolicy.prepareCashStrategyStreet;
+const isNeedCash = (rawActionList, isTerminal) => {
+    const isCash = enumPoker.enumPoker.perfomancePolicy.prepareCashStrategyFirstHeroMove ||
+      getCurStreet(rawActionList, isTerminal) >= enumPoker.enumPoker.perfomancePolicy.prepareCashStrategyStreet;
+    return isCash;
+};
 
 // нужно только для того чтобы понять: добавлять в очередь задачу или синхронно
 const isNeedSimulation = (rawActionList, isTerminal) => {
@@ -1939,7 +1941,7 @@ const prompterListener = (setup, request, gameTypesSettings) => {
                 positionEnumKeyMap: Object.assign({}, positionEnumKeyMap),
             };
 
-            // !geting penalty
+            // !getting penalty
             // const penalty = setup.playSetup.getPenalty(heroPosition, isTerminal, move_id);
 
             if (!needSimulation && isHeroTurn) {

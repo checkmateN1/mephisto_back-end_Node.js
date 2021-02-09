@@ -239,15 +239,15 @@ io.on('connection', client => {
                                 },
                                 data: frameData,
                                 txtFile,
-                                client: (token in sequencePrompterClients) ? sequencePrompterClients[token] : null,     // test react-prompter 4 tables
-                                // client,                                                                                    // test frame debugger
+                                // client: (token in sequencePrompterClients) ? sequencePrompterClients[token] : null,     // test react-prompter 4 tables
+                                client,                                                                                    // test frame debugger
                             };
 
                             // console.log(`Enter /// performance.now(): ${performance.now()}`);
                             // sessionsHandler.sessionsListener(token, frameData.id, prompterData);
                             setTimeout(() => {
                                 sessionsHandler.sessionsListener(token, frameData.id, prompterData);     // data.id == table id from recognition
-                            }, 300);
+                            }, 0);
                         }
                     });
                 }
@@ -299,8 +299,8 @@ io.on('connection', client => {
                                         data: frameData,
                                         txtFile,
                                         txtPath: path,
-                                        client: (token in sequencePrompterClients) ? sequencePrompterClients[token] : null,     // test react-prompter 4 tables
-                                        // client,                                                                                  // test frame debugger
+                                        // client: (token in sequencePrompterClients) ? sequencePrompterClients[token] : null,     // test react-prompter 4 tables
+                                        client,                                                                                  // test frame debugger
                                     };
 
                                     setTimeout(() => {
@@ -537,15 +537,11 @@ if (enumPoker.enumPoker.perfomancePolicy.isSimulatorOnly) {
         console.log("Сервер ожидает подключения...");
     });
 } else {
-    server.listen(27990, '192.168.1.105', function() {        // laptop
+    server.listen(27990, 'localhost', function() {
         console.log("Сервер ожидает подключения...");
     });
 }
 
-
-// server.listen(27990, 'localhost', function() {
-//     console.log("Сервер ожидает подключения...");
-// });
 
 // server.listen(27990, '192.168.1.105', function() {        // laptop
 //     console.log("Сервер ожидает подключения...");
