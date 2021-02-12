@@ -13,6 +13,8 @@ const PROMPT = enumPoker.enumCommon.PROMPT;
 const HAND_PROMPT = enumPoker.enumCommon.HAND_PROMPT;
 const INVALID_FRAME = enumPoker.enumCommon.INVALID_FRAME;
 
+const isDebugMode = enumPoker.enumPoker.perfomancePolicy.debugMode;
+
 const { performance } = require('perf_hooks');
 
 class PlayersHandler {
@@ -1828,13 +1830,23 @@ const getMovesCount = (rawActionList, street, isTerminal) => {
 
     return rawActionList.filter(el => el.street === street).length;
 };
-const isNeedCash = (rawActionList, isTerminal) => {
-    const isCash = enumPoker.enumPoker.perfomancePolicy.prepareCashStrategyFirstHeroMove ||
-      getCurStreet(rawActionList, isTerminal) >= enumPoker.enumPoker.perfomancePolicy.prepareCashStrategyStreet;
-    return isCash;
+
+// const isNeedCash = (rawActionList, isTerminal) => {
+//     const isCash = enumPoker.enumPoker.perfomancePolicy.prepareCashStrategyFirstHeroMove ||
+//       getCurStreet(rawActionList, isTerminal) >= enumPoker.enumPoker.perfomancePolicy.prepareCashStrategyStreet;
+//
+//     return isCash;
+// };
+
+const isNeedCash = (rawActionList, isTerminal, heroEnumPosition) => {
+    const heroMoved = rawActionList.filter(action => action.position === heroEnumPosition && action.action !== 0).length;
+    if (enumPoker.enumPoker.perfomancePolicy.prepareCashStrategyFirstHeroMove && heroMoved) {
+        return true;
+    }
+
+    return getCurStreet(rawActionList, isTerminal) >= enumPoker.enumPoker.perfomancePolicy.prepareCashStrategyStreet;
 };
 
-// нужно только для того чтобы понять: добавлять в очередь задачу или синхронно
 const isNeedSimulation = (rawActionList, isTerminal) => {
     const street = getCurStreet(rawActionList, isTerminal);
 
@@ -1844,7 +1856,7 @@ const isNeedSimulation = (rawActionList, isTerminal) => {
         return true;
     }
     if (street === enumPoker.enumPoker.perfomancePolicy.startSimulationStreet) {
-        return getMovesCount(rawActionList, street, isTerminal) >= enumPoker.enumPoker.perfomancePolicy.startMoveSimultion;
+        return getMovesCount(rawActionList, street, isTerminal) >= enumPoker.enumPoker.perfomancePolicy.startMoveSimulation;
     }
 
     return false;
@@ -1921,7 +1933,7 @@ const prompterListener = (setup, request, gameTypesSettings) => {
             const heroPosition = initPlayers[heroChair].enumPosition;
             const isHeroTurn = move_position === heroPosition;
             const move_id = rawActionList.length;                   // !!! БУДУЩИЙ ход, которого еще нету в rawActions
-            const needCash = isNeedCash(rawActionList, isTerminal);
+            const needCash = isNeedCash(rawActionList, isTerminal, heroPosition);
             const needSimulation = isNeedSimulation(rawActionList, isTerminal);
             const request = {
                 handNumber,
@@ -1944,13 +1956,17 @@ const prompterListener = (setup, request, gameTypesSettings) => {
             // !getting penalty
             // const penalty = setup.playSetup.getPenalty(heroPosition, isTerminal, move_id);
 
-            if (!needSimulation && isHeroTurn) {
+            if (!needCash && isHeroTurn) {
                 movesHandler.getHill(request, undefined, true);
                 // calls setup.playSetup.handPrompt inside movesHandler.getHill
             }
 
             if (needCash) {
                 setup.tasksQueue.queueHandler(handNumber, rawActionList.length, request);
+
+                // if (isDebugMode) {
+                //     client.emit(enumPoker.enumCommon.DEBUG_MOVES_HANDLER, { isNeedCash: true });
+                // }
             }
 
             // шлем симтуацию в подсказчик
@@ -1961,10 +1977,12 @@ const prompterListener = (setup, request, gameTypesSettings) => {
                     id,
                 };
 
-                setTimeout(() => {
-                    // console.log('send prompt');
-                    client.emit(PROMPT, promptData);
-                }, 0);
+                // setTimeout(() => {
+                //     // console.log('send prompt');
+                //     client.emit(PROMPT, promptData);
+                // }, 0);
+
+                client.emit(PROMPT, promptData);
             }
         }
     }

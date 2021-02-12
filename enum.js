@@ -39,8 +39,8 @@ const enumPoker = Object.freeze({
         prepareCashStrategyFirstHeroMove: true,
         prepareCashStrategyStreet: 1,
         startSimulationStreet: 1,
-        startMoveSimultion: 1,
-        startMultipotMoveSimulation: 1,
+        startMoveSimulation: 0,
+        startMultipotMoveSimulation: 0,
         maxActiveTasks: 1,               // pack moves within one hand number
         maxActiveSimulations: 1,
         oneHandCallRegretCount: 1,
@@ -65,6 +65,7 @@ const enumCommon = Object.freeze({
     PROMPT: 'prompt',
     HAND_PROMPT: 'hand_prompt',
     DEBUG_MOVES_HANDLER: 'debug_moves_handler',
+    DEBUG_MOVES_TABLE: 'debug_moves_info',
 });
 
 const rooms = Object.freeze({
