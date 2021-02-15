@@ -36,6 +36,7 @@ class AggregatorPool {
         this.pool = {};
         Array(enumPoker.enumPoker.perfomancePolicy.maxActiveTasks).fill().forEach((cur, index) => {
             const modelsPool = new addon.ModelsPool('C:\\projects\\mephisto_back-end_Node.js\\custom_module\\models\\regret_model', 'trained_RS');
+
             this.pool[index] = {
                 modelsPool,
                 aggregator: new addon.RegretPoolToStrategyAggregator( modelsPool ),
@@ -631,6 +632,8 @@ const getHill = (request, callback, isOneHand) => {
                 const { position, invest, action } = rawActionList[move];
                 console.log(`push_move(${position}, ${invest}, ${action})`);
                 addonSetup.push_move(position, invest, action);
+            } else if (move === move_id && !nodeSimulation(playSetup, rawActionList, move, initPlayers, positionEnumKeyMap)) {
+                // do nothing
             } else {
                 if (isOneHand) {
                     if (move === move_id) {
@@ -638,6 +641,8 @@ const getHill = (request, callback, isOneHand) => {
                         break;
                     }
                 } else {
+                    const isSimulationNode = nodeSimulation(playSetup, rawActionList, move, initPlayers, positionEnumKeyMap);
+
                     if (!SimulationsHandler.isMoveLock(playSetup, handNumber, move)) {
                         // console.log(111);
                         if (aggregatorPool.isFree()) {
@@ -679,7 +684,7 @@ const getHill = (request, callback, isOneHand) => {
                                 }
                             };
 
-                            if (nodeSimulation(playSetup, rawActionList, move, initPlayers, positionEnumKeyMap)) {  // sync mode with simulations
+                            if (isSimulationNode) {  // sync mode with simulations
                                 if (isCashReady(rawActionList, cash, move)) {
                                     // debug mode
                                     if (isDebugMode) {
