@@ -38,7 +38,101 @@ const playUtils = Object.freeze({
     });
 
     return [...new Set(arr)];
-  }
+  },
+
+  // !!! rawActions functions
+
+  // инициальный баланс на текущей улице(или указанной). Так же используется для валидации и замены глючных амаунтов или балансов
+  // выдает то, что мы запишем в баланс первого мува на текущей улице в rawActions
+  // передаем обрезаный до целевого мува rawActions
+  initPlayerBalance(enumPosition, initPlayers, rawActions, positionEnumKeyMap) {
+    const currentStreet = rawActions[rawActions.length - 1].street;
+    let initBalance;
+
+    for (let i = rawActions.length - 1; i >= 0; i--) {
+      if (rawActions[i].position === enumPosition) {
+        if (currentStreet === rawActions[i].street) {
+          initBalance = rawActions[i].balance;
+        } else if (initBalance !== undefined) {
+          return initBalance;
+        } else {
+          return rawActions[i].balance - rawActions[i].invest;
+        }
+      }
+    }
+
+    if (initBalance !== undefined) {
+      return initBalance;
+    }
+
+    return initPlayers[positionEnumKeyMap[enumPosition]].initBalance;   // was't any move before
+  },
+
+  // передаем обрезаный до целевого мува rawActions
+  whoIsInGame(rawActions, initPlayers, positionEnumKeyMap) {
+    const playersInGame = [];       //добавляем всех у кого УМНЫЙ баланc больше нуля и кто не делал фолд
+    const blackList = [];
+    const allPlayers = [];
+    for (let i = rawActions.length - 1; i >= 0; i--) { //добавляем всех кто сфолдил или баланс = 0
+      if (Math.abs(this.initPlayerBalance(rawActions[i].position, initPlayers, rawActions, positionEnumKeyMap) - rawActions[i].amount) < 0.1 || rawActions[i].action === 5) {
+        blackList.push(rawActions[i].position);
+      }
+    }
+
+    initPlayers.forEach(player => {
+      if (player !== undefined) {
+        allPlayers.push(player.enumPosition);
+      }
+    });
+
+    for (let i = allPlayers.length - 1; i >= 0; i--) { // добавляем только тех кто остался
+      if (blackList.indexOf(allPlayers[i]) < 0) {
+        playersInGame.push(allPlayers[i]);
+      }
+    }
+    return playersInGame;
+  },
+
+  // передаем обрезаный до целевого мува rawActions
+  maxAmountAtCurrentStreet(rawActions) {
+    const currentStreet = rawActions[rawActions.length - 1].street;
+    for (let i = rawActions.length - 1; i > 0; i--) {
+      if (rawActions[i].street === currentStreet) {
+        if (rawActions[i].action < 3) {
+          return +rawActions[i].amount;
+        }
+      } else {
+        return 0;
+      }
+    }
+    return +rawActions[1].amount;       // BB
+  },
+
+  isTerminalStreetState(rawActions, move, initPlayers, positionEnumKeyMap) {
+    const currentAmount = this.maxAmountAtCurrentStreet(rawActions);
+    const nPlayers = this.whoIsInGame(rawActions, initPlayers, positionEnumKeyMap);    //добавляем всех у кого УМНЫЙ баланc больше нуля и кто не делал фолд. массив с позициями
+
+    const currentStreet = rawActions[rawActions.length - 1].street;
+    if (rawActions[rawActions.length - 1].action < 3) {return false;}
+
+    // BB moves ones exception
+    if (currentStreet === 0 && rawActions.filter(action => action.position === rawActions[1].position).length === 1) {
+      return false;
+    }
+
+    for (let i = rawActions.length - 1; i >= 0; i--) {
+      if (nPlayers.indexOf(rawActions[i].position) >= 0) { // если среди играющих есть такой игрок
+        if (rawActions[i].amount === currentAmount && rawActions[i].street === currentStreet) { // проверяем совпадает ли значение его ставки и улица
+          nPlayers.splice(nPlayers.indexOf(rawActions[i].position), 1); // удаляем игрока с совпавшей позицией
+          if (nPlayers.length === 0) {
+            return true;
+          }
+        } else {return false;}
+      }
+    }
+  },
+
+
 });
 
 // console.log(playUtils.createStacksArr(75, 3));
