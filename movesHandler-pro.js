@@ -31,6 +31,42 @@ aggregatorSync = new addon.RegretPoolToStrategyAggregator( modelsPoolSync );
 // console.log(regret);
 
 
+// mock strategy function
+const mockStrategy = (callBack) => {
+    const strategy = {                                 // test strategy example
+        '1': {
+            '0': { strategy: 0.0011505433459377008, regret: 20 },
+            '100': { strategy: 0.0478785282734064, regret: 10 },
+            '133': { strategy: 0, regret: 40 },
+            '200': { strategy: 0.000045384682651174424, regret: 35 },
+            '300': { strategy: 0, regret: 14 },
+            '2400': { strategy: 0, regret: -40 },
+            '-1': { strategy: 0.9509255436980047, regret: 10 }
+        },
+        '2': {
+            '0': { strategy: 0.0011505433459377008, regret: 20 },
+            '100': { strategy: 0.0478785282734064, regret: 10 },
+            '133': { strategy: 0, regret: 40 },
+            '200': { strategy: 0.000045384682651174424, regret: 35 },
+            '300': { strategy: 0, regret: 14 },
+            '2400': { strategy: 0, regret: -40 },
+            '-1': { strategy: 0.9509255436980047, regret: 10 }
+        },
+        '3': {
+            '0': { strategy: 0.0011505433459377008, regret: 20 },
+            '100': { strategy: 0.0478785282734064, regret: 10 },
+            '133': { strategy: 0, regret: 40 },
+            '200': { strategy: 0.000045384682651174424, regret: 35 },
+            '300': { strategy: 0, regret: 14 },
+            '2400': { strategy: 0, regret: -40 },
+            '-1': { strategy: 0.9509255436980047, regret: 10 }
+        }
+    };
+    setTimeout(() => {
+        callBack(strategy);
+    }, 300);
+};
+
 class AggregatorPool {
     constructor() {
         this.pool = {};
@@ -70,6 +106,50 @@ class AggregatorPool {
 
 const aggregatorPool = new AggregatorPool();
 
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+const bus = {}     // !!! WAITING API MODULE
+
+class SimulatePool {
+    constructor() {
+        this.pool = {};
+        Array(enumPoker.enumPoker.perfomancePolicy.maxActiveSimulations).fill().forEach((cur, index) => {
+
+            this.pool[index] = {
+                simulator: new addon.PluribusSimSession( bus ),
+                isLock: false,
+            }
+        });
+    }
+
+    isFree() {
+        for (const key in this.pool) {
+            if (!this.pool[key].isLock) {
+                return true;
+            }
+            return false;
+        }
+    }
+
+    getFreeKey() {
+        for (const key in this.pool) {
+            if (!this.pool[key].isLock) {
+                this.pool[key].isLock = true;
+                return key;
+            }
+        }
+    }
+
+    unlock(key) {
+        this.pool[key].isLock = false;
+    }
+}
+
+const simulatorPool = new SimulatePool();
+
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////
+
 class TasksQueue {
     constructor(aggregatorPool) {
         this.simulationsQueue = [];
@@ -78,15 +158,20 @@ class TasksQueue {
 
     tasksHandler() {
         if (this.aggregatorPool.isFree()) {
-            const task = this.simulationsQueue.shift();
-            if (task) {
-                task.callback();
+            const importantTask = this.simulationsQueue.filter(task => task.isImportant).shift();
+            if (importantTask) {
+                importantTask.callback();
+            } else {
+                const task = this.simulationsQueue.shift();
+                if (task) {
+                    task.callback();
+                }
             }
         }
     }
 
-    queueHandler(handNumber, callback) {
-        this.simulationsQueue.push({ handNumber, callback });
+    queueHandler(handNumber, callback, isImportant) {
+        this.simulationsQueue.push({ handNumber, callback, isImportant });
         this.tasksHandler();
     }
 
@@ -228,42 +313,6 @@ const setHills = (addonSetup, initPlayers, rawActionList, cash, move) => {
             addonSetup.setHill(position, hillMultiply(rawActionList, cash, player.enumPosition, move));
         }
     });
-};
-
-// mock strategy function
-const mockStrategy = (callBack) => {
-    const strategy = {                                 // test strategy example
-        '1': {
-            '0': { strategy: 0.0011505433459377008, regret: 20 },
-            '100': { strategy: 0.0478785282734064, regret: 10 },
-            '133': { strategy: 0, regret: 40 },
-            '200': { strategy: 0.000045384682651174424, regret: 35 },
-            '300': { strategy: 0, regret: 14 },
-            '2400': { strategy: 0, regret: -40 },
-            '-1': { strategy: 0.9509255436980047, regret: 10 }
-        },
-        '2': {
-            '0': { strategy: 0.0011505433459377008, regret: 20 },
-            '100': { strategy: 0.0478785282734064, regret: 10 },
-            '133': { strategy: 0, regret: 40 },
-            '200': { strategy: 0.000045384682651174424, regret: 35 },
-            '300': { strategy: 0, regret: 14 },
-            '2400': { strategy: 0, regret: -40 },
-            '-1': { strategy: 0.9509255436980047, regret: 10 }
-        },
-        '3': {
-            '0': { strategy: 0.0011505433459377008, regret: 20 },
-            '100': { strategy: 0.0478785282734064, regret: 10 },
-            '133': { strategy: 0, regret: 40 },
-            '200': { strategy: 0.000045384682651174424, regret: 35 },
-            '300': { strategy: 0, regret: 14 },
-            '2400': { strategy: 0, regret: -40 },
-            '-1': { strategy: 0.9509255436980047, regret: 10 }
-        }
-    };
-    setTimeout(() => {
-        callBack(strategy);
-    }, 300);
 };
 
 const mockStrategyOne = (callBack) => {
