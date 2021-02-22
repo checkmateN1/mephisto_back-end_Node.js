@@ -41,11 +41,12 @@ const enumPoker = Object.freeze({
         startSimulationStreet: 1,
         startMoveSimulation: 0,
         startMultipotMoveSimulation: 0,
-        maxActiveTasks: 1,               // pack moves within one hand number
+        maxActiveAggregate: 1,               // pack moves within one hand number
         maxActiveSimulations: 1,
         oneHandCallRegretCount: 1,
         isSimulatorOnly: false,
         projectDrive: 'C',
+        useCpu: false,
         debugMode: true,
     },
     DBsettings: {

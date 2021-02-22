@@ -132,7 +132,68 @@ const playUtils = Object.freeze({
     }
   },
 
+  // определяем делаем ли мы именно симуляции а не агреггируем сетями
+  nodeSimulation(playSetup, rawActionList, move, initPlayers, positionEnumKeyMap, isDebugMode) {
+    // !!!!!!!!!!!!!!!!!!! определять для конкретного мува терминальное здесь или не здесь!
+    const initStreet = rawActionList[move] ? rawActionList[move].street : rawActionList[rawActionList.length - 1].street;
 
+    // debug
+    if (isDebugMode && playSetup.client) {
+      const rawActionsSlice = rawActionList.slice();
+      if (move !== undefined && rawActionsSlice[move]) {
+        rawActionsSlice.length = move + 1;
+      }
+
+      const isTerminal = this.isTerminalStreetState(rawActionsSlice, move, initPlayers, positionEnumKeyMap);
+      const street = this.getCurStreet(rawActionsSlice, isTerminal);     // улица следующего за rawActionList хода
+      const result = this.getMovesCount(rawActionsSlice, street, isTerminal) >= enumPoker.enumPoker.perfomancePolicy.startMoveSimulation;
+
+      const data = {
+        street,
+        isTerminal,
+        isNeedCash: true,
+        isNodeSimulation: street < enumPoker.enumPoker.perfomancePolicy.startSimulationStreet ? false : result,
+        movesCount: this.getMovesCount(rawActionsSlice, street, isTerminal),
+      };
+
+      console.log('debug_moves_handler', data);
+      playSetup.client.emit(enumPoker.enumCommon.DEBUG_MOVES_HANDLER, data);
+    }
+
+    if (initStreet > enumPoker.enumPoker.perfomancePolicy.startSimulationStreet) {
+      return true;
+    }
+
+    const rawActionsSlice = rawActionList.slice();
+    if (move !== undefined && rawActionsSlice[move]) {
+      rawActionsSlice.length = move + 1;
+    }
+
+    const isTerminal = this.isTerminalStreetState(rawActionsSlice, move, initPlayers, positionEnumKeyMap);
+    const street = this.getCurStreet(rawActionsSlice, isTerminal);     // улица следующего за rawActionList хода
+
+    if (street < enumPoker.enumPoker.perfomancePolicy.startSimulationStreet) {
+      return false;
+    }
+
+    return this.getMovesCount(rawActionsSlice, street, isTerminal) >= enumPoker.enumPoker.perfomancePolicy.startMoveSimulation;
+  },
+
+  // возвращает улицу СЛЕДУЮЩЕГО за предысторией мува
+  getCurStreet(rawActionList, isTerminal) {
+    let lastStreet = rawActionList[rawActionList.length - 1].street;
+
+    return (isTerminal && lastStreet < 3) ? (lastStreet + 1) : lastStreet;
+  },
+
+  // возвращает количество фактических ходов на улице
+  getMovesCount(rawActionList, street, isTerminal) {
+    if (isTerminal) {
+      return 0;
+    }
+
+    return rawActionList.filter(el => el.street === street).length;
+  }
 });
 
 // console.log(playUtils.createStacksArr(75, 3));

@@ -14,7 +14,7 @@ class TasksQueue {
     }
 
     tasksHandler() {
-        if (this.activeTasks.length < enumPoker.enumPoker.perfomancePolicy.maxActiveTasks) {
+        if (this.activeTasks.length < enumPoker.enumPoker.perfomancePolicy.maxActiveAggregate) {
             const task = this.tasksQueue.shift();
             if (task) {
                 this.activeTasks.push(task);

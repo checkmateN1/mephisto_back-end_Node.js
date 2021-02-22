@@ -1839,7 +1839,7 @@ const getMovesCount = (rawActionList, street, isTerminal) => {
 // };
 
 const isNeedCash = (rawActionList, isTerminal, heroEnumPosition) => {
-    const heroMoved = rawActionList.filter(action => action.position === heroEnumPosition && action.action !== 0).length;
+    const heroMoved = rawActionList.filter(action => action.position === heroEnumPosition && action.action !== 0 && action.action !== 5).length;
     if (enumPoker.enumPoker.perfomancePolicy.prepareCashStrategyFirstHeroMove && heroMoved) {
         return true;
     }

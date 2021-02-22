@@ -2,6 +2,8 @@
 // const middleware = require('./engineMiddleware_work');   // molotok
 const enumPoker = require('./enum');
 const utils = require('./utils');
+const playUtils = require('./playLogic/play_utils');
+const addonUtils = require('./playLogic/addonUtils');
 
 const _ = require('lodash');
 const fs = require('fs');
@@ -11,38 +13,7 @@ const diskDrive = enumPoker.enumPoker.perfomancePolicy.projectDrive;
 
 const isOfflineStrategy = false;
 
-addon = require(`${diskDrive}:\\projects\\mephisto_back-end_Node.js\\custom_module\\PokerEngine\\pokerengine_addon`);
-addon.SetDefaultDevice('cpu');
-
-///!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! всегда включать на мефисте
-if (enumPoker.enumPoker.perfomancePolicy.isSimulatorOnly || diskDrive === 'D') {
-    addon.DeserializeBucketingType(`${diskDrive}:\\projects\\mephisto_back-end_Node.js\\custom_module\\buckets\\`, 0);
-    addon.DeserializeBucketingType(`${diskDrive}:\\projects\\mephisto_back-end_Node.js\\custom_module\\buckets\\`, 4);
-}
-
-const trainedPrefix = 'trained_RS';
-const modelsAllPath = ':\\projects\\mephisto_back-end_Node.js\\custom_module\\models\\regret_model';
-
-// addon.DeserializeBucketingType('C:\\projects\\mephisto_back-end_Node.js\\custom_module\\buckets\\', 0);
-
-if (isOfflineStrategy) {
-    strategyObject = addon.Strategy.Load(`${diskDrive}:\\projects\\mephisto_back-end_Node.js\\custom_module\\strategies\\`);
-} else {
-    modelsPool = new addon.ModelsPool((diskDrive + modelsAllPath), trainedPrefix);
-    aggregator = new addon.RegretPoolToStrategyAggregator( modelsPool );
-}
-
-// const setup = new addon.Setup(1);
-// setup.set_player(0,2500);
-// setup.set_player(8,2500);
-// setup.push_move(0, 50, 0);
-// setup.push_move(8, 100, 0);
-// strategy = aggregator.aggregate_all(setup);
-
-// console.log('test strategy');
-// console.log(strategy);
-
-const handsDict = addon.GetHandsDict();
+const handsDict = addonUtils.getHandsDict();
 
 let currentGeneration = 'all';
 let generationsNames = [];
@@ -92,7 +63,7 @@ const copySingleGenerations = () => {
       .sort((a, b) => +a - +b);
 };
 console.log('start copySingleGenerations');
-copySingleGenerations();
+// copySingleGenerations();
 // console.log('generationsNames', generationsNames);
 
 
@@ -180,9 +151,7 @@ getSizing = (strategy, cur) => {     // возвращает ближайший 
 getMaxAmount = (arr, maxIndex) => arr.reduce((max, cur, i) => (i <= maxIndex && cur.amount > max) ? cur.amount : max, 0);
 
 
-
-//
-getHill = (position, curInvest, movesCount, setup) => {
+getHill = async (position, curInvest, movesCount, setup, isNodeSimulation, simSession) => {
     // console.log(`start getHill! MovesCount: ${movesCount}, movesInEngine: ${setup.movesInEngine}`);
     let strategy = null;
 
@@ -209,8 +178,14 @@ getHill = (position, curInvest, movesCount, setup) => {
         // console.log('strategyObject from offline!!!');
         // console.log(strategy);
     } else {
+
+      // чтобы получить стратегию после симуляций, нужно ввести перемноженные веса рук из setup.hillsCash[movesCount]
         try {
-            strategy = aggregator.aggregate_all(setup.addonSetup, true);
+            if (isNodeSimulation) {
+              strategy = await addonUtils.getStrategyAsync(true, setup.addonSetup, simSession, {}, 0, 0);
+            } else {
+              strategy = await addonUtils.getStrategyAsync(false, setup.addonSetup);
+            }
         } catch (e) {
             console.log(e);
             utils.errorsHandler(e);
@@ -220,8 +195,10 @@ getHill = (position, curInvest, movesCount, setup) => {
         // console.log(strategy);
     }
     console.log(`get strategy success!`);
+    console.log(strategy);
 
-    // console.log('strategy[1325]');
+
+  // console.log('strategy[1325]');
     // console.log(strategy[1325]);
 
     // new strategy
@@ -323,14 +300,14 @@ getAllHandStrategy = (cash, position, setup) => {            // cash = [{ hand, 
     // console.log('preflopCash');
     // console.log(preflopCash);
 
-    console.log('preflopCash[0].strategy[preflopCash[0].optimalSizing]');
-    console.log(preflopCash ? preflopCash[0].strategy[preflopCash[0].optimalSizing] : null);
-
-    console.log('preflopCash[0].strategy[preflopCash[0].optimalSizing].strategy');
-    console.log(preflopCash ? preflopCash[0].strategy[preflopCash[0].optimalSizing].strategy: null);
-
-    console.log('!!preflopCash');
-    console.log(!!preflopCash);
+    // console.log('preflopCash[0].strategy[preflopCash[0].optimalSizing]');
+    // console.log(preflopCash ? preflopCash[0].strategy[preflopCash[0].optimalSizing] : null);
+    //
+    // console.log('preflopCash[0].strategy[preflopCash[0].optimalSizing].strategy');
+    // console.log(preflopCash ? preflopCash[0].strategy[preflopCash[0].optimalSizing].strategy: null);
+    //
+    // console.log('!!preflopCash');
+    // console.log(!!preflopCash);
 
 
     const allHandsStrategy = {     // simulator format
@@ -346,7 +323,7 @@ getAllHandStrategy = (cash, position, setup) => {            // cash = [{ hand, 
                 Object.keys(strategy).forEach(key => {
                     strat[key == -1 ? -1 : parseInt(key)/100] = {
                         strategy: strategy[key].strategy,
-                        ev: (strategy[key].regret/100).toFixed(2),
+                        ev: (strategy[key].ev/100).toFixed(2),
                     };
                 })
             }
@@ -420,20 +397,29 @@ popMoves = (nMove, setup) => {
     }
 };
 
+const isNodeSimulation = (street, moveAtStreet) => {
+    if (street > enumPoker.enumPoker.perfomancePolicy.startSimulationStreet) {
+        return true;
+    } else if (street === enumPoker.enumPoker.perfomancePolicy.startSimulationStreet) {
+        return moveAtStreet >= enumPoker.enumPoker.perfomancePolicy.startMoveSimulation;
+    }
 
-const movesHandler = (request, bbSize, setup, nodeId, isTerminal, enumPosition) => {      // nodeId - начиная с нуля... первый ход префлопа после постов - nodeId === 2. Пуш борд не считаем
+    return false;
+};
+
+const movesHandler = async (request, bbSize, setup, nodeId) => {      // nodeId - начиная с нуля... первый ход префлопа после постов - nodeId === 2. Пуш борд не считаем
     console.log(`enter moves handler!!`);
-    // let isCashSteelUseful = !_.isEqual(setup.initCash, setup.movesCash);
+    const simSession = addonUtils.getSimSessionForFeatureWithoutHeroHand();
     let isCashSteelUseful = true;
     let movesCount = 0;
 
     if (isOfflineStrategy || !isInitPlayersEqual(request, setup) || setup.movesCash.generation != currentGeneration) {
         console.log('!!!!! releaseSetup !!!!');
         console.log(bbSize);
-        setup.addonSetup = new addon.Setup(bbSize);
+        setup.addonSetup = addonUtils.getSetup(bbSize);
         setup.resetCash();
         setup.movesCash.generation = currentGeneration;
-        setup.hillsCash = []
+        setup.hillsCash = [];
         setup.movesInEngine = 0;
         isCashSteelUseful = false;
 
@@ -508,7 +494,8 @@ const movesHandler = (request, bbSize, setup, nodeId, isTerminal, enumPosition) 
 
             let cash = [];
             if (i > 1) {
-                cash = getHill(position, maxAmountRaise, movesCount, setup);
+                const nodeSimulation = isNodeSimulation(0, i);
+                cash = await getHill(position, maxAmountRaise, movesCount, setup, nodeSimulation, simSession).then(arr => arr);
                 if (cash === null) {
                     break;
                 }
@@ -598,7 +585,8 @@ const movesHandler = (request, bbSize, setup, nodeId, isTerminal, enumPosition) 
                 }
                 isCashSteelUseful = false;
 
-                const cash = getHill(position, maxAmountRaise, movesCount, setup);
+                const nodeSimulation = isNodeSimulation(1, i);
+                const cash = await getHill(position, maxAmountRaise, movesCount, setup, nodeSimulation, simSession);
                 if (cash === null) {
                     break;
                 }
@@ -670,7 +658,8 @@ const movesHandler = (request, bbSize, setup, nodeId, isTerminal, enumPosition) 
                 }
                 isCashSteelUseful = false;
 
-                const cash = getHill(position, maxAmountRaise, movesCount, setup);
+                const nodeSimulation = isNodeSimulation(2, i);
+                const cash = await getHill(position, maxAmountRaise, movesCount, setup, nodeSimulation, simSession);
                 if (cash === null) {
                     break;
                 }
@@ -742,7 +731,8 @@ const movesHandler = (request, bbSize, setup, nodeId, isTerminal, enumPosition) 
                 }
                 isCashSteelUseful = false;
 
-                const cash = getHill(position, maxAmountRaise, movesCount, setup);
+                const nodeSimulation = isNodeSimulation(3, i);
+                const cash = await getHill(position, maxAmountRaise, movesCount, setup, nodeSimulation, simSession);
                 if (cash === null) {
                     break;
                 }
