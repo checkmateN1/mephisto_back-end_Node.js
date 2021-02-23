@@ -426,7 +426,7 @@ class SimulationsHandler {
         }
     }
 
-    static checkResimulStreetCount(playSetup, handNumber, streetNumber) {
+    static getResimulStreetCount(playSetup, handNumber, streetNumber) {
         if (playSetup.activeSimulations && playSetup.activeSimulations[handNumber]) {
             if (playSetup.activeSimulations[handNumber].resimulStreetsCount) {
                 return playSetup.activeSimulations[handNumber].resimulStreetsCount[streetNumber];
@@ -665,6 +665,9 @@ const getHill = (request, callback, isOneHand) => {
                         break;
                     }
                 } else {
+                    const curStreetMove = playUtils.getCurStreet(rawActionList, move, initPlayers, positionEnumKeyMap);
+
+                    // !!! переписать с учетом того, что вычислили curStreetMove;
                     const isSimulationNode = playUtils.nodeSimulation(playSetup, rawActionList, move, initPlayers, positionEnumKeyMap, isDebugMode);
 
                     if (!SimulationsHandler.isMoveLock(playSetup, handNumber, move)) {
@@ -683,7 +686,6 @@ const getHill = (request, callback, isOneHand) => {
 
                         // создаем для замыкания данные по поводу количества пересимуляций на улице текущего мува
                         // определить улицу мува, который мы будем симулевать
-                        const curStreetSimulCount = SimulationsHandler.checkResimulStreetCount(playSetup, handNumber, );
 
                         // callback
                         const getStrategyAsync = (strategy) => {
@@ -707,7 +709,10 @@ const getHill = (request, callback, isOneHand) => {
                             // !!!!!!!!!!!!! debug
 
                             // проверяем что количество пересимуляций по улице совпадает с текущим(которое уже могло инкрементироваться)
+                            if (curStreetMove === SimulationsHandler.getResimulStreetCount(playSetup, handNumber, curStreetMove)) {
+                                // не было запроса на пересимуляцию с момента постановки задачи
 
+                            }
                             cash[move] = { strategy };
 
                             SimulationsHandler.checkCallBacks(playSetup, handNumber, isMockStrategy);

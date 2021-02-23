@@ -145,7 +145,7 @@ const playUtils = Object.freeze({
       }
 
       const isTerminal = this.isTerminalStreetState(rawActionsSlice, move, initPlayers, positionEnumKeyMap);
-      const street = this.getCurStreet(rawActionsSlice, isTerminal);     // улица следующего за rawActionList хода
+      const street = this.getNextMoveSeet(rawActionsSlice, isTerminal);     // улица следующего за rawActionList хода
       const result = this.getMovesCount(rawActionsSlice, street, isTerminal) >= enumPoker.enumPoker.perfomancePolicy.startMoveSimulation;
 
       const data = {
@@ -170,7 +170,7 @@ const playUtils = Object.freeze({
     }
 
     const isTerminal = this.isTerminalStreetState(rawActionsSlice, move, initPlayers, positionEnumKeyMap);
-    const street = this.getCurStreet(rawActionsSlice, isTerminal);     // улица следующего за rawActionList хода
+    const street = this.getNextMoveSeet(rawActionsSlice, isTerminal);     // улица следующего за rawActionList хода
 
     if (street < enumPoker.enumPoker.perfomancePolicy.startSimulationStreet) {
       return false;
@@ -179,8 +179,18 @@ const playUtils = Object.freeze({
     return this.getMovesCount(rawActionsSlice, street, isTerminal) >= enumPoker.enumPoker.perfomancePolicy.startMoveSimulation;
   },
 
+  // возвращает улицу текущего мува
+  getCurStreet(rawActionList, move, initPlayers, positionEnumKeyMap) {
+    if (rawActionList[move]) {
+      return rawActionList[move].street;
+    }
+
+    const isTerminal = this.isTerminalStreetState(rawActionList, move, initPlayers, positionEnumKeyMap);
+    return this.getNextMoveSeet(rawActionList, isTerminal);
+  },
+
   // возвращает улицу СЛЕДУЮЩЕГО за предысторией мува
-  getCurStreet(rawActionList, isTerminal) {
+  getNextMoveSeet(rawActionList, isTerminal) {
     let lastStreet = rawActionList[rawActionList.length - 1].street;
 
     return (isTerminal && lastStreet < 3) ? (lastStreet + 1) : lastStreet;
