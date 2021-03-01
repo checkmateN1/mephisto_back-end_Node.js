@@ -178,7 +178,6 @@ getHill = async (position, curInvest, movesCount, setup, isNodeSimulation, simSe
         // console.log('strategyObject from offline!!!');
         // console.log(strategy);
     } else {
-
       // чтобы получить стратегию после симуляций, нужно ввести перемноженные веса рук из setup.hillsCash[movesCount]
         try {
             if (isNodeSimulation) {
@@ -198,7 +197,7 @@ getHill = async (position, curInvest, movesCount, setup, isNodeSimulation, simSe
     console.log(strategy);
 
 
-  // console.log('strategy[1325]');
+    // console.log('strategy[1325]');
     // console.log(strategy[1325]);
 
     // new strategy
@@ -413,6 +412,8 @@ const movesHandler = async (request, bbSize, setup, nodeId) => {      // nodeId 
     let isCashSteelUseful = true;
     let movesCount = 0;
 
+    const { rawActionList } = request;
+
     if (isOfflineStrategy || !isInitPlayersEqual(request, setup) || setup.movesCash.generation != currentGeneration) {
         console.log('!!!!! releaseSetup !!!!');
         console.log(bbSize);
@@ -486,7 +487,11 @@ const movesHandler = async (request, bbSize, setup, nodeId) => {      // nodeId 
             action,
         };
 
-        if (!_.isEqual(setup.movesCash.preflop[i], pushHintMoveData)) {     // no using cash
+        // получаем сайзинги из аддона
+        const sizings = [];  // набор всех сайзингов на улице: 0 - bet, 1 - raise, 2 - reraise
+        const maxDeviationsPercent = enumPoker.enumPoker.perfomancePolicy.deviationSizings[0];  // preflop  [0.15, 0.2, 0.25]
+
+        if (!_.isEqual(setup.movesCash.preflop[i], pushHintMoveData) || playUtils.isNonStandartSizings(rawActionList, 0, sizings, maxDeviationsPercent)) {     // no using cash
             if (isCashSteelUseful) {        // if we used cash before this iteration
                 popMoves(i, setup);
             }

@@ -2,6 +2,7 @@ const moment = require('moment');
 const _ = require('lodash');
 
 const enumPoker = require('../enum');
+const playUtils = require('./play_utils');
 const validator = require('./frameCreator');
 const movesHandler = require('../movesHandler-pro');
 
@@ -1847,21 +1848,6 @@ const isNeedCash = (rawActionList, isTerminal, heroEnumPosition) => {
     return getCurStreet(rawActionList, isTerminal) >= enumPoker.enumPoker.perfomancePolicy.prepareCashStrategyStreet;
 };
 
-const isNeedSimulation = (rawActionList, isTerminal) => {
-    const street = getCurStreet(rawActionList, isTerminal);
-
-    // console.log(`inside isNeedSimulation //////////////////////////// street = ${street}`);
-
-    if (street > enumPoker.enumPoker.perfomancePolicy.startSimulationStreet) {
-        return true;
-    }
-    if (street === enumPoker.enumPoker.perfomancePolicy.startSimulationStreet) {
-        return getMovesCount(rawActionList, street, isTerminal) >= enumPoker.enumPoker.perfomancePolicy.startMoveSimulation;
-    }
-
-    return false;
-};
-
 const prompterListener = (setup, request, gameTypesSettings) => {
     // console.log('enter prompter listener');
     const {
@@ -1934,7 +1920,7 @@ const prompterListener = (setup, request, gameTypesSettings) => {
             const isHeroTurn = move_position === heroPosition;
             const move_id = rawActionList.length;                   // !!! БУДУЩИЙ ход, которого еще нету в rawActions
             const needCash = isNeedCash(rawActionList, isTerminal, heroPosition);
-            const needSimulation = isNeedSimulation(rawActionList, isTerminal);
+            const needSimulation = playUtils.nodeSimulation({}, rawActionList, (rawActionList.length - 1), initPlayers, positionEnumKeyMap, false, rawActionList[rawActionList.length - 1].street);
             const request = {
                 handNumber,
                 playSetup: setup.playSetup,
@@ -1952,9 +1938,6 @@ const prompterListener = (setup, request, gameTypesSettings) => {
                 hand,
                 positionEnumKeyMap: Object.assign({}, positionEnumKeyMap),
             };
-
-            // !getting penalty
-            // const penalty = setup.playSetup.getPenalty(heroPosition, isTerminal, move_id);
 
             if (!needCash && isHeroTurn) {
                 movesHandler.getHill(request, undefined, true);

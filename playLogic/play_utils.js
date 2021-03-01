@@ -1,4 +1,5 @@
 // export enum = require('../enum');
+const addonUtils = require('./addonUtils');
 
 // const oldStacks = [
 //   '3:3:3',    '6:6:3',    '9:9:3',    '12:12:3',
@@ -132,10 +133,139 @@ const playUtils = Object.freeze({
     }
   },
 
+  getMaxAmountBeforeMove(rawActionList, move, street) {
+    const currentStreet = street !== undefined ? street : rawActionList[move].street;
+    for (let i = move - 1; i >= 0; i--) {
+      if (rawActionList[i].street === currentStreet) {
+        if (rawActionList[i].action < 3) {
+          return rawActionList[i].amount;
+        }
+      } else {
+        return 0;
+      }
+    }
+    return 0;
+  },
+
+  // пушим максимум 1 мув в сетап
+  getsizing(rawActionList, street, move, setup) {   // setup - необязательный параметр для производительности, в котором напушена текущая улица без мувов
+    // один запушил - один поп
+
+    // пушу всегда один мув
+    if (setup) {
+
+    }
+  },
+
+
+
+  // определяем есть ли хотя бы 1 нестандартный сайзинг
+  isNonStandartSizings(rawActions, street, maxDeviationsPercent, setup) {    // maxDeviationPercent = % отклонения от ближайшего сайзинга
+    // sizings = [[], [], [], ...] - запрос к аддону по конкретной улице // набор всех сайзингов на улице: 0 - bet, 1 - raise, 2 - reraise
+    // maxDeviationsPercent = [0.15, 0.2, 0.25] - preflop /// !возможны разные девиации в зависимости от дальности сайзингов от корня улицы или нехватки таймбанка
+    // !! Всегда подаем setup из начала улицы после пуша борда!!!
+
+    // нужны все, чтоб пушить мувы в setup
+    const actions = rawActions.filter(action => action.street === street);
+
+    // начинаем идти циклом и пушить фактические мувы если они не агрессивные. Если агрессивные - опрашиваем сайзинги
+    // затем пушим мув с фактическим сайзингом и идем до конца всех актионс на улице.
+    // заполняем массив с объектами для каждого индекса актионс - фактический сайзинг, позиция, сайзинги(sizings)
+
+    const sizingsResult = actions.map((action, index) => {
+      const result = {};
+      if (action.action === 1 || action.action === 2) {  // агромув
+        // берем сайзинги из аддона
+        result.sizings = addonUtils.getSizings(setup);
+      }
+
+      return {
+        
+      }
+    });
+
+    // нужны для записи в movesHandler-pro ради какого по счету повышения мы делали пересимуляции
+    const agressiveActions = rawActions.filter(action => action.street === street && (action.action === 1 || action.action === 2));
+    const actualSizings = actions.map((action, i) => {
+      return i > 0 ? (action.amount - this.getMaxAmountBeforeMove(actions, i, street)) : action.invest;
+    });
+
+    const sizings = []; // получаем после actualSizings
+
+
+    for (let i = 0; i < actualSizings.length; i++) {
+      if (this.isNonStandartSizing(sizings[Math.min(i, sizings.length - 1)], actualSizings[i], maxDeviationsPercent[Math.min(i, maxDeviationsPercent.length - 1)])) {
+        return true;
+      }
+    }
+
+    return false;
+  },
+
+  isNonStandartSizing(strategy, sizing, maxDeviationPercent) {
+    const closest = this.getClosestSizing(strategy, sizing);
+    const deviationPercent = (Math.abs(parseInt(sizing) - parseInt(closest)))/parseInt(closest);
+
+    return deviationPercent > maxDeviationPercent;
+  },
+
+  // определяем нестандартный сайзинг
+  getClosestSizing(strategy, sizing) {     // возвращает ближайший AGRO сайзинг к текущему
+    let closedSizing;
+    Object.keys(strategy).reduce((min, current) => {
+      const diff = Math.abs(parseInt(sizing) - parseInt(current));
+      if (diff < min && parseInt(current) !== 0) {
+        closedSizing = parseInt(current);
+        return diff;
+      } else {
+        return min;
+      }
+    }, Infinity);
+
+    return closedSizing;
+  },
+
+  getMaxAmountBeforeMove(rawActionList, move) {
+    const currentStreet = rawActionList[move].street;
+    for (let i = move - 1; i > 0; i--) {
+      if (rawActionList[i].street === currentStreet) {
+        if (rawActionList[i].action < 3) {
+          return rawActionList[i].amount;
+        }
+      } else {
+        return 0;
+      }
+    }
+    return 0;
+  },
+
+  getBoardDealPosition(street) {
+    switch (street) {
+      case 1:
+        return enumPoker.enumPoker.dealPositions.DEALPOS_FLOP;
+      case 2:
+        return enumPoker.enumPoker.dealPositions.DEALPOS_TURN;
+      case 3:
+        return enumPoker.enumPoker.dealPositions.DEALPOS_RIVER;
+    }
+  },
+
+  getPushBoardCards(street, board) {
+    switch (street) {
+      case 1:
+        return [enumPoker.enumPoker.cardsName.indexOf(board[0].value.toUpperCase() + board[0].suit),
+          enumPoker.enumPoker.cardsName.indexOf(board[1].value.toUpperCase() + board[1].suit),
+          enumPoker.enumPoker.cardsName.indexOf(board[2].value.toUpperCase() + board[2].suit)];
+      case 2:
+        return [enumPoker.enumPoker.cardsName.indexOf(board[3].value.toUpperCase() + board[3].suit)];
+      case 3:
+        return [enumPoker.enumPoker.cardsName.indexOf(board[4].value.toUpperCase() + board[4].suit)];
+    }
+  },
+
   // определяем делаем ли мы именно симуляции а не агреггируем сетями
-  nodeSimulation(playSetup, rawActionList, move, initPlayers, positionEnumKeyMap, isDebugMode) {
+  nodeSimulation(playSetup, rawActionList, move, initPlayers, positionEnumKeyMap, isDebugMode, curStreetMove) {
     // !!!!!!!!!!!!!!!!!!! определять для конкретного мува терминальное здесь или не здесь!
-    const initStreet = rawActionList[move] ? rawActionList[move].street : rawActionList[rawActionList.length - 1].street;
 
     // debug
     if (isDebugMode && playSetup.client) {
@@ -145,63 +275,50 @@ const playUtils = Object.freeze({
       }
 
       const isTerminal = this.isTerminalStreetState(rawActionsSlice, move, initPlayers, positionEnumKeyMap);
-      const street = this.getNextMoveSeet(rawActionsSlice, isTerminal);     // улица следующего за rawActionList хода
-      const result = this.getMovesCount(rawActionsSlice, street, isTerminal) >= enumPoker.enumPoker.perfomancePolicy.startMoveSimulation;
+      const result = this.getMovesCount(rawActionsSlice, curStreetMove) >= enumPoker.enumPoker.perfomancePolicy.startMoveSimulation;
 
       const data = {
-        street,
+        street: curStreetMove,
         isTerminal,
         isNeedCash: true,
         isNodeSimulation: street < enumPoker.enumPoker.perfomancePolicy.startSimulationStreet ? false : result,
-        movesCount: this.getMovesCount(rawActionsSlice, street, isTerminal),
+        movesCount: this.getMovesCount(rawActionsSlice, curStreetMove),
       };
 
       console.log('debug_moves_handler', data);
       playSetup.client.emit(enumPoker.enumCommon.DEBUG_MOVES_HANDLER, data);
     }
 
-    if (initStreet > enumPoker.enumPoker.perfomancePolicy.startSimulationStreet) {
-      return true;
-    }
-
-    const rawActionsSlice = rawActionList.slice();
-    if (move !== undefined && rawActionsSlice[move]) {
-      rawActionsSlice.length = move + 1;
-    }
-
-    const isTerminal = this.isTerminalStreetState(rawActionsSlice, move, initPlayers, positionEnumKeyMap);
-    const street = this.getNextMoveSeet(rawActionsSlice, isTerminal);     // улица следующего за rawActionList хода
-
-    if (street < enumPoker.enumPoker.perfomancePolicy.startSimulationStreet) {
+    if (curStreetMove < enumPoker.enumPoker.perfomancePolicy.startSimulationStreet) {
       return false;
     }
 
-    return this.getMovesCount(rawActionsSlice, street, isTerminal) >= enumPoker.enumPoker.perfomancePolicy.startMoveSimulation;
+    if (curStreetMove > enumPoker.enumPoker.perfomancePolicy.startSimulationStreet) {
+      return true;
+    }
+
+    return this.getMovesCount(rawActionList, curStreetMove) >= enumPoker.enumPoker.perfomancePolicy.startMoveSimulation;
   },
 
   // возвращает улицу текущего мува
-  getCurStreet(rawActionList, move, initPlayers, positionEnumKeyMap) {
+  getCurStreet(rawActionList, move, initPlayers, positionEnumKeyMap, isTerminal) {
     if (rawActionList[move]) {
       return rawActionList[move].street;
     }
 
-    const isTerminal = this.isTerminalStreetState(rawActionList, move, initPlayers, positionEnumKeyMap);
-    return this.getNextMoveSeet(rawActionList, isTerminal);
+    // нету такого мува - берем следующий за rawActions
+    return this.getNextMoveStreet(rawActionList, isTerminal);
   },
 
-  // возвращает улицу СЛЕДУЮЩЕГО за предысторией мува
-  getNextMoveSeet(rawActionList, isTerminal) {
-    let lastStreet = rawActionList[rawActionList.length - 1].street;
+  // возвращает улицу СЛЕДУЮЩЕГО за предысторией ВСЕГО rawActions мува
+  getNextMoveStreet(rawActionList, isTerminal) {
+    const lastStreet = rawActionList[rawActionList.length - 1].street;
 
     return (isTerminal && lastStreet < 3) ? (lastStreet + 1) : lastStreet;
   },
 
   // возвращает количество фактических ходов на улице
-  getMovesCount(rawActionList, street, isTerminal) {
-    if (isTerminal) {
-      return 0;
-    }
-
+  getMovesCount(rawActionList, street) {
     return rawActionList.filter(el => el.street === street).length;
   }
 });

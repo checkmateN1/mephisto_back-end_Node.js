@@ -378,30 +378,6 @@ const isCashReady = (rawActionList, cash, move_id) => {
     return true;
 };
 
-const getBoardDealPosition = (street) => {
-    switch (street) {
-        case 1:
-            return enumPoker.enumPoker.dealPositions.DEALPOS_FLOP;
-        case 2:
-            return enumPoker.enumPoker.dealPositions.DEALPOS_TURN;
-        case 3:
-            return enumPoker.enumPoker.dealPositions.DEALPOS_RIVER;
-    }
-};
-
-const getPushBoardCards = (street, board) => {
-    switch (street) {
-        case 1:
-            return [enumPoker.enumPoker.cardsName.indexOf(board[0].value.toUpperCase() + board[0].suit),
-                    enumPoker.enumPoker.cardsName.indexOf(board[1].value.toUpperCase() + board[1].suit),
-                    enumPoker.enumPoker.cardsName.indexOf(board[2].value.toUpperCase() + board[2].suit)];
-        case 2:
-            return [enumPoker.enumPoker.cardsName.indexOf(board[3].value.toUpperCase() + board[3].suit)];
-        case 3:
-            return [enumPoker.enumPoker.cardsName.indexOf(board[4].value.toUpperCase() + board[4].suit)];
-    }
-};
-
 class SimulationsHandler {
     static queueHandler(playSetup, handNumber, callback, simulationArguments) {
         if (playSetup) {
@@ -559,9 +535,9 @@ const getHill = (request, callback, isOneHand) => {
         move_id,    // !!! БУДУЩИЙ ход, которого еще нету в rawActions
         move_position,
         needCash,
+        isTerminal,
         needSimulation,
         isHeroTurn,
-        isTerminal,
         hand,
         positionEnumKeyMap,
     } = request;
@@ -607,10 +583,8 @@ const getHill = (request, callback, isOneHand) => {
 
         console.log(`start hand: ${hand} request`);
 
-        // const simSession = addonUtils.getSimSessionForFeatureWithoutHeroHand();
-        // const addonSetup = addonUtils.getSetup(BB/100);
-        const simSession = {};
-        const addonSetup = {};
+        const simSession = addonUtils.getSimSessionForFeatureWithoutHeroHand();
+        const addonSetup = addonUtils.getSetup(BB/100);
 
         initPlayers.forEach(player => {
             console.log(`set_player(${player.enumPosition}, ${player.initBalance})`);
@@ -652,11 +626,24 @@ const getHill = (request, callback, isOneHand) => {
             }
             // !!!!!!!!!!!!! debug
 
+            let isTerminalCalc = false;
+
+            if (move > 2) {
+                if ((rawActionList[move + 1] && rawActionList[move + 1].street !== rawActionList[move].street)) {
+                    isTerminalCalc = true;
+                } else if (!rawActionList[move + 1]) {
+                    isTerminalCalc = isTerminal;
+                }
+            }
+
+            // на какой улице совершен данный мув(move) c учетом ВСЕГО что только может быть(терминального и не существующего тоже)
+            const curStreetMove = playUtils.getCurStreet(rawActionList, move, initPlayers, positionEnumKeyMap, isTerminalCalc);
+
             if (move < 2) {     // 0, 1 - blinds indexes
                 const { position, invest, action } = rawActionList[move];
                 console.log(`push_move(${position}, ${invest}, ${action})`);
                 addonSetup.push_move(position, invest, action);
-            } else if (move === move_id && !playUtils.nodeSimulation(playSetup, rawActionList, move, initPlayers, positionEnumKeyMap, isDebugMode)) {
+            } else if (move === move_id && !needSimulation) {
                 // do nothing
             } else {
                 if (isOneHand) {
@@ -665,10 +652,7 @@ const getHill = (request, callback, isOneHand) => {
                         break;
                     }
                 } else {
-                    const curStreetMove = playUtils.getCurStreet(rawActionList, move, initPlayers, positionEnumKeyMap);
-
-                    // !!! переписать с учетом того, что вычислили curStreetMove;
-                    const isSimulationNode = playUtils.nodeSimulation(playSetup, rawActionList, move, initPlayers, positionEnumKeyMap, isDebugMode);
+                    const isSimulationNode = playUtils.nodeSimulation(playSetup, rawActionList, move, initPlayers, positionEnumKeyMap, isDebugMode, curStreetMove);
 
                     if (!SimulationsHandler.isMoveLock(playSetup, handNumber, move)) {
                         // если агрегате олл - все равно коллбек нужен - его пилим первым
@@ -784,17 +768,18 @@ const getHill = (request, callback, isOneHand) => {
                     }
                 }
 
-
                 // push moves and board
                 if (rawActionList[move]) {
-                    const { position, invest, action, street } = rawActionList[move];
-                    console.log(`push_move(${position}, ${invest}, ${action})`);
-                    addonSetup.push_move(position, invest, action);
+                    addonUtils.pushMove(addonSetup, rawActionList, move, isTerminalCalc, board);
 
-                    if ((rawActionList[move + 1] && rawActionList[move + 1].street !== street) || (!rawActionList[move + 1] && isTerminal && move < move_id)) {     // street move after push_move
-                        console.log(`push board`);
-                        addonSetup.push_move(getBoardDealPosition(street + 1), ...getPushBoardCards((street + 1), board));
-                    }
+                    // const { position, invest, action, street } = rawActionList[move];
+                    // console.log(`push_move(${position}, ${invest}, ${action})`);
+                    // addonSetup.push_move(position, invest, action);
+                    //
+                    // if ((rawActionList[move + 1] && rawActionList[move + 1].street !== street) || (!rawActionList[move + 1] && isTerminalCalc && move < move_id)) {     // street move after push_move
+                    //     console.log(`push board`);
+                    //     addonSetup.push_move(playUtils.getBoardDealPosition(street + 1), ...playUtils.getPushBoardCards((street + 1), board));
+                    // }
                 }
             }
         }
