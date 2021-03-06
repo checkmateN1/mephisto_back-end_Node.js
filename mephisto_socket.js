@@ -409,7 +409,7 @@ io.on('connection', client => {
                 if (!_.isEmpty(data)) {
                     client.emit('simulationsSuccess');
 
-                    console.log(data);
+                    // console.log(data);
                     //
                     // setTimeout(() => {
                     //     client.emit('simulationsResponse', {test: 100500});
@@ -428,7 +428,7 @@ io.on('connection', client => {
                         }
                     }
 
-                    testAcync().then(console.log('result sucsess'));
+                    testAcync().then();
 
                     // const result = sessionsHandler.sessionsListener(token, client.id, data);
                     // client.emit('simulationsResponse', result);

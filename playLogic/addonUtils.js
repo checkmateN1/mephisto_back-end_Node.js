@@ -26,10 +26,11 @@ class AddonUtils {
   }
 
   getSimSessionForFeatureWithoutHeroHand() {
-    return new this.addon.PluribusSimSession(this.busLight);
+    return this.simSessionLight;
   }
 
   getSetup(bbSize) {
+    console.log(`const setup = new addon.Setup(${bbSize});`);
     return new this.addon.Setup(bbSize);
   }
 
@@ -37,23 +38,23 @@ class AddonUtils {
     return this.addon.GetHandsDict();
   }
 
-  // мув всегда существующий в рав актионс.
-  getSizings(setup) {
-    // !!! WAITING API
+  // выдает сайзинги следующего мува для сетапа
+  getSizings(setup, simSession) {
+    // Дмитрий Онуфриев, [03.03.21 09:57]
+    // simSession.add_or_replace_sizing(setup,400);
+    //
+    // Дмитрий Онуфриев, [03.03.21 09:57]
+    // var curSizings = simSession.get_sizings(setup);
 
-    const strategy = {
-      '167': {
-        '0': { strategy: 0.0011505433459377008, ev: 20 },
-        '100': { strategy: 0.0478785282734064, ev: 10 },
-        '133': { strategy: 0, ev: 40 },
-        '200': { strategy: 0.000045384682651174424, ev: 35 },
-        '300': { strategy: 0, ev: 14 },
-        '2400': { strategy: 0, ev: -40 },
-        '-1': { strategy: 0.9509255436980047, ev: 10 }
-      },
-    };
+    // Короче еще раз: последнний запушенный мув не имеет сайзингов.
+    //   Если ты сверху еще запушишь в никуда - появится 1 чайлд и уже невозможно создать сайзинги.
+    //   Сайщинги неявно создаются следубщими функциями: старт симулате, адд ор реплейс, гетсайзингс.
+      // Если щапушишь в существубший сайзинг - заебись. Если в несуществующий - добавится еще один чайлд. Намотать такой узел можно - симулевать - ошибка
 
-    return strategy;
+    const session = simSession || this.simSessionLight;
+
+    console.log(`simSessionLight.get_sizings(setup);`);
+    return session.get_sizings(setup);
   }
 
   // мув всегда существующий в рав актионс. Пушим только мувы фактические без бордов для получения сайзингов
@@ -63,20 +64,58 @@ class AddonUtils {
       const { position, invest, action, street } = rawActions[move];
 
       // пушим блайнды в том числе
-      setup.push_move(position, invest, action);
+      console.log(`setup.push_move(${position}, ${invest * 100}, ${action});`);
+      setup.push_move(position, invest * 100, action);
 
       if (isTerminal && board) {     // street move after push_move
-        console.log(`push board`);
+        // console.log(`setup.push_move(${playUtils.getBoardDealPosition(street + 1), ...playUtils.getPushBoardCards((street + 1), board)})`);
         setup.push_move(playUtils.getBoardDealPosition(street + 1), ...playUtils.getPushBoardCards((street + 1), board));
       }
     }
   }
 
+  popMove(setup) {
+    console.log('setup.pop_move();');
+    setup.pop_move();
+  }
+
+  popMoves(setup, street) {
+    console.log(`setup.pop_moves(${street});`);
+    setup.pop_moves(street);
+  }
+
+  replaceSizing(setup, sizing) {
+    // Дмитрий Онуфриев, [03.03.21 09:57]
+    // simSession.add_or_replace_sizing(setup,400);
+    //
+    // Дмитрий Онуфриев, [03.03.21 09:57]
+    // var curSizings = simSession.get_sizings(setup);
+  }
+
+  addSizing(setup, sizing, simSession) {
+    // Дмитрий Онуфриев, [03.03.21 09:57]
+    // simSession.add_or_replace_sizing(setup,400);
+    //
+    // Дмитрий Онуфриев, [03.03.21 09:57]
+    // var curSizings = simSession.get_sizings(setup);
+
+    // диапазоны
+    // 0...2/5...3/5...9/10...11/10...allin
+
+    const session = simSession || this.simSessionLight;
+
+    console.log(`simSessionLight.add_or_replace_sizing(setup, ${sizing});`);
+    session.add_or_replace_sizing(setup, sizing);
+  }
+
   getStrategyAsync(isNodeSimulation, setup, simSessionLight, inputSpectres, numberOfSimulations, numThreads) {
     return new Promise(resolve => {
       if (isNodeSimulation) {
+        console.log(`simSessionLight.start_simulate(setup, {}, 0, 0, strategy => {console.log('got strategy')})`);
         simSessionLight.start_simulate(setup, {}, 0, 0, strategy => {resolve(strategy)});
       } else {
+        console.log(`simSessionHeavy.start_simulate(setup, {}, 0, 0, strategy => {console.log('got strategy')})`);
+        // this.simSessionHeavy.start_simulate(setup, {}, 0, 0, strategy => {resolve(strategy)});
         this.simSessionHeavy.start_simulate(setup, {}, 0, 0, strategy => {resolve(strategy)});
       }
     });

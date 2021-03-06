@@ -20,7 +20,7 @@ let generationsNames = [];
 
 const changeAddonPath = (generation) => {
     const newModelsPoolPath = diskDrive + modelsAllPath + ((generation === 'all') ? '' : `\\single_copies\\${generation}`);
-    console.log('newModelsPoolPath', newModelsPoolPath);
+    // console.log('newModelsPoolPath', newModelsPoolPath);
 
     modelsPool = new addon.ModelsPool(newModelsPoolPath, trainedPrefix);
     aggregator = new addon.RegretPoolToStrategyAggregator( modelsPool );
@@ -62,7 +62,7 @@ const copySingleGenerations = () => {
       .filter(folder => !isNaN(folder))
       .sort((a, b) => +a - +b);
 };
-console.log('start copySingleGenerations');
+// console.log('start copySingleGenerations');
 // copySingleGenerations();
 // console.log('generationsNames', generationsNames);
 
@@ -193,8 +193,8 @@ getHill = async (position, curInvest, movesCount, setup, isNodeSimulation, simSe
         // console.log('strategyObject from online!!!');
         // console.log(strategy);
     }
-    console.log(`get strategy success!`);
-    console.log(strategy);
+    // console.log(`get strategy success!`);
+    // console.log(strategy);
 
 
     // console.log('strategy[1325]');
@@ -273,10 +273,10 @@ getHill = async (position, curInvest, movesCount, setup, isNodeSimulation, simSe
             // if (i === 0) {      // 258 - 64, 0 - AA
             //     console.log(`prev AA weight: ${weight}`);
             // }
-            if (i === 1325) {      // 1325 - 72, 258 - 64, 0 - AA
-                console.log(`72 weight: ${weight}`);
-                console.log(strat);
-            }
+            // if (i === 1325) {      // 1325 - 72, 258 - 64, 0 - AA
+            //     console.log(`72 weight: ${weight}`);
+            //     console.log(strat);
+            // }
         }
         return { hand, weight, strategy: strat, optimalSizing };
     });
@@ -386,12 +386,16 @@ isInitPlayersEqual = (request, setup) => {
     return true;
 };
 
-popMoves = (nMove, setup) => {
-    setup.hillsCash.length = nMove;
+popMoves = (nMove, setup, isBoard, onlyMovesInEngine) => {
+    if (!onlyMovesInEngine) {
+        setup.hillsCash.length = nMove;
+    }
 
     // console.log(`popMoves... nMove: ${nMove}, setup.movesInEngine: ${setup.movesInEngine}`);
     while(setup.movesInEngine > nMove && setup.movesInEngine > 0) {
-        setup.addonSetup.pop_move();
+        if (isBoard) {
+            addonUtils.popMove(setup.addonSetup);
+        }
         setup.movesInEngine--;
     }
 };
@@ -406,17 +410,37 @@ const isNodeSimulation = (street, moveAtStreet) => {
     return false;
 };
 
+const isMovesChangedOnStreet = (actions, rawActionsOld) => {
+    const oldActions = rawActionsOld.filter(action => action.street === actions[0].street);
+    if (oldActions.length !== actions.length) {
+        return true;
+    }
+    return actions.reduce((isChanged, action, i) => {
+        if (!isChanged) {
+            return !_.isEqual(action, oldActions[i]);
+        }
+        return true;
+    }, false);
+};
+
 const movesHandler = async (request, bbSize, setup, nodeId) => {      // nodeId - начиная с нуля... первый ход префлопа после постов - nodeId === 2. Пуш борд не считаем
-    console.log(`enter moves handler!!`);
+    // console.log(`enter moves handler!!`);
     const simSession = addonUtils.getSimSessionForFeatureWithoutHeroHand();
     let isCashSteelUseful = true;
     let movesCount = 0;
 
-    const { rawActionList } = request;
+    let { rawActionList } = request.request;
+    rawActionList = rawActionList.map((action, i) => {
+        const prevPlayerAmount = playUtils.getPrevAmountOnCurStreet(rawActionList, i);
+        return Object.assign(action, { invest: action.amount - prevPlayerAmount });
+    });
+
+    // в самом конце при выходе из функции записываем в кэш rawActionList
+
 
     if (isOfflineStrategy || !isInitPlayersEqual(request, setup) || setup.movesCash.generation != currentGeneration) {
         console.log('!!!!! releaseSetup !!!!');
-        console.log(bbSize);
+        // console.log(bbSize);
         setup.addonSetup = addonUtils.getSetup(bbSize);
         setup.resetCash();
         setup.movesCash.generation = currentGeneration;
@@ -442,7 +466,7 @@ const movesHandler = async (request, bbSize, setup, nodeId) => {      // nodeId 
                 position,
             };
 
-            console.log(`set player/// position: ${position}, stack: ${stack}`);
+            console.log(`setup.set_player(${position}, ${stack});`);
             setup.addonSetup.set_player(position, stack);
             setup.movesCash.players.push(cashPlayer);
         }
@@ -488,11 +512,13 @@ const movesHandler = async (request, bbSize, setup, nodeId) => {      // nodeId 
         };
 
         // получаем сайзинги из аддона
-        const sizings = [];  // набор всех сайзингов на улице: 0 - bet, 1 - raise, 2 - reraise
-        const maxDeviationsPercent = enumPoker.enumPoker.perfomancePolicy.deviationSizings[0];  // preflop  [0.15, 0.2, 0.25]
+        // const maxDeviationsPercent = enumPoker.enumPoker.perfomancePolicy.deviationSizings[0];  // preflop  [0.15, 0.2, 0.25]
+        // const isNotStandart = i === 0 && playUtils.isNonStandartSizings(rawActionList, 0, maxDeviationsPercent, setup.addonSetup);
+        const isNotStandart = false;
 
-        if (!_.isEqual(setup.movesCash.preflop[i], pushHintMoveData) || playUtils.isNonStandartSizings(rawActionList, 0, sizings, maxDeviationsPercent)) {     // no using cash
+        if (!_.isEqual(setup.movesCash.preflop[i], pushHintMoveData) || isNotStandart) {     // no using cash
             if (isCashSteelUseful) {        // if we used cash before this iteration
+                console.log(`making pop_moves inside preflop's moves movesHandler`);
                 popMoves(i, setup);
             }
             isCashSteelUseful = false;
@@ -500,6 +526,7 @@ const movesHandler = async (request, bbSize, setup, nodeId) => {      // nodeId 
             let cash = [];
             if (i > 1) {
                 const nodeSimulation = isNodeSimulation(0, i);
+                addonUtils.getSizings(setup.addonSetup, simSession);
                 cash = await getHill(position, maxAmountRaise, movesCount, setup, nodeSimulation, simSession).then(arr => arr);
                 if (cash === null) {
                     break;
@@ -508,14 +535,22 @@ const movesHandler = async (request, bbSize, setup, nodeId) => {      // nodeId 
 
             setup.hillsCash[movesCount] = { position, cash,  isPreflop: true };      // PREFLOP!!!
 
+            if (i > 1) {
+                const maxAmountBefore = playUtils.getMaxAmountBeforeMove(rawActionList.filter(el => el.street === 0), i, 0);
+                // addonUtils.getSizings(setup.addonSetup, simSession);
+                if (request.actions.preflop[i].action < 3) {
+                    addonUtils.addSizing(setup.addonSetup, (request.actions.preflop[i].amount - maxAmountBefore) * 100, simSession);
+                }
+            }
+            console.log(`setup.push_move(${position}, ${curInvest}, ${action})`);
             const result = setup.addonSetup.push_move(position, curInvest, action);
-            console.log(`setup.addonSetup.push_move(position: ${position}, curInvest: ${curInvest}, action: ${action}), pushResult: ${result}`);
 
             setup.movesInEngine++;
             setup.movesCash.preflop.push(pushHintMoveData);
         }
 
         if (nodeId === movesCount) {
+            setup.movesCash.rawActionsOld = rawActionList;
             return getAllHandStrategy(setup.hillsCash[movesCount].cash, undefined, setup);
         }
         movesCount++;
@@ -530,7 +565,7 @@ const movesHandler = async (request, bbSize, setup, nodeId) => {      // nodeId 
         if (!(isC1Equal && isC2Equal && isC3Equal)) {
             if (isCashSteelUseful) {
                 console.log('flop board pop moves');
-                popMoves(setup.movesCash.preflop.length, setup);
+                popMoves(setup.movesCash.preflop.length, setup, true);
                 setup.movesCash.flop = [];
                 setup.movesCash.turn = [];
                 setup.movesCash.river = [];
@@ -546,9 +581,8 @@ const movesHandler = async (request, bbSize, setup, nodeId) => {      // nodeId 
                 enumPoker.enumPoker.cardsName.indexOf(request.board.c3)
             );
 
-            console.log('flopPush');
-            console.log(flopPush);
-            // console.log(`c1: ${enumPoker.enumPoker.cardsName.indexOf(request.board.c1)}, c2: ${enumPoker.enumPoker.cardsName.indexOf(request.board.c2)}, c3: ${enumPoker.enumPoker.cardsName.indexOf(request.board.c3)}`);
+            // console.log('flopPush');
+            console.log(`setup.push_move(${enumPoker.enumPoker.dealPositions.DEALPOS_FLOP}, ${enumPoker.enumPoker.cardsName.indexOf(request.board.c1)}, ${enumPoker.enumPoker.cardsName.indexOf(request.board.c2)}, ${enumPoker.enumPoker.cardsName.indexOf(request.board.c3)});`);
 
             setup.movesCash.c1 = request.board.c1;
             setup.movesCash.c2 = request.board.c2;
@@ -583,28 +617,44 @@ const movesHandler = async (request, bbSize, setup, nodeId) => {      // nodeId 
                 action,
             };
 
-            if (!_.isEqual(setup.movesCash.flop[i], pushHintMoveData)) {      // no using cash
-                if (isCashSteelUseful) {        // if we used cash before this iteration
-                    // console.log('flop pop moves');
+            // получаем сайзинги из аддона
+            const maxDeviationsPercent = enumPoker.enumPoker.perfomancePolicy.deviationSizings[1];  // flop  [0.15, 0.2, 0.25] example
+            const movesChangedOnStreet = isMovesChangedOnStreet(request.actions.flop, setup.movesCash.rawActionsOld.filter(el => el.street === 1));
+
+            // обнуляем сетап до корня улицы! поэтому всегда пушим мувы с нуля независимо от того юзаем ли кэш
+            const isNotStandart = i === 0 && movesChangedOnStreet && playUtils.isNonStandartSizings(rawActionList, 1, maxDeviationsPercent, setup.addonSetup);
+            // нужно очистить количество setup.movesInEngine и только!
+            popMoves(setup.movesCash.preflop.length + 1 + i, setup, false, true);
+
+            if (!_.isEqual(setup.movesCash.flop[i], pushHintMoveData) || (movesChangedOnStreet && isNotStandart)) {      // no using cash
+                if (isCashSteelUseful) {
                     popMoves(setup.movesCash.preflop.length + 1 + i, setup);
                 }
                 isCashSteelUseful = false;
 
                 const nodeSimulation = isNodeSimulation(1, i);
+                addonUtils.getSizings(setup.addonSetup, simSession);
+
+                const maxAmountBefore = playUtils.getMaxAmountBeforeMove(rawActionList.filter(el => el.street === 1), i, 1);
+                // addonUtils.getSizings(setup.addonSetup, simSession);
+                if (request.actions.flop[i].action < 3) {
+                    addonUtils.addSizing(setup.addonSetup, (request.actions.flop[i].amount - maxAmountBefore) * 100, simSession);
+                }
                 const cash = await getHill(position, maxAmountRaise, movesCount, setup, nodeSimulation, simSession);
                 if (cash === null) {
                     break;
                 }
                 setup.hillsCash[movesCount] = { position, cash,  isPreflop: false };
 
-                const result = setup.addonSetup.push_move(position, curInvest, action);
-                console.log(`setup.addonSetup.push_move(position: ${position}, curInvest: ${curInvest}, action: ${action}), pushResult: ${result}`);
-
-                setup.movesInEngine++;
                 setup.movesCash.flop.push(pushHintMoveData);
             }
 
+            console.log(`setup.push_move(${position}, ${curInvest}, ${action})`);
+            const result = setup.addonSetup.push_move(position, curInvest, action);
+            setup.movesInEngine++;
+
             if (nodeId === movesCount) {
+                setup.movesCash.rawActionsOld = rawActionList;
                 return getAllHandStrategy(setup.hillsCash[movesCount].cash, position, setup);
             }
             movesCount++;
@@ -617,7 +667,7 @@ const movesHandler = async (request, bbSize, setup, nodeId) => {      // nodeId 
     if (request.actions.turn) {
         if (request.board.c4 !== setup.movesCash.c4) {
             if (isCashSteelUseful) {
-                popMoves(setup.movesCash.preflop.length + setup.movesCash.flop.length + 1, setup);
+                popMoves(setup.movesCash.preflop.length + setup.movesCash.flop.length + 1, setup, true);
                 setup.movesCash.turn = [];
                 setup.movesCash.river = [];
                 setup.movesCash.c5 = null;
@@ -656,28 +706,43 @@ const movesHandler = async (request, bbSize, setup, nodeId) => {      // nodeId 
                 action,
             };
 
-            if (!_.isEqual(setup.movesCash.turn[i], pushHintMoveData)) {      // no using cash
-                if (isCashSteelUseful) {        // if we used cash before this iteration
-                    // console.log('turn pop moves');
+            // получаем сайзинги из аддона
+            const maxDeviationsPercent = enumPoker.enumPoker.perfomancePolicy.deviationSizings[2];  // turn  [0.15, 0.2, 0.25] example
+            const movesChangedOnStreet = isMovesChangedOnStreet(request.actions.turn, setup.movesCash.rawActionsOld.filter(el => el.street === 2));
+
+            // обнуляем сетап до корня улицы! поэтому всегда пушим мувы с нуля независимо от того юзаем ли кэш
+            const isNotStandart = i === 0 && playUtils.isNonStandartSizings(rawActionList, 2, maxDeviationsPercent, setup.addonSetup);
+            popMoves(setup.movesCash.preflop.length + setup.movesCash.flop.length + 2 + i, setup, false, true);
+
+            if (!_.isEqual(setup.movesCash.turn[i], pushHintMoveData) || (movesChangedOnStreet && isNotStandart)) {      // no using cash
+                if (isCashSteelUseful) {
                     popMoves(setup.movesCash.preflop.length + setup.movesCash.flop.length + 2 + i, setup);
                 }
                 isCashSteelUseful = false;
 
                 const nodeSimulation = isNodeSimulation(2, i);
+                addonUtils.getSizings(setup.addonSetup, simSession);
+
+                const maxAmountBefore = playUtils.getMaxAmountBeforeMove(rawActionList.filter(el => el.street === 2), i, 2);
+                // addonUtils.getSizings(setup.addonSetup, simSession);
+                if (request.actions.turn[i].action < 3) {
+                    addonUtils.addSizing(setup.addonSetup, (request.actions.turn[i].amount - maxAmountBefore) * 100, simSession);
+                }
                 const cash = await getHill(position, maxAmountRaise, movesCount, setup, nodeSimulation, simSession);
                 if (cash === null) {
                     break;
                 }
                 setup.hillsCash[movesCount] = { position, cash,  isPreflop: false };
 
-                const result = setup.addonSetup.push_move(position, curInvest, action);
-                console.log(`setup.addonSetup.push_move(position: ${position}, curInvest: ${curInvest}, action: ${action}), pushResult: ${result}`);
-
-                setup.movesInEngine++;
                 setup.movesCash.turn.push(pushHintMoveData);
             }
 
+            console.log(`setup.push_move(${position}, ${curInvest}, ${action})`);
+            const result = setup.addonSetup.push_move(position, curInvest, action);
+            setup.movesInEngine++;
+
             if (nodeId === movesCount) {
+                setup.movesCash.rawActionsOld = rawActionList;
                 return getAllHandStrategy(setup.hillsCash[movesCount].cash, position, setup);
             }
             movesCount++;
@@ -691,7 +756,7 @@ const movesHandler = async (request, bbSize, setup, nodeId) => {      // nodeId 
     if (request.actions.river) {
         if (request.board.c5 !== setup.movesCash.c5) {
             if (isCashSteelUseful) {
-                popMoves(setup.movesCash.preflop.length + setup.movesCash.flop.length + setup.movesCash.turn.length + 2, setup);
+                popMoves(setup.movesCash.preflop.length + setup.movesCash.flop.length + setup.movesCash.turn.length + 2, setup, true);
                 setup.movesCash.river = [];
             }
             isCashSteelUseful = false;
@@ -729,28 +794,43 @@ const movesHandler = async (request, bbSize, setup, nodeId) => {      // nodeId 
                 action,
             };
 
-            if (!_.isEqual(setup.movesCash.river[i], pushHintMoveData)) {      // no using cash
-                if (isCashSteelUseful) {        // if we used cash before this iteration
-                    // console.log('river pop moves');
+            // получаем сайзинги из аддона
+            const maxDeviationsPercent = enumPoker.enumPoker.perfomancePolicy.deviationSizings[3];  // turn  [0.15, 0.2, 0.25] example
+            const movesChangedOnStreet = isMovesChangedOnStreet(request.actions.river, setup.movesCash.rawActionsOld.filter(el => el.street === 3));
+
+            // обнуляем сетап до корня улицы! поэтому всегда пушим мувы с нуля независимо от того юзаем ли кэш
+            const isNotStandart = i === 0 && playUtils.isNonStandartSizings(rawActionList, 3, maxDeviationsPercent, setup.addonSetup);
+            popMoves(setup.movesCash.preflop.length + setup.movesCash.flop.length + setup.movesCash.turn.length + 3 + i, setup, false, true);
+
+            if (!_.isEqual(setup.movesCash.river[i], pushHintMoveData) || (movesChangedOnStreet && isNotStandart)) {      // no using cash
+                if (isCashSteelUseful) {
                     popMoves(setup.movesCash.preflop.length + setup.movesCash.flop.length + setup.movesCash.turn.length + 3 + i, setup);
                 }
                 isCashSteelUseful = false;
 
                 const nodeSimulation = isNodeSimulation(3, i);
+                addonUtils.getSizings(setup.addonSetup, simSession);
+
+                const maxAmountBefore = playUtils.getMaxAmountBeforeMove(rawActionList.filter(el => el.street === 3), i, 3);
+                // addonUtils.getSizings(setup.addonSetup, simSession);
+                if (request.actions.river[i].action < 3) {
+                    addonUtils.addSizing(setup.addonSetup, (request.actions.river[i].amount - maxAmountBefore) * 100, simSession);
+                }
                 const cash = await getHill(position, maxAmountRaise, movesCount, setup, nodeSimulation, simSession);
                 if (cash === null) {
                     break;
                 }
                 setup.hillsCash[movesCount] = { position, cash,  isPreflop: false };
 
-                const result = setup.addonSetup.push_move(position, curInvest, action);
-                console.log(`setup.addonSetup.push_move(position: ${position}, curInvest: ${curInvest}, action: ${action}), pushResult: ${result}`);
-
-                setup.movesInEngine++;
                 setup.movesCash.river.push(pushHintMoveData);
             }
 
+            console.log(`setup.push_move(${position}, ${curInvest}, ${action})`);
+            const result = setup.addonSetup.push_move(position, curInvest, action);
+            setup.movesInEngine++;
+
             if (nodeId === movesCount) {
+                setup.movesCash.rawActionsOld = rawActionList;
                 return getAllHandStrategy(setup.hillsCash[movesCount].cash, position, setup);
             }
             movesCount++;

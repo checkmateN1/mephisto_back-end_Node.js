@@ -1,5 +1,6 @@
 // export enum = require('../enum');
 const addonUtils = require('./addonUtils');
+const enumPoker = require('../enum');
 
 // const oldStacks = [
 //   '3:3:3',    '6:6:3',    '9:9:3',    '12:12:3',
@@ -18,10 +19,6 @@ const addonUtils = require('./addonUtils');
 // ];
 
 const playUtils = Object.freeze({
-  getNearestStackComb(stacksArr) {
-
-  },
-
   createStacksArr(maxSum, step) {
     const arr = [];
     // const arr1 = [];
@@ -147,20 +144,23 @@ const playUtils = Object.freeze({
     return 0;
   },
 
-  // пушим максимум 1 мув в сетап
-  getsizing(rawActionList, street, move, setup) {   // setup - необязательный параметр для производительности, в котором напушена текущая улица без мувов
-    // один запушил - один поп
-
-    // пушу всегда один мув
-    if (setup) {
-
+  getPrevAmountOnCurStreet(rawActionList, move) {
+    const currentStreet = rawActionList[move].street;
+    const position = rawActionList[move].position;
+    for (let i = move - 1; i >= 0; i--) {
+      if (currentStreet === rawActionList[i].street) {
+        if (position === rawActionList[i].position) {
+          return rawActionList[i].amount;
+        }
+      } else {
+        return 0;
+      }
     }
+    return 0;
   },
 
-
-
-  // определяем есть ли хотя бы 1 нестандартный сайзинг
-  isNonStandartSizings(rawActions, street, maxDeviationsPercent, setup) {    // maxDeviationPercent = % отклонения от ближайшего сайзинга
+  // определяем есть ли хотя бы 1 нестандартный сайзинг(для симулятора)
+  isNonStandartSizings(rawActions, street, maxDeviationsPercent, setup, simSession) {    // maxDeviationPercent = % отклонения от ближайшего сайзинга
     // sizings = [[], [], [], ...] - запрос к аддону по конкретной улице // набор всех сайзингов на улице: 0 - bet, 1 - raise, 2 - reraise
     // maxDeviationsPercent = [0.15, 0.2, 0.25] - preflop /// !возможны разные девиации в зависимости от дальности сайзингов от корня улицы или нехватки таймбанка
     // !! Всегда подаем setup из начала улицы после пуша борда!!!
@@ -171,72 +171,81 @@ const playUtils = Object.freeze({
     // начинаем идти циклом и пушить фактические мувы если они не агрессивные. Если агрессивные - опрашиваем сайзинги
     // затем пушим мув с фактическим сайзингом и идем до конца всех актионс на улице.
     // заполняем массив с объектами для каждого индекса актионс - фактический сайзинг, позиция, сайзинги(sizings)
+    const isAdd = enumPoker.enumPoker.perfomancePolicy.isAddSizing;
 
-    const sizingsResult = actions.map((action, index) => {
-      const result = {};
-      if (action.action === 1 || action.action === 2) {  // агромув
-        // берем сайзинги из аддона
-        result.sizings = addonUtils.getSizings(setup);
-      }
+    const sizingsResult = this.getSizingsComparingAtCurStreet(actions, setup, isAdd, simSession, street, maxDeviationsPercent).filter(el => el !== undefined);
+    // [{sizings, actualSizing}, {sizings, actualSizing}, etc]    without undefined
 
-      return {
-        
-      }
-    });
-
-    // нужны для записи в movesHandler-pro ради какого по счету повышения мы делали пересимуляции
-    const agressiveActions = rawActions.filter(action => action.street === street && (action.action === 1 || action.action === 2));
-    const actualSizings = actions.map((action, i) => {
-      return i > 0 ? (action.amount - this.getMaxAmountBeforeMove(actions, i, street)) : action.invest;
-    });
-
-    const sizings = []; // получаем после actualSizings
-
-
-    for (let i = 0; i < actualSizings.length; i++) {
-      if (this.isNonStandartSizing(sizings[Math.min(i, sizings.length - 1)], actualSizings[i], maxDeviationsPercent[Math.min(i, maxDeviationsPercent.length - 1)])) {
-        return true;
-      }
-    }
-
-    return false;
+    return !!sizingsResult.filter(el => !!el.isNotStandart).length;
   },
 
-  isNonStandartSizing(strategy, sizing, maxDeviationPercent) {
-    const closest = this.getClosestSizing(strategy, sizing);
-    const deviationPercent = (Math.abs(parseInt(sizing) - parseInt(closest)))/parseInt(closest);
+  addOrReplceSizings(setup, street, sizingsNumber) {
+    // сначала получаем сайзинги
 
+  },
+
+  // returns [{sizings, actualSizing}, undefined, {sizings, actualSizing}, etc]    index === action index at street
+  getSizingsComparingAtCurStreet(actions, setup, isAdd, simSession, street, maxDeviationsPercent) {
+    // откатили назад
+    addonUtils.popMoves(setup, street);   // откатывает в корень указанной улицы
+
+
+    let agroMovesCount = 0;
+    const sizingsResult = actions.map((action, i) => {
+      const result = {};
+      // берем сайзинги из аддона
+      result.sizings = addonUtils.getSizings(setup, simSession);  // array with numbers
+
+      if (action.action === 1 || action.action === 2) {  // агромув
+        result.actualSizing = i > 0 ? (action.amount * 100 - this.getMaxAmountBeforeMove(actions, i, action.street) * 100) : action.invest * 100;
+        result.deviationPercent = this.getDeviationPercent(result.sizings, result.actualSizing);
+        result.isNotStandart = this.isNonStandartSizing(result.deviationPercent, maxDeviationsPercent[Math.min(agroMovesCount, maxDeviationsPercent.length - 1)]);
+        agroMovesCount++;
+
+        // пушим сайзинги или реплейсим
+        if (!!result.deviationPercent && isAdd) {
+          addonUtils.addSizing(setup, result.actualSizing, simSession);
+        }
+      }
+
+      // const testSizings = addonUtils.getSizings(setup, simSession);
+      addonUtils.pushMove(setup, actions, i, false);
+
+      if (result.actualSizing) {
+        return result;
+      }
+    });
+
+    // откатили назад
+    addonUtils.popMoves(setup, street);   // откатывает в корень указанной улицы
+
+    return sizingsResult;
+  },
+
+  isNonStandartSizing(deviationPercent, maxDeviationPercent) {
     return deviationPercent > maxDeviationPercent;
   },
 
+  getDeviationPercent(sizings, sizing) {
+    const closest = this.getClosestSizing(sizings, sizing);
+    return (Math.abs(sizing - closest))/closest;
+  },
+
   // определяем нестандартный сайзинг
-  getClosestSizing(strategy, sizing) {     // возвращает ближайший AGRO сайзинг к текущему
+  getClosestSizing(sizigs, sizing) {     // возвращает ближайший AGRO сайзинг к текущему
     let closedSizing;
-    Object.keys(strategy).reduce((min, current) => {
-      const diff = Math.abs(parseInt(sizing) - parseInt(current));
-      if (diff < min && parseInt(current) !== 0) {
-        closedSizing = parseInt(current);
-        return diff;
-      } else {
-        return min;
+    sizigs.reduce((min, current) => {
+      if (current > 0) {
+        const diff = Math.abs(sizing - current);
+        if (diff < min) {
+          closedSizing = current;
+          return diff;
+        }
       }
+      return min;
     }, Infinity);
 
     return closedSizing;
-  },
-
-  getMaxAmountBeforeMove(rawActionList, move) {
-    const currentStreet = rawActionList[move].street;
-    for (let i = move - 1; i > 0; i--) {
-      if (rawActionList[i].street === currentStreet) {
-        if (rawActionList[i].action < 3) {
-          return rawActionList[i].amount;
-        }
-      } else {
-        return 0;
-      }
-    }
-    return 0;
   },
 
   getBoardDealPosition(street) {
