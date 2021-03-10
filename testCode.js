@@ -1,1 +1,3 @@
-console.log(typeof parseInt('-1'));
+const inputSpectres = JSON.parse('');
+
+console.log(inputSpectres);

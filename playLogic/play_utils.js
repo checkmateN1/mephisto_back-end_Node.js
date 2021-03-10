@@ -179,11 +179,6 @@ const playUtils = Object.freeze({
     return !!sizingsResult.filter(el => !!el.isNotStandart).length;
   },
 
-  addOrReplceSizings(setup, street, sizingsNumber) {
-    // сначала получаем сайзинги
-
-  },
-
   // returns [{sizings, actualSizing}, undefined, {sizings, actualSizing}, etc]    index === action index at street
   getSizingsComparingAtCurStreet(actions, setup, isAdd, simSession, street, maxDeviationsPercent) {
     // откатили назад

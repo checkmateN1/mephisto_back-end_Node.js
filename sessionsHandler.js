@@ -88,6 +88,8 @@ class SessionSetup {
         this.movesInEngine = 0;
         this.tasksQueue = tasksQueue;
         this.hillsCash = [];     // index === nIdMove.. board nIdMove === undefined. Value = { position, hill }
+        // костыльный новый кэш
+        this.newCash = [];     // index === nIdMove.. board nIdMove === undefined. Value = { position, hill }
         this.initCash = Object.freeze({
             generation: '',
             rawActionsOld: [],

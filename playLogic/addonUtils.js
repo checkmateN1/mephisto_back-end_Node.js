@@ -112,7 +112,7 @@ class AddonUtils {
     return new Promise(resolve => {
       if (isNodeSimulation) {
         console.log(`simSessionLight.start_simulate(setup, {}, 0, 0, strategy => {console.log('got strategy')})`);
-        simSessionLight.start_simulate(setup, {}, 0, 0, strategy => {resolve(strategy)});
+        simSessionLight.start_simulate(setup, inputSpectres, numberOfSimulations, numThreads, strategy => {resolve(strategy)});
       } else {
         console.log(`simSessionHeavy.start_simulate(setup, {}, 0, 0, strategy => {console.log('got strategy')})`);
         // this.simSessionHeavy.start_simulate(setup, {}, 0, 0, strategy => {resolve(strategy)});
