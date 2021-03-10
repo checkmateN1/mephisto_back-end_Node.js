@@ -1,3 +1,3 @@
-const moment = require('moment');
+const inputSpectres = JSON.parse('');
 
-console.log(`got frame at ${moment().format('mm:ss.SSS')}`);
+console.log(inputSpectres);

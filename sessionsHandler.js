@@ -14,7 +14,7 @@ class TasksQueue {
     }
 
     tasksHandler() {
-        if (this.activeTasks.length < enumPoker.enumPoker.perfomancePolicy.maxActiveTasks) {
+        if (this.activeTasks.length < enumPoker.enumPoker.perfomancePolicy.maxActiveAggregate) {
             const task = this.tasksQueue.shift();
             if (task) {
                 this.activeTasks.push(task);
@@ -88,8 +88,11 @@ class SessionSetup {
         this.movesInEngine = 0;
         this.tasksQueue = tasksQueue;
         this.hillsCash = [];     // index === nIdMove.. board nIdMove === undefined. Value = { position, hill }
+        // костыльный новый кэш
+        this.newCash = [];     // index === nIdMove.. board nIdMove === undefined. Value = { position, hill }
         this.initCash = Object.freeze({
             generation: '',
+            rawActionsOld: [],
             players: [],
             preflop: [],
             flop: [],
@@ -154,16 +157,16 @@ class SessionSetup {
 // setupID === table id
 const sessionsListener = (token, setupID, request) => {
     if (token in sessions) {
-        console.log('token in sessions!');
+        // console.log('token in sessions!');
         sessions[token].timeout = sessionTimeout;                              // reset timer to destroy session
         if (setupID in sessions[token].setups) {
-            console.log('setupID in sessions[token].setups');
+            // console.log('setupID in sessions[token].setups');
             sessions[token].setups[setupID].timeout = setupTimeout;            // reset timer to destroy setup
             return sessions[token].setups[setupID].requestHandling(request);
         }
 
         sessions[token].setups[setupID] = new SessionSetup(setupID, token);
-        console.log('sessions[token].setups[setupID].movesCash');
+        // console.log('sessions[token].setups[setupID].movesCash');
         console.log(sessions[token].setups[setupID].movesCash);
 
         return sessions[token].setups[setupID].requestHandling(request);

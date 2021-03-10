@@ -3,21 +3,22 @@ const moment = require('moment');
 
 const enumPoker = require('./enum');
 const playUtils = require('./playLogic/play_utils');
+const addonUtils = require('./playLogic/addonUtils');
 
 const diskDrive = enumPoker.enumPoker.perfomancePolicy.projectDrive;  // laptop
-addon = require(`${diskDrive}:\\projects\\mephisto_back-end_Node.js\\custom_module\\PokerEngine\\pokerengine_addon`);
-addon.SetDefaultDevice('cpu');
+// addon.SetDefaultDevice('cpu');
 
 if (!enumPoker.enumPoker.perfomancePolicy.isSimulatorOnly) {
-  addon.DeserializeBucketingType(`${diskDrive}:\\projects\\mephisto_back-end_Node.js\\custom_module\\buckets\\`, 0);
-  addon.DeserializeBucketingType(`${diskDrive}:\\projects\\mephisto_back-end_Node.js\\custom_module\\buckets\\`, 4);
+  // addon.DeserializeBucketingType(`${diskDrive}:\\projects\\mephisto_back-end_Node.js\\custom_module\\buckets\\`, 0);
+  // addon.DeserializeBucketingType(`${diskDrive}:\\projects\\mephisto_back-end_Node.js\\custom_module\\buckets\\`, 4);
 }
 
 // addon.DeserializeBucketingType('C:\\projects\\mephisto_back-end_Node.js\\custom_module\\buckets\\', 0);
 // modelsPool = new addon.ModelsPool('C:\\projects\\mephisto_back-end_Node.js\\custom_module\\models\\regret_model', 'trained_RA');
-modelsPoolSync = new addon.ModelsPool(`${diskDrive}:\\projects\\mephisto_back-end_Node.js\\custom_module\\models\\regret_model`, 'trained_RS');
+// modelsPoolSync = new addon.ModelsPool(`${diskDrive}:\\projects\\mephisto_back-end_Node.js\\custom_module\\models\\regret_model`, 'trained_RS');
 // aggregator = new addon.RegretPoolToStrategyAggregator( modelsPool );
-aggregatorSync = new addon.RegretPoolToStrategyAggregator( modelsPoolSync );
+// aggregatorSync = new addon.RegretPoolToStrategyAggregator( modelsPoolSync );
+
 // setup = new addon.Setup(1.0);
 // setup.set_player(8, 2500)
 // setup.set_player(0, 2500)
@@ -67,48 +68,49 @@ const mockStrategy = (callBack) => {
     }, 300);
 };
 
-class AggregatorPool {
-    constructor() {
-        this.pool = {};
-        Array(enumPoker.enumPoker.perfomancePolicy.maxActiveTasks).fill().forEach((cur, index) => {
-            const modelsPool = new addon.ModelsPool('C:\\projects\\mephisto_back-end_Node.js\\custom_module\\models\\regret_model', 'trained_RS');
+// const modelsPool = new addon.ModelsPool('C:\\projects\\mephisto_back-end_Node.js\\custom_module\\models\\regret_model', 'trained_RS');
+// const aggregator = new addon.RegretPoolToStrategyAggregator( modelsPool );
 
-            this.pool[index] = {
-                modelsPool,
-                aggregator: new addon.RegretPoolToStrategyAggregator( modelsPool ),
-                isLock: false,
-            }
-        });
-    }
+// class AggregatorPool {
+//     constructor() {
+//         this.pool = {};
+//         Array(enumPoker.enumPoker.perfomancePolicy.maxActiveAggregate).fill().forEach((cur, index) => {
+//             const modelsPool = new addon.ModelsPool('C:\\projects\\mephisto_back-end_Node.js\\custom_module\\models\\regret_model', 'trained_RS');
+//
+//             this.pool[index] = {
+//                 modelsPool,
+//                 aggregator: new addon.RegretPoolToStrategyAggregator( modelsPool ),
+//                 isLock: false,
+//             }
+//         });
+//     }
+//
+//     isFree() {
+//         for (const key in this.pool) {
+//             if (!this.pool[key].isLock) {
+//                 return true;
+//             }
+//             return false;
+//         }
+//     }
+//
+//     getFreeKey() {
+//         for (const key in this.pool) {
+//             if (!this.pool[key].isLock) {
+//                 this.pool[key].isLock = true;
+//                 return key;
+//             }
+//         }
+//     }
+//
+//     unlock(key) {
+//         this.pool[key].isLock = false;
+//     }
+// }
 
-    isFree() {
-        for (const key in this.pool) {
-            if (!this.pool[key].isLock) {
-                return true;
-            }
-            return false;
-        }
-    }
-
-    getFreeKey() {
-        for (const key in this.pool) {
-            if (!this.pool[key].isLock) {
-                this.pool[key].isLock = true;
-                return key;
-            }
-        }
-    }
-
-    unlock(key) {
-        this.pool[key].isLock = false;
-    }
-}
-
-const aggregatorPool = new AggregatorPool();
+// const aggregatorPool = new AggregatorPool();
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-const bus = {}     // !!! WAITING API MODULE
 
 class SimulatePool {
     constructor() {
@@ -116,7 +118,7 @@ class SimulatePool {
         Array(enumPoker.enumPoker.perfomancePolicy.maxActiveSimulations).fill().forEach((cur, index) => {
 
             this.pool[index] = {
-                simulator: new addon.PluribusSimSession( bus ),
+                // simulator: addonUtils.getSimSessionForFeatureWithoutHeroHand(),
                 isLock: false,
             }
         });
@@ -151,13 +153,13 @@ const simulatorPool = new SimulatePool();
 /////////////////////////////////////////////////////////////////////////////////////////////////////
 
 class TasksQueue {
-    constructor(aggregatorPool) {
+    constructor(simulatorPool) {
         this.simulationsQueue = [];
-        this.aggregatorPool = aggregatorPool;
+        this.simulatorPool = simulatorPool;
     }
 
     tasksHandler() {
-        if (this.aggregatorPool.isFree()) {
+        if (this.simulatorPool.isFree()) {
             const importantTask = this.simulationsQueue.filter(task => task.isImportant).shift();
             if (importantTask) {
                 importantTask.callback();
@@ -180,9 +182,9 @@ class TasksQueue {
     }
 }
 
-const tasksQueue = new TasksQueue(aggregatorPool);
+const tasksQueue = new TasksQueue(simulatorPool);
 
-const handsDict = addon.GetHandsDict();
+const handsDict = addonUtils.getHandsDict();
 
 const allHandsCount = enumPoker.enumPoker.allHandsCount;
 
@@ -339,7 +341,8 @@ const strategyOne = (addonSetup, hand, handTxt, playSetup) => {
 
     for (let i = 0; i < callCount; i++) {
         console.log(`bom/// hand: ${hand}, handTXT: ${handTxt}, textPath: ${playSetup.txtPath + '\\' + playSetup.txtFile}`);
-        const reg = aggregatorSync.random_model_regret(addonSetup, hand);
+        // const reg = aggregatorSync.random_model_regret(addonSetup, hand);
+        const reg = [];
         console.log(`one hand prompt`);
         console.log(reg);
         let maxKey = 0;
@@ -375,30 +378,6 @@ const isCashReady = (rawActionList, cash, move_id) => {
     return true;
 };
 
-const getBoardDealPosition = (street) => {
-    switch (street) {
-        case 1:
-            return enumPoker.enumPoker.dealPositions.DEALPOS_FLOP;
-        case 2:
-            return enumPoker.enumPoker.dealPositions.DEALPOS_TURN;
-        case 3:
-            return enumPoker.enumPoker.dealPositions.DEALPOS_RIVER;
-    }
-};
-
-const getPushBoardCards = (street, board) => {
-    switch (street) {
-        case 1:
-            return [enumPoker.enumPoker.cardsName.indexOf(board[0].value.toUpperCase() + board[0].suit),
-                    enumPoker.enumPoker.cardsName.indexOf(board[1].value.toUpperCase() + board[1].suit),
-                    enumPoker.enumPoker.cardsName.indexOf(board[2].value.toUpperCase() + board[2].suit)];
-        case 2:
-            return [enumPoker.enumPoker.cardsName.indexOf(board[3].value.toUpperCase() + board[3].suit)];
-        case 3:
-            return [enumPoker.enumPoker.cardsName.indexOf(board[4].value.toUpperCase() + board[4].suit)];
-    }
-};
-
 class SimulationsHandler {
     static queueHandler(playSetup, handNumber, callback, simulationArguments) {
         if (playSetup) {
@@ -407,9 +386,10 @@ class SimulationsHandler {
             }
             if (!playSetup.activeSimulations[handNumber]) {
                 playSetup.activeSimulations[handNumber] = {};
+                playSetup.activeSimulations[handNumber].resimulStreetsCount = [0, 0, 0, 0]; // preflop, flop, turn, river
                 playSetup.activeSimulations[handNumber].lockIndexes = [];    // when some simulation/aggregate starts - we lock same index
             }
-            if (simulationArguments.needSimulation || simulationArguments.needCash) {
+            if (simulationArguments.needSimulation || simulationArguments.needCash) { // !!! ревизия - только один мув добавили а не все мувы до этого
                 playSetup.activeSimulations[handNumber][simulationArguments.move_id] = { callback, simulationArguments };
             }
         }
@@ -418,6 +398,34 @@ class SimulationsHandler {
     static lockMove(playSetup, handNumber, move) {
         if (playSetup && playSetup.activeSimulations && playSetup.activeSimulations[handNumber]) {
             playSetup.activeSimulations[handNumber].lockIndexes[move] = true;
+            // !!! пишем
+        }
+    }
+
+    static getResimulStreetCount(playSetup, handNumber, streetNumber) {
+        if (playSetup.activeSimulations && playSetup.activeSimulations[handNumber]) {
+            if (playSetup.activeSimulations[handNumber].resimulStreetsCount) {
+                return playSetup.activeSimulations[handNumber].resimulStreetsCount[streetNumber];
+            } else {
+                playSetup.activeSimulations[handNumber].resimulStreetsCount = [0, 0, 0, 0];
+                return 0;
+            }
+        } else {
+            throw new Error(`Wrong playSetup.activeSimulations[handNumber] state!`);
+        }
+    }
+
+    static incrementResimulStreetCount(playSetup, handNumber, streetNumber) {
+        if (playSetup.activeSimulations && playSetup.activeSimulations[handNumber]) {
+            if (playSetup.activeSimulations[handNumber].resimulStreetsCount) {
+                playSetup.activeSimulations[handNumber].resimulStreetsCount[streetNumber] += 1;
+                console.log('test');
+            } else {
+                playSetup.activeSimulations[handNumber].resimulStreetsCount = [0, 0, 0, 0];
+                playSetup.activeSimulations[handNumber].resimulStreetsCount[streetNumber] += 1;
+            }
+        } else {
+            throw new Error('Wrong playSetup.activeSimulations[handNumber] state!');
         }
     }
 
@@ -434,6 +442,7 @@ class SimulationsHandler {
         return false;
     }
 
+    //
     static checkCallBacks(playSetup, handNumber, isMockStrategy) {
         if (playSetup && playSetup.activeSimulations && playSetup.activeSimulations[handNumber]) {
             const isIrrelevant = handNumber !== playSetup.handNumber || playSetup.stopPrompt;
@@ -477,69 +486,6 @@ class SimulationsHandler {
     }
 }
 
-// возвращает улицу СЛЕДУЮЩЕГО за предысторией мува
-const getCurStreet = (rawActionList, isTerminal) => {
-    let lastStreet = rawActionList[rawActionList.length - 1].street;
-
-    return (isTerminal && lastStreet < 3) ? (lastStreet + 1) : lastStreet;
-};
-
-// возвращает количество фактических ходов на улице
-const getMovesCount = (rawActionList, street, isTerminal) => {
-    if (isTerminal) {
-        return 0;
-    }
-
-    return rawActionList.filter(el => el.street === street).length;
-};
-
-// определяем делаем ли мы именно симуляции а не агреггируем сетями
-const nodeSimulation = (playSetup, rawActionList, move, initPlayers, positionEnumKeyMap) => {
-    // !!!!!!!!!!!!!!!!!!! определять для конкретного мува терминальное здесь или не здесь!
-    const initStreet = rawActionList[move] ? rawActionList[move].street : rawActionList[rawActionList.length - 1].street;
-
-    // debug
-    if (isDebugMode && playSetup.client) {
-        const rawActionsSlice = rawActionList.slice();
-        if (move !== undefined && rawActionsSlice[move]) {
-            rawActionsSlice.length = move + 1;
-        }
-
-        const isTerminal = playUtils.isTerminalStreetState(rawActionsSlice, move, initPlayers, positionEnumKeyMap);
-        const street = getCurStreet(rawActionsSlice, isTerminal);     // улица следующего за rawActionList хода
-        const result = getMovesCount(rawActionsSlice, street, isTerminal) >= enumPoker.enumPoker.perfomancePolicy.startMoveSimulation;
-
-        const data = {
-            street,
-            isTerminal,
-            isNeedCash: true,
-            isNodeSimulation: street < enumPoker.enumPoker.perfomancePolicy.startSimulationStreet ? false : result,
-            movesCount: getMovesCount(rawActionsSlice, street, isTerminal),
-        };
-
-        console.log('debug_moves_handler', data);
-        playSetup.client.emit(enumPoker.enumCommon.DEBUG_MOVES_HANDLER, data);
-    }
-
-    if (initStreet > enumPoker.enumPoker.perfomancePolicy.startSimulationStreet) {
-        return true;
-    }
-
-    const rawActionsSlice = rawActionList.slice();
-    if (move !== undefined && rawActionsSlice[move]) {
-        rawActionsSlice.length = move + 1;
-    }
-
-    const isTerminal = playUtils.isTerminalStreetState(rawActionsSlice, move, initPlayers, positionEnumKeyMap);
-    const street = getCurStreet(rawActionsSlice, isTerminal);     // улица следующего за rawActionList хода
-
-    if (street < enumPoker.enumPoker.perfomancePolicy.startSimulationStreet) {
-        return false;
-    }
-
-    return getMovesCount(rawActionsSlice, street, isTerminal) >= enumPoker.enumPoker.perfomancePolicy.startMoveSimulation;
-};
-
 const debugEmmit = (playSetup, hand, aggregatorLock, move) => {
     if (playSetup.client) {
         playSetup.client.emit('debugInfo', {
@@ -547,7 +493,7 @@ const debugEmmit = (playSetup, hand, aggregatorLock, move) => {
             hand,
             aggregatorLock,
             move,
-            aggregatorFree: aggregatorPool.isFree(),
+            aggregatorFree: simulatorPool.isFree(),
             sessionsQueue: playSetup.sessionSetup.tasksQueue.tasksQueue.length,
             tasksSimulationsQueue: tasksQueue.simulationsQueue.length,
         });
@@ -574,7 +520,7 @@ function movesDebugInfo(client, move) {
 }
 
 const isMockStrategy = false;
-const isSimulationsOn = false;
+const isSimulationsOn = true;
 const isDebugMode = enumPoker.enumPoker.perfomancePolicy.debugMode;
 
 const getHill = (request, callback, isOneHand) => {
@@ -589,9 +535,9 @@ const getHill = (request, callback, isOneHand) => {
         move_id,    // !!! БУДУЩИЙ ход, которого еще нету в rawActions
         move_position,
         needCash,
+        isTerminal,
         needSimulation,
         isHeroTurn,
-        isTerminal,
         hand,
         positionEnumKeyMap,
     } = request;
@@ -612,6 +558,8 @@ const getHill = (request, callback, isOneHand) => {
             isHeroTurn,
         };
 
+        // проверить что каждый индекс мува у конкретной руки до move_id залочен.
+        // записывать в лок инфу каждого мува руки количество пересимуляций этой улицы
         SimulationsHandler.queueHandler(playSetup, handNumber, callback, options);
 
         // debug
@@ -635,7 +583,8 @@ const getHill = (request, callback, isOneHand) => {
 
         console.log(`start hand: ${hand} request`);
 
-        const addonSetup = new addon.Setup(BB/100);
+        const simSession = addonUtils.getSimSessionForFeatureWithoutHeroHand();
+        const addonSetup = addonUtils.getSetup(BB/100);
 
         initPlayers.forEach(player => {
             console.log(`set_player(${player.enumPosition}, ${player.initBalance})`);
@@ -677,11 +626,24 @@ const getHill = (request, callback, isOneHand) => {
             }
             // !!!!!!!!!!!!! debug
 
+            let isTerminalCalc = false;
+
+            if (move > 2) {
+                if ((rawActionList[move + 1] && rawActionList[move + 1].street !== rawActionList[move].street)) {
+                    isTerminalCalc = true;
+                } else if (!rawActionList[move + 1]) {
+                    isTerminalCalc = isTerminal;
+                }
+            }
+
+            // на какой улице совершен данный мув(move) c учетом ВСЕГО что только может быть(терминального и не существующего тоже)
+            const curStreetMove = playUtils.getCurStreet(rawActionList, move, initPlayers, positionEnumKeyMap, isTerminalCalc);
+
             if (move < 2) {     // 0, 1 - blinds indexes
                 const { position, invest, action } = rawActionList[move];
                 console.log(`push_move(${position}, ${invest}, ${action})`);
                 addonSetup.push_move(position, invest, action);
-            } else if (move === move_id && !nodeSimulation(playSetup, rawActionList, move, initPlayers, positionEnumKeyMap)) {
+            } else if (move === move_id && !needSimulation) {
                 // do nothing
             } else {
                 if (isOneHand) {
@@ -690,123 +652,134 @@ const getHill = (request, callback, isOneHand) => {
                         break;
                     }
                 } else {
-                    const isSimulationNode = nodeSimulation(playSetup, rawActionList, move, initPlayers, positionEnumKeyMap);
+                    const isSimulationNode = playUtils.nodeSimulation(playSetup, rawActionList, move, initPlayers, positionEnumKeyMap, isDebugMode, curStreetMove);
 
                     if (!SimulationsHandler.isMoveLock(playSetup, handNumber, move)) {
-                        // console.log(111);
-                        if (aggregatorPool.isFree()) {
-                            const aggregatorKey = aggregatorPool.getFreeKey();
-                            const aggregator = aggregatorPool.pool[aggregatorKey].aggregator;
+                        // если агрегате олл - все равно коллбек нужен - его пилим первым
+                        // если симулате - проверяем кэш, затем свободность симулятора
+                        // если пилить с ограничением агрегате, то мы используем 2 пулла и один менеджер задач общий
+                        // 1) делаем ревизию менеджера задач общий для 2х пулов. Продебажить и проверить что в вызове movesHandler все ок с замыканием
+                        // 2) делаем общий колбек
+                        // 3) разделяем
 
-                            // callback
-                            const getStrategyAsync = (strategy) => {
-                                aggregatorPool.unlock(aggregatorKey);       // first
-                                tasksQueue.tasksHandler();                  // second
+                        let simulatorKey;
 
-                                // debug mode
-                                if (isDebugMode) {
-                                    debugEmmit(playSetup, '', false, '');
+                        if (isSimulationNode) {
+                            simulatorKey = simulatorPool.getFreeKey();
+                        }
+
+                        // создаем для замыкания данные по поводу количества пересимуляций на улице текущего мува
+                        // определить улицу мува, который мы будем симулевать
+
+                        // callback
+                        const getStrategyAsync = (strategy) => {
+                            // !!!!!!!!!!!! debug
+                            if (isDebugMode) {
+                                debugEmmit(playSetup, '', false, '');
+
+                                const data = {
+                                    handNumber,
+                                    move_id: move,
+                                };
+
+                                if (cash[move]) {
+                                    data.fillAgainCashTime = moment().format('mm:ss.SSS');
+                                } else {
+                                    data.fillCashTime = moment().format('mm:ss.SSS');
                                 }
+
+                                movesDebugInfo(playSetup.client, data);
+                            }
+                            // !!!!!!!!!!!!! debug
+
+                            // проверяем что количество пересимуляций по улице совпадает с текущим(которое уже могло инкрементироваться)
+                            if (curStreetMove === SimulationsHandler.getResimulStreetCount(playSetup, handNumber, curStreetMove)) {
+                                // не было запроса на пересимуляцию с момента постановки задачи
+
+                            }
+                            cash[move] = { strategy };
+
+                            SimulationsHandler.checkCallBacks(playSetup, handNumber, isMockStrategy);
+                            if (simulatorKey !== undefined) {
+                                simulatorPool.unlock(simulatorKey);       // first
+                            }
+                            tasksQueue.tasksHandler();                  // second
+
+                            if (move < move_id) {               // !!!! а нужно ли запускать вообще с учетом запуска tasksQueue.tasksHandler();
+                                movesHandler();
+                            }
+                        };
+
+                        if (isSimulationNode) {
+                            if (simulatorKey !== undefined && isCashReady(rawActionList, cash, move)) {       // have free simulator cpu and will do sync mode simulations
+                                SimulationsHandler.lockMove(playSetup, handNumber, move);       // lock move for always !!! если не будет нестанд сайзинга !!!
 
                                 // !!!!!!!!!!!! debug
                                 if (isDebugMode) {
                                     const data = {
                                         handNumber,
                                         move_id: move,
+                                        isLock: true,
+                                        lockTime: moment().format('mm:ss.SSS')
                                     };
 
-                                    if (cash[move]) {
-                                        data.fillAgainCashTime = moment().format('mm:ss.SSS');
-                                    } else {
-                                        data.fillCashTime = moment().format('mm:ss.SSS');
-                                    }
-
                                     movesDebugInfo(playSetup.client, data);
+                                    debugEmmit(playSetup, hand, true, move);
                                 }
                                 // !!!!!!!!!!!!! debug
 
-                                cash[move] = { strategy };      // WHY NOT FIRST THAN tasksQueue.tasksHandler();
-
-                                SimulationsHandler.checkCallBacks(playSetup, handNumber, isMockStrategy);
-                                if (move < move_id) {
-                                    movesHandler();
-                                }
-                            };
-
-                            if (isSimulationNode) {  // sync mode with simulations
-                                if (isCashReady(rawActionList, cash, move)) {
-                                    // debug mode
-                                    if (isDebugMode) {
-                                        debugEmmit(playSetup, hand, true, move);
-                                    }
-                                    SimulationsHandler.lockMove(playSetup, handNumber, move);       // lock move for always !!! если не будет нестанд сайзинга !!!
-
-                                    // !!!!!!!!!!!! debug
-                                    if (isDebugMode) {
-                                        const data = {
-                                            handNumber,
-                                            move_id: move,
-                                            isLock: true,
-                                            lockTime: moment().format('mm:ss.SSS')
-                                        };
-
-                                        movesDebugInfo(playSetup.client, data);
-                                    }
-                                    // !!!!!!!!!!!!! debug
-
-                                    if (isMockStrategy) {
-                                        mockStrategy(getStrategyAsync);
-                                    } else if (isSimulationsOn) {
-                                        setHills(addonSetup, initPlayers, rawActionList, cash, move);          // !!! WAITING API
-                                        aggregator.simulate(addonSetup, getStrategyAsync);                     // !!! WAITING API
-                                    } else {
-                                        console.log(`!!!!!!!////// //// //// inside nodeSimulation /// isCashReady /// move = ${move}`);
-                                        aggregator.aggregate_all_async(addonSetup, getStrategyAsync, true);
-                                    }
-                                } else {
-                                    aggregatorPool.unlock(aggregatorKey);
-
-                                    // debug mode
-                                    if (isDebugMode) {
-                                        debugEmmit(playSetup, '', false, '');
-                                    }
-
-                                    // !!! продумать не нужно ли здесь ставить в очередь задачу
-                                    // !!! добавить приоритетность симуляций из очереди перед кэшированием нейрогорбов
-                                }
-                                break;      // sync mode
-                            } else {                // have an aggregator - doing parallel cash aggregate
-                                // debug mode
-                                if (isDebugMode) {
-                                    debugEmmit(playSetup, hand, true, move);
-                                }
-                                SimulationsHandler.lockMove(playSetup, handNumber, move);       // lock move for always
                                 if (isMockStrategy) {
                                     mockStrategy(getStrategyAsync);
+                                } else if (isSimulationsOn) {
+                                    setHills(addonSetup, initPlayers, rawActionList, cash, move);          // !!! WAITING API
+                                    simSession.start_simulate(addonSetup, {}, 0, 0, getStrategyAsync);                     // !!! WAITING API
                                 } else {
-                                    aggregator.aggregate_all_async(addonSetup, getStrategyAsync, true);
+                                    console.log(`!!!!!!!////// //// //// inside nodeSimulation /// isCashReady /// move = ${move}`);
+                                    simSession.start_simulate(addonSetup, {}, 0, 0, getStrategyAsync);
                                 }
+                            } else {
+                                simulatorPool.unlock(simulatorKey);
+
+                                // debug mode
+                                if (isDebugMode) {
+                                    debugEmmit(playSetup, '', false, '');
+                                }
+
+                                tasksQueue.queueHandler(handNumber, () => { movesHandler() }, false);
                             }
-                        } else {        // no free aggregator
-                            tasksQueue.queueHandler(handNumber, () => { movesHandler(false); });
                             break;
+
+                        } else {         // have an aggregator - doing parallel cash aggregate
+                            // debug mode
+                            if (isDebugMode) {
+                                debugEmmit(playSetup, hand, true, move);
+                            }
+
+                            SimulationsHandler.lockMove(playSetup, handNumber, move);       // lock move for always but not for resimulations after odd sizing
+                            if (isMockStrategy) {
+                                mockStrategy(getStrategyAsync);
+                            } else {
+                                simSession.start_simulate(addonSetup, {}, 0, 0, getStrategyAsync);
+                            }
                         }
+
                     } else if (move === move_id) {      // move is lock
                         break;
                     }
                 }
 
-
                 // push moves and board
                 if (rawActionList[move]) {
-                    const { position, invest, action, street } = rawActionList[move];
-                    console.log(`push_move(${position}, ${invest}, ${action})`);
-                    addonSetup.push_move(position, invest, action);
+                    addonUtils.pushMove(addonSetup, rawActionList, move, isTerminalCalc, board);
 
-                    if ((rawActionList[move + 1] && rawActionList[move + 1].street !== street) || (!rawActionList[move + 1] && isTerminal && move < move_id)) {     // street move after push_move
-                        console.log(`push board`);
-                        addonSetup.push_move(getBoardDealPosition(street + 1), ...getPushBoardCards((street + 1), board));
-                    }
+                    // const { position, invest, action, street } = rawActionList[move];
+                    // console.log(`push_move(${position}, ${invest}, ${action})`);
+                    // addonSetup.push_move(position, invest, action);
+                    //
+                    // if ((rawActionList[move + 1] && rawActionList[move + 1].street !== street) || (!rawActionList[move + 1] && isTerminalCalc && move < move_id)) {     // street move after push_move
+                    //     console.log(`push board`);
+                    //     addonSetup.push_move(playUtils.getBoardDealPosition(street + 1), ...playUtils.getPushBoardCards((street + 1), board));
+                    // }
                 }
             }
         }

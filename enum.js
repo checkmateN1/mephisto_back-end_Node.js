@@ -38,15 +38,20 @@ const enumPoker = Object.freeze({
     perfomancePolicy: {
         prepareCashStrategyFirstHeroMove: true,
         prepareCashStrategyStreet: 1,
-        startSimulationStreet: 1,
+        startSimulationStreet: 2,
         startMoveSimulation: 0,
         startMultipotMoveSimulation: 0,
-        maxActiveTasks: 1,               // pack moves within one hand number
+        maxActiveAggregate: 1,               // pack moves within one hand number
         maxActiveSimulations: 1,
         oneHandCallRegretCount: 1,
         isSimulatorOnly: false,
         projectDrive: 'C',
+        useCpu: false,
         debugMode: true,
+        deviationSizings: [[0.2, 0.25, 0.3], [0.2, 0.25, 0.3], [0.15, 0.2, 0.25], [0.1, 0.1, 0.15]], // 4 streets
+        isAddSizing: true,
+        simulationsCount: 300000,
+        numThreads: 3,
     },
     DBsettings: {
         isHistoryLogging: false,

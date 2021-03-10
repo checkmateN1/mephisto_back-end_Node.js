@@ -409,7 +409,7 @@ io.on('connection', client => {
                 if (!_.isEmpty(data)) {
                     client.emit('simulationsSuccess');
 
-                    console.log(data);
+                    // console.log(data);
                     //
                     // setTimeout(() => {
                     //     client.emit('simulationsResponse', {test: 100500});
@@ -428,7 +428,7 @@ io.on('connection', client => {
                         }
                     }
 
-                    testAcync().then(console.log('result sucsess'));
+                    testAcync().then();
 
                     // const result = sessionsHandler.sessionsListener(token, client.id, data);
                     // client.emit('simulationsResponse', result);
@@ -527,20 +527,20 @@ io.on('connection', client => {
 //     console.log("Сервер ожидает подключения...");
 // });
 
-// server.listen(27991, '192.168.1.30', function() {        // lucifer
-//     console.log("Сервер ожидает подключения...");
-// });
+server.listen(27991, '192.168.1.30', function() {        // lucifer
+    console.log("Сервер ожидает подключения...");
+});
 
 
-if (enumPoker.enumPoker.perfomancePolicy.isSimulatorOnly) {
-    server.listen(27990, '192.168.1.20', function() {        // mephisto
-        console.log("Сервер ожидает подключения...");
-    });
-} else {
-    server.listen(27990, 'localhost', function() {
-        console.log("Сервер ожидает подключения...");
-    });
-}
+// if (enumPoker.enumPoker.perfomancePolicy.isSimulatorOnly) {
+//     server.listen(27990, '192.168.1.20', function() {        // mephisto
+//         console.log("Сервер ожидает подключения...");
+//     });
+// } else {
+//     server.listen(27990, 'localhost', function() {
+//         console.log("Сервер ожидает подключения...");
+//     });
+// }
 
 
 // server.listen(27990, '192.168.1.105', function() {        // laptop
