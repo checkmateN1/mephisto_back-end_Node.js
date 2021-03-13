@@ -1,4 +1,5 @@
 const addonUtils = require('./addonUtils');
+const playUtils = require('./play_utils');
 const enumPoker = require('../enum');
 
 
@@ -29,8 +30,72 @@ const hillUtils = Object.freeze({
     return positions;
   },
 
-  getMockSpectres() {
 
+  // выбрали позицию не хиро на улице целевой. и подали ее в эту функцию
+  needStopSimultions(options) {    // cash with hashes(key) and value with strategy
+    // я не могу ни симулевать ни кэшировать агрегате если не проверил наличие нестандартных сайзингов в будущем!
+    // главная задача - нужно ли пересимулевывать когда пришли новые rawActions
+
+    const { rawActions, cash, isNodeSimulation, street, isTerminal, bbSize, initPlayers, board, blindsCount, position, heroPosition } = options;
+
+    // пилим функцию, которая для конкретной позиции и конкретной улицы (последней в текущем рав актионс) определяет есть ли хэш
+    //  в словаре по сетапу, без пушей следующего нестандартного сайзинга ЭТОГО ЖЕ игрока. Если есть хэш в качестве ключа, но нету value,
+    //  это однозначно значит, что идут симуляции, если это узел с симуляциями.. если впереди есть нестандартный сайзинг от этого же игрока -
+    //  останавливаем все симуляции по данной сим сессион с рукой хиро. И добавляем СРОЧНУЮ задачу по данному сетапу с добавленными сайзингами
+
+
+    const setup = addonUtils.getSetup(bbSize/100);
+
+    initPlayers.forEach(player => {
+      addonUtils.setPlayer(setup, player.enumPosition, player.initBalance);
+    });
+
+    for (let i = 0; i < rawActions.length; i++) {
+      let isTerminalCalc = false;
+
+      if (i > 2) {
+        if ((rawActions[i + 1] && rawActions[i + 1].street !== rawActions[i].street)) {
+          isTerminalCalc = true;
+        } else if (!rawActions[i + 1]) {
+          isTerminalCalc = isTerminal;
+        }
+      }
+
+      if (rawActions[i].street === street && rawActions[i].position !== heroPosition) {
+        // проверяем хэш, контекст value, есть ли у хэша value
+        // если есть хэш, не совпадает контекст с текущим, и нету value - останавливаем симуляции и удаляем value хэша вместе со старым контекстом
+        // если есть хэш, есть value, но не совпадает контекст - удаляем value хэша
+        // возвращаем индекс rawActions с которого начинаем пересимуляции
+
+        const hashOld = addonUtils.getHash(setup);
+
+        if (hashOld in cash) {
+          // контекст это объект с важными для пересимуляции напушенными для игрока этой позиции и улицы эддсайзингами
+
+        }
+      }
+
+      addonUtils.pushMove(setup, rawActions, i, isTerminalCalc, board);
+    }
+    // получили setup без целевого move. Move - это индекс интересуемого нами кэша след мува
+
+
+  },
+
+  // getOrEval(hash, func) {
+  //   // Внутри она проверяет по хешу. Если нет - то запускает функцию из второго аргумента, помещает результат евала в кеш под этим хешом,
+  //   // а так же возвращает зеачение, вне щависимости из кеша оно или посчитано
+  //
+  //
+  // },
+
+  isCashReady(cash, move_id) {
+    for (let i = 2; i < move_id; i++) {
+      if (!cash[i]) {
+        return false;
+      }
+    }
+    return true;
   },
 
   getInputSpectres(rawActions, cash, move_id) {

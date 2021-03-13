@@ -1,3 +1,3 @@
-const inputSpectres = JSON.parse('');
+const uniqid = require('uniqid');
 
-console.log(inputSpectres);
+console.log(uniqid('', `${123}${555}${777}`));

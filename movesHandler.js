@@ -424,8 +424,7 @@ const movesHandler = async (request, bbSize, setup, nodeId) => {      // nodeId 
                 position,
             };
 
-            console.log(`setup.set_player(${position}, ${stack});`);
-            setup.addonSetup.set_player(position, stack);
+            addonUtils.setPlayer(setup, position, stack);
             setup.movesCash.players.push(cashPlayer);
         }
 

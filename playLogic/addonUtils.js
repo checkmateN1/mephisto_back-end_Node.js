@@ -1,3 +1,5 @@
+const uniqid = require('uniqid');
+
 const enumPoker = require(`../enum`);
 const playUtils = require('./play_utils');
 
@@ -74,6 +76,11 @@ class AddonUtils {
     }
   }
 
+  setPlayer(setup, position, initBalance) {
+    console.log(`setup.set_player(${position}, ${initBalance});`);
+    setup.set_player(position, initBalance);
+  }
+
   popMove(setup) {
     console.log('setup.pop_move();');
     setup.pop_move();
@@ -82,14 +89,6 @@ class AddonUtils {
   popMoves(setup, street) {
     console.log(`setup.pop_moves(${street});`);
     setup.pop_moves(street);
-  }
-
-  replaceSizing(setup, sizing) {
-    // Дмитрий Онуфриев, [03.03.21 09:57]
-    // simSession.add_or_replace_sizing(setup,400);
-    //
-    // Дмитрий Онуфриев, [03.03.21 09:57]
-    // var curSizings = simSession.get_sizings(setup);
   }
 
   addSizing(setup, sizing, simSession) {
@@ -108,14 +107,32 @@ class AddonUtils {
     session.add_or_replace_sizing(setup, sizing);
   }
 
-  getStrategyAsync(isNodeSimulation, setup, simSessionLight, inputSpectres, numberOfSimulations, numThreads) {
+  getHash(setup) {
+    // !!! waiting API
+    return uniqid('', `${move_id}`);
+  }
+
+  stopSimulations(simSession) {
+    simSession.stop_simulate(); // stops ALL parallel 'start_simulate'
+  }
+
+  getStrategy(isNodeSimulation, setup, simSessionLight, inputSpectres, numberOfSimulations, numThreads, callback) {
+    if (isNodeSimulation) {
+      console.log(`simSessionLight.start_simulate(setup, {}, 0, 0, strategy => {console.log('got strategy')})`);
+      simSessionLight.start_simulate(setup, inputSpectres, numberOfSimulations, numThreads, callback);
+    } else {
+      console.log(`simSessionHeavy.start_simulate(setup, {}, 0, 0, strategy => {console.log('got strategy')})`);
+      this.simSessionHeavy.start_simulate(setup, {}, 0, 0, callback);
+    }
+  }
+
+  getStrategyAsync(isNodeSimulation, setup, simSessionLight, inputSpectres, numberOfSimulations, numThreads, getStrategyAsync) {
     return new Promise(resolve => {
       if (isNodeSimulation) {
         console.log(`simSessionLight.start_simulate(setup, {}, 0, 0, strategy => {console.log('got strategy')})`);
         simSessionLight.start_simulate(setup, inputSpectres, numberOfSimulations, numThreads, strategy => {resolve(strategy)});
       } else {
         console.log(`simSessionHeavy.start_simulate(setup, {}, 0, 0, strategy => {console.log('got strategy')})`);
-        // this.simSessionHeavy.start_simulate(setup, {}, 0, 0, strategy => {resolve(strategy)});
         this.simSessionHeavy.start_simulate(setup, {}, 0, 0, strategy => {resolve(strategy)});
       }
     });

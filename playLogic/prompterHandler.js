@@ -155,7 +155,7 @@ class PlaySetup {
     constructor(gameTypesSettings) {            // frame from recognition -> validator.dll -> playFrame
         this.sessionSetup = null;
         this.client = null;
-        this.cash = [];
+        this.cash = new Map();
         this.initPlayers = [];      // all players who was active in start. Index === recPosition, some indexes == undefined!
         this.playersWasActive = [];   // all players who was active in start without empty chairs or waiting players
         this.positionEnumKeyMap = {};
@@ -289,7 +289,7 @@ class PlaySetup {
             this.sessionSetup.tasksQueue.clearIrrelevantTasks(this.handNumber);
             this.simulationsRequests = [];      // clear locked actions for simulations requests
             this.handNumber = playFrame.handNumber;
-            this.cash = [];             // reset cash when new hand
+            this.cash.clear();             // reset cash when new hand
             this.initPlayers = [];
             this.positionEnumKeyMap = {};
             this.rawActionList = [];
@@ -1918,6 +1918,7 @@ const prompterListener = (setup, request, gameTypesSettings) => {
             const move_position = setup.playSetup.whoIsNextMove(isTerminal);
             const heroPosition = initPlayers[heroChair].enumPosition;
             const isHeroTurn = move_position === heroPosition;
+            const initPlayers = initPlayers.slice();
             const move_id = rawActionList.length;                   // !!! БУДУЩИЙ ход, которого еще нету в rawActions
             const needCash = isNeedCash(rawActionList, isTerminal, heroPosition);
             const needSimulation = playUtils.nodeSimulation({}, rawActionList, (rawActionList.length - 1), initPlayers, positionEnumKeyMap, false, rawActionList[rawActionList.length - 1].street);
@@ -1925,10 +1926,10 @@ const prompterListener = (setup, request, gameTypesSettings) => {
                 handNumber,
                 playSetup: setup.playSetup,
                 rawActionList: rawActionList.slice(),
-                initPlayers: initPlayers.slice(),
+                initPlayers,
                 BB: bbSize[bbSize.length - 1],
                 board,
-                cash,
+                cash,       // new Map()
                 move_id,        // !!! БУДУЩИЙ ход, которого еще нету в rawActions
                 move_position,
                 isHeroTurn,

@@ -324,7 +324,30 @@ const playUtils = Object.freeze({
   // возвращает количество фактических ходов на улице
   getMovesCount(rawActionList, street) {
     return rawActionList.filter(el => el.street === street).length;
-  }
+  },
+
+  getSetupWithMoves(rawActions, move, isTerminal, bbSize, initPlayers, board) {
+    const setup = addonUtils.getSetup(bbSize/100);
+
+    initPlayers.forEach(player => {
+      addonUtils.setPlayer(setup, player.enumPosition, player.initBalance);
+    });
+
+    let isTerminalCalc = false;
+
+    if (move > 2) {
+      if ((rawActions[move + 1] && rawActions[move + 1].street !== rawActions[move].street)) {
+        isTerminalCalc = true;
+      } else if (!rawActions[move + 1]) {
+        isTerminalCalc = isTerminal;
+      }
+    }
+
+    for (let i = 0; i <= move; i++) {
+      addonUtils.pushMove(setup, rawActions, i, isTerminalCalc, board);
+    }
+
+  },
 });
 
 // console.log(playUtils.createStacksArr(75, 3));
